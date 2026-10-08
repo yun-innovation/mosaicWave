@@ -11,7 +11,7 @@ Short onboarding snapshot for agents. Full TOC and commands: [index.md](index.md
 
 ## Next
 
-**Published:** the repo is public at https://github.com/yun-innovation/mosaicWave (single commit, tag `v0.1.0`, license FSL-1.1-Apache-2.0). Work from a branch that tracks `github/main`; the old Azure history stays in the private `azure-archive` remote and a backup bundle. Left: triage the Dependabot PRs by hand (there is no CI), build and attach the `v0.1.0` release assets (MSI, QPKG x86_64, tarball) from a clean clone of the tag, write the branch/commit policy into `process.md`. Plan: branch `plan/github-migration` (private, never push it to GitHub). Open items ([progress-todo.md](progress-todo.md)): Linux tarball unpack untested; ARM64 QPKG needs a QTS 5 ARM64 NAS; backup / restore / export not built. Packaged macOS Save-folder SMB limitation: [smb-paths.md](smb-paths.md).
+**Published:** the repo is public at https://github.com/yun-innovation/mosaicWave (single commit, tag `v0.1.0`, license FSL-1.1-Apache-2.0). Never work on `main`: branch, push, PR, squash-merge ([process.md](process.md)). The five Dependabot bumps (Next 16, React, TypeScript 7, `@types/node` 26, react-dom) are merged. Left: build and attach the `v0.1.0` release assets (MSI, QPKG x86_64, tarball) from a clean clone of the tag, and run `npm run build` and `pytest` on `main` first because the bumps landed after the tag. Old Azure history stays in a private archive repo and a backup bundle; its plan branch must never go to GitHub. Open items ([progress-todo.md](progress-todo.md)): Linux tarball unpack untested; ARM64 QPKG needs a QTS 5 ARM64 NAS; backup / restore / export not built. Packaged macOS Save-folder SMB limitation: [smb-paths.md](smb-paths.md).
 
 ## Constraints
 
