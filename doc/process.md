@@ -51,11 +51,16 @@ flowchart LR
 
 ## Git and review
 
-- Branch from `main` for work; merge via PR when the team uses PRs.
+- **Never work on `main`.** It is protected and always releasable. `git switch main`, `git pull`, then `git switch -c <type>/<topic>` **before** editing.
+- **Branch names:** `feature/<topic>`, `fix/<topic>`, `docs/<topic>`. Dependabot branches keep their own names.
+- **Merge via PR on GitHub:** push the branch, open a PR against `main`, **Squash and merge**, delete the branch, then `git pull` on `main`. History stays linear.
+- **No CI yet:** before merging, run `pytest` in `src/server` and `npm run build` in `src/web` by hand. This also applies to Dependabot PRs.
+- **Commit messages:** Conventional Commits (`feat:`, `fix:`, `docs:`, `chore:`, `build:`, `test:`), imperative, summary under 72 characters. Focus on **why** (e.g. `feat: add cursor pagination so the timeline can scroll`).
+- **Identity:** commit with the GitHub no-reply address (`git config user.email`), because GitHub blocks pushes that expose a private email.
+- **Phases:** only the owner's `phase N done` message marks a phase. A commit message never does.
+- **Tags and releases:** `vMAJOR.MINOR.PATCH`, protected. Build installers from a clean checkout of the tag and attach them to a GitHub Release. No binaries in git.
 - Commit when asked or at a coherent checkpoint; do not commit secrets (`.env`, NAS passwords, certificates).
 - Prefer small PRs: API slice, then UI slice, rather than a giant QPKG dump.
-
-Suggested commit focus: **why** (e.g. “add cursor pagination so the timeline can scroll”).
 
 ## Versioning
 
