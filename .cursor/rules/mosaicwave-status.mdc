@@ -7,7 +7,7 @@ alwaysApply: true
 
 **v0.1, paused for GitHub migration. The roadmap is being rebuilt** (old Phase 0–9 plan: `doc/roadmap-archive.md`). No phase is marked done by the reset.
 
-**Next:** Publish the public GitHub release (plan on branch `plan/github-migration`, `doc/plans/github-migration.md`; real work is committed directly on `main`). Done on `main`: roadmap reset, PII removal, license (FSL-1.1-Apache-2.0), README/NOTICE/community files. Local orphan branch `public-release` exists (rebuild from `main` if `main` changes). Left: decide `CONTRIBUTING.md` wording, create org + repo, push, tag, branch protection. Open items (`doc/progress-todo.md`): Linux tarball unpack untested; ARM64 QPKG needs a QTS 5 ARM64 NAS; backup / restore / export not built. Packaged macOS Save-folder SMB limitation: `doc/smb-paths.md`.
+**Next:** **Published:** the repo is public at https://github.com/yun-innovation/mosaicWave (single commit, tag `v0.1.0`, FSL-1.1-Apache-2.0). Work from a branch that tracks `github/main`; old Azure history is in the private `azure-archive` remote and a backup bundle. Left: triage the Dependabot PRs by hand (no CI), build and attach `v0.1.0` release assets (MSI, QPKG x86_64, tarball) from a clean clone of the tag, write the branch/commit policy into `doc/process.md`. Plan: private branch `plan/github-migration` (never push it to GitHub). Open items (`doc/progress-todo.md`): Linux tarball unpack untested; ARM64 QPKG needs a QTS 5 ARM64 NAS; backup / restore / export not built. Packaged macOS Save-folder SMB limitation: `doc/smb-paths.md`.
 
 **Do not** read `doc/index.md` or the full roadmap/architecture on session start. Use this rule. Open other docs only from the table below.
 

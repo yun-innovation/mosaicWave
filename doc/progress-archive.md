@@ -118,7 +118,8 @@ Dated milestones and decisions. Day-to-day process notes: [process.md](process.m
 | 2026-10-07 | Docs | AI-assisted project notice in `README.md`, `doc/README.md`, `NOTICE`; added `LICENSE`, `CONTRIBUTING.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md`, `.github` templates and Dependabot |
 | 2026-10-07 | Fix | Personal data removal: deleted `exception.rtf`, untracked `.wix` DLLs, fictional `fileserver` in Postman env and a test |
 | 2026-10-07 | Decision | Counsel review of the license and name waived by the owner (re-check before SaaS launch). No CI workflow for now |
-| 2026-10-07 | Tooling | Private backup bundle of the Azure repo; local orphan branch `public-release` (single commit) for the GitHub push. Must be rebuilt from `main` before pushing if `main` changes |
+| 2026-10-07 | Tooling | Private backup bundle of the Azure repo; local orphan branch `public-release` (single commit) for the GitHub push |
+| 2026-10-08 | Milestone | Published: `yun-innovation/mosaicWave` on GitHub, single commit plus tag `v0.1.0`, repo made public. Author uses a GitHub no-reply address (GitHub blocked the personal email). Azure remote renamed `azure-archive`; global `http.sslVerify` restored to true |
 
 
 ---

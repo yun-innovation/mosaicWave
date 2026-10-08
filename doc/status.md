@@ -11,7 +11,7 @@ Short onboarding snapshot for agents. Full TOC and commands: [index.md](index.md
 
 ## Next
 
-Publish the public GitHub release (plan on branch `plan/github-migration`, `doc/plans/github-migration.md`). Done on `main`: roadmap reset, PII removal, license (FSL-1.1-Apache-2.0), README/NOTICE/community files. Local orphan branch `public-release` exists (rebuild it from `main` if `main` changes); the Azure backup bundle is outside the repo. Left: decide `CONTRIBUTING.md` wording, create org + repo, push, tag, branch protection. Open items ([progress-todo.md](progress-todo.md)): Linux tarball unpack untested; ARM64 QPKG needs a QTS 5 ARM64 NAS; backup / restore / export not built. Packaged macOS Save-folder SMB limitation: [smb-paths.md](smb-paths.md).
+**Published:** the repo is public at https://github.com/yun-innovation/mosaicWave (single commit, tag `v0.1.0`, license FSL-1.1-Apache-2.0). Work from a branch that tracks `github/main`; the old Azure history stays in the private `azure-archive` remote and a backup bundle. Left: triage the Dependabot PRs by hand (there is no CI), build and attach the `v0.1.0` release assets (MSI, QPKG x86_64, tarball) from a clean clone of the tag, write the branch/commit policy into `process.md`. Plan: branch `plan/github-migration` (private, never push it to GitHub). Open items ([progress-todo.md](progress-todo.md)): Linux tarball unpack untested; ARM64 QPKG needs a QTS 5 ARM64 NAS; backup / restore / export not built. Packaged macOS Save-folder SMB limitation: [smb-paths.md](smb-paths.md).
 
 ## Constraints
 
