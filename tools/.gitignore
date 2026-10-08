@@ -1,0 +1,4 @@
+# QDK / WinSW downloads (get-qdk.cmd, get-winsw.cmd) — do not commit
+*.deb
+*.qpkg
+*.exe

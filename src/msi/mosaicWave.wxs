@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Windows MSI. Staging: scripts/publish-msi.cmd then pack-msi.cmd. See doc/qpkg.md. -->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
+  <Package
+    Name="mosaicWave"
+    Manufacturer="Yun Innovation Technology Limited"
+    Version="0.1.0"
+    UpgradeCode="b4e8d91a-2c7f-4b55-9e10-a6d3f8c1e4a7"
+    Language="1033"
+    Scope="perMachine">
+    <SummaryInformation Description="Photo and video library (Python API + static web UI)." />
+    <Icon Id="AppIcon" SourceFile="!(bindpath.Payload)\mosaicWave.ico" />
+    <Property Id="ARPPRODUCTICON" Value="AppIcon" />
+    <!-- Public properties: msiexec /i mosaicWave.msi PORT=8090 INSTALLSERVICE=1 -->
+    <Property Id="PORT" Value="8090">
+      <RegistrySearch Id="FindPort" Root="HKLM" Key="Software\mosaicWave" Name="Port" Type="raw" />
+    </Property>
+    <Property Id="INSTALLSERVICE" Value="1">
+      <RegistrySearch Id="FindService" Root="HKLM" Key="Software\mosaicWave" Name="InstallService" Type="raw" />
+    </Property>
+    <MajorUpgrade DowngradeErrorMessage="A newer version of mosaicWave is already installed." />
+    <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
+
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="mosaicWave" />
+    </StandardDirectory>
+    <StandardDirectory Id="ProgramMenuFolder" />
+    <StandardDirectory Id="DesktopFolder" />
+    <StandardDirectory Id="CommonAppDataFolder">
+      <Directory Id="MwProgramData" Name="mosaicWave">
+        <Directory Id="MwRuntimeDir" Name="runtime" />
+      </Directory>
+    </StandardDirectory>
+
+    <!-- App files. Library data is %PROGRAMDATA%\mosaicWave — not in this tree; uninstall leaves it.
+         Do not Exclude venv\** or **\__pycache__ — WiX 7 harvests Exclude as a filesystem path
+         and ** is not a valid Windows directory name. publish-msi strips __pycache__; venv is not staged. -->
+    <ComponentGroup Id="Payload" Directory="INSTALLFOLDER">
+      <Files Include="!(bindpath.Payload)\**">
+        <Exclude Files="!(bindpath.Payload)\mosaicWave.exe" />
+        <Exclude Files="!(bindpath.Payload)\mosaicWave.ico" />
+      </Files>
+    </ComponentGroup>
+
+    <Component Id="ServiceExe" Directory="INSTALLFOLDER" Guid="c8f1a04e-3b6d-4e9a-8c21-7d5e0b94a2f1" Condition="INSTALLSERVICE = 1">
+      <File Id="WinSwExe" Source="!(bindpath.Payload)\mosaicWave.exe" KeyPath="yes" />
+      <ServiceInstall
+        Id="SvcInstall"
+        Name="mosaicWave"
+        DisplayName="mosaicWave"
+        Description="mosaicWave photo and video library"
+        Start="auto"
+        Type="ownProcess"
+        ErrorControl="normal" />
+      <ServiceControl
+        Id="SvcControl"
+        Name="mosaicWave"
+        Start="install"
+        Stop="both"
+        Remove="uninstall"
+        Wait="yes" />
+    </Component>
+
+    <!-- Start Menu + Public Desktop shortcuts open the UI. -->
+    <Component Id="Shortcuts" Directory="INSTALLFOLDER" Guid="d2e4f6a8-1c3b-4d5e-9f70-8a1b2c3d4e5f">
+      <File Id="AppIcoFile" Source="!(bindpath.Payload)\mosaicWave.ico" KeyPath="yes" />
+      <util:InternetShortcut
+        Id="StartMenuShortcut"
+        Name="mosaicWave"
+        Directory="ProgramMenuFolder"
+        Target="http://127.0.0.1:[PORT]/"
+        IconFile="[#AppIcoFile]"
+        Type="link" />
+      <util:InternetShortcut
+        Id="DesktopShortcut"
+        Name="mosaicWave"
+        Directory="DesktopFolder"
+        Target="http://127.0.0.1:[PORT]/"
+        IconFile="[#AppIcoFile]"
+        Type="link" />
+    </Component>
+
+    <!-- Files-only install: start the same process from the Start Menu (no Windows service). -->
+    <Component Id="RunShortcut" Directory="INSTALLFOLDER" Guid="a9c3e7b1-4d52-4f80-8e16-2b7c9d0a4f31" Condition="INSTALLSERVICE &lt;&gt; 1">
+      <Shortcut
+        Id="StartAppShortcut"
+        Name="Start mosaicWave"
+        Description="Run mosaicWave (web UI and API) without a Windows service"
+        Directory="ProgramMenuFolder"
+        Target="[INSTALLFOLDER]mosaicWave-run.cmd"
+        WorkingDirectory="INSTALLFOLDER"
+        Icon="AppIcon"
+        Show="minimized" />
+      <RemoveFolder Id="StartMenuRunShortcutDir" Directory="ProgramMenuFolder" On="uninstall" />
+      <RegistryValue Root="HKLM" Key="Software\mosaicWave" Name="RunShortcut" Type="integer" Value="1" KeyPath="yes" />
+    </Component>
+
+    <!-- Writable venv dir. Not the photo library (library.db / libraries / blobs). -->
+    <Component Id="RuntimeDir" Directory="MwRuntimeDir" Guid="f1a2b3c4-5d6e-4f70-8192-a3b4c5d6e7f8">
+      <CreateFolder>
+        <util:PermissionEx User="Authenticated Users" GenericAll="yes" />
+        <util:PermissionEx User="Administrators" GenericAll="yes" />
+        <util:PermissionEx User="SYSTEM" GenericAll="yes" />
+      </CreateFolder>
+      <RegistryValue Root="HKLM" Key="Software\mosaicWave" Name="runtime" Type="integer" Value="1" KeyPath="yes" />
+      <RegistryValue Root="HKLM" Key="Software\mosaicWave" Name="Port" Type="string" Value="[PORT]" />
+      <RegistryValue Root="HKLM" Key="Software\mosaicWave" Name="InstallService" Type="string" Value="[INSTALLSERVICE]" />
+    </Component>
+
+    <Feature Id="Main" Title="mosaicWave" Level="1">
+      <ComponentGroupRef Id="Payload" />
+      <ComponentRef Id="ServiceExe" />
+      <ComponentRef Id="Shortcuts" />
+      <ComponentRef Id="RunShortcut" />
+      <ComponentRef Id="RuntimeDir" />
+    </Feature>
+
+    <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
+    <WixVariable Id="WixUILicenseRtf" Value="!(bindpath.Payload)\License.rtf" />
+    <UIRef Id="WixUI_mosaicWave_X64" />
+  </Package>
+</Wix>

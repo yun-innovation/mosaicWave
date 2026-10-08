@@ -1,0 +1,14 @@
+# QDK and BusyBox scripts must be LF. CR on QPKG_NAME=/QPKG_VER= is copied into those
+# values, so qbuild writes mosaicWave<CR>_0.1.0<CR>_x86_64.qpkg and skips icons.
+src/qpkg/*.cfg text eol=lf
+src/qpkg/package_routines text eol=lf
+src/qpkg/shared/*.sh text eol=lf
+src/qpkg/shared/*.txt text eol=lf
+src/qpkg/icons/*.png binary
+scripts/*.sh text eol=lf
+src/posix/*.sh text eol=lf
+src/posix/*.c text eol=lf
+src/posix/*.service text eol=lf
+src/posix/*.plist text eol=lf
+src/posix/*.icns binary
+src/posix/*.png binary

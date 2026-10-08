@@ -1,0 +1,55 @@
+---
+description: mosaicWave session snapshot — phase, next step, constraints. Always loaded; do not cold-read all of doc/.
+alwaysApply: true
+---
+
+# mosaicWave status (2026-10-07)
+
+**v0.1, paused for GitHub migration. The roadmap is being rebuilt** (old Phase 0–9 plan: `doc/roadmap-archive.md`). No phase is marked done by the reset.
+
+**Next:** Publish the public GitHub release (plan on branch `plan/github-migration`, `doc/plans/github-migration.md`; real work is committed directly on `main`). Done on `main`: roadmap reset, PII removal, license (FSL-1.1-Apache-2.0), README/NOTICE/community files. Local orphan branch `public-release` exists (rebuild from `main` if `main` changes). Left: decide `CONTRIBUTING.md` wording, create org + repo, push, tag, branch protection. Open items (`doc/progress-todo.md`): Linux tarball unpack untested; ARM64 QPKG needs a QTS 5 ARM64 NAS; backup / restore / export not built. Packaged macOS Save-folder SMB limitation: `doc/smb-paths.md`.
+
+**Do not** read `doc/index.md` or the full roadmap/architecture on session start. Use this rule. Open other docs only from the table below.
+
+## Constraints (do not reverse without updating docs)
+
+- **Multi-platform:** same Python app on QNAP (QPKG), Windows, Linux, macOS — QPKG is packaging, not the only runtime
+- Web: Next.js **static export** — no Node as product runtime
+- **SQLite** for photo/album metadata — not MongoDB
+- One **`/api/v1`** for web and mobile
+- Originals via **FileStore**; thumbs via **BlobStore** ([storage.md](storage.md)). Windows MSI: `%PROGRAMDATA%\mosaicWave`. Local debug: `%PROGRAMDATA%\mosaicWave-dev`. QNAP: `{volume}/.mosaicWave` (survives Remove). Linux packaged: `~/.local/share/mosaicWave`. Linux debug: `~/.local/share/mosaicWave-dev`. macOS packaged: `/Library/Application Support/mosaicWave`. macOS debug: `/Library/Application Support/mosaicWave-dev`. Admin Settings can move it (`config.json`); `MOSAICWAVE_DATA_DIR` wins. No Google Photos API library dump
+- **Auth:** QNAP users on QTS; local users on standalone (not a password table on the QNAP profile)
+- **Authorization:** one private library per user — others only via **share** (`source_grant`; no admin bypass) ([architecture.md](architecture.md))
+- **Takeout:** one-shot ingest into the caller’s library (SHA-256 dedup); dump may be deleted ([takeout.md](takeout.md))
+- Server SQLite is canonical; clients may **replicate** metadata for offline ([schema.md](schema.md)) — originals stay in FileStore. Sync pull is in; album **push** is `POST`/`PATCH`/`DELETE /albums` with `base_rev`
+- **Phase complete:** only **`phase N done`**. Wrap-up (`mosaic done` / `unity done`) must not mark a phase done
+
+## Docs on demand
+
+| Need | Read |
+| --- | --- |
+| Commands, TOC, wrap-up | `doc/index.md` (For AI Agents + Planning only) |
+| Verify this snapshot | `doc/status.md` |
+| Roadmap (being rebuilt; old plan in `doc/roadmap-archive.md`) | `doc/roadmap.md` |
+| Stack / API / DB | `doc/architecture.md` |
+| Virtual file / blob | `doc/storage.md` |
+| UNC / `smb://` paths | `doc/smb-paths.md` |
+| FileStore (originals I/O) | `doc/filestore.md` |
+| FileStore later (BYO cloud) | `doc/filestore-later.md` |
+| Takeout import | `doc/takeout.md` |
+| Takeout dump (zips / oversized) | `doc/takeout-dump.md` |
+| Job workflow / audit | `doc/workflow.md` |
+| Schema / `library.db` | `doc/schema.md` |
+| Git, QPKG, how we work | `doc/process.md` |
+| Product intent | `doc/system-overview.md` |
+| QPKG / hosts | `doc/qpkg.md` |
+| Postman API tests | `postman/mosaicwave.postman_collection.json` |
+| Checkboxes | `doc/progress-todo.md` |
+
+## Session start
+
+One sentence: phase, next step, which doc you will open for **this** task. Then that doc (if needed), then code. Prefer docs over source.
+
+## Session end (`mosaic done`)
+
+When the user says **`mosaic done`**, **`mosaicwave done`**, or **`unity done`**, wrap up, hand off, or this is the last turn after **substantive** doc/code work: run `doc/index.md` § mosaic done. Tick work items in `progress-todo.md`. **Do not** mark a phase done. That is only **`phase N done`**. Do not cold-read roadmap/architecture.

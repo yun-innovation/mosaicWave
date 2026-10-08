@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.mosaicwave.app</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>MOSAICWAVE_PROFILE</key>
+    <string>@PROFILE@</string>
+    <key>PATH</key>
+    <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    <key>MOSAICWAVE_WEB_ROOT</key>
+    <string>@PREFIX@/web</string>
+  </dict>
+  <key>ProgramArguments</key>
+  <array>
+    <string>@PREFIX@/mosaicWave.sh</string>
+    <string>run</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>SessionCreate</key>
+  <true/>
+  <key>KeepAlive</key>
+  <dict>
+    <key>SuccessfulExit</key>
+    <false/>
+  </dict>
+  <key>ThrottleInterval</key>
+  <integer>10</integer>
+  <key>StandardOutPath</key>
+  <string>@DATA@/mosaicWave.log</string>
+  <key>StandardErrorPath</key>
+  <string>@DATA@/mosaicWave.log</string>
+</dict>
+</plist>

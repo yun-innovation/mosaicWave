@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleName</key>
+  <string>mosaicWave</string>
+  <key>CFBundleDisplayName</key>
+  <string>mosaicWave</string>
+  <key>CFBundleIdentifier</key>
+  <string>com.mosaicwave.app</string>
+  <key>CFBundleVersion</key>
+  <string>0.1.0</string>
+  <key>CFBundleShortVersionString</key>
+  <string>0.1.0</string>
+  <key>CFBundleInfoDictionaryVersion</key>
+  <string>6.0</string>
+  <key>CFBundlePackageType</key>
+  <string>APPL</string>
+  <key>CFBundleExecutable</key>
+  <string>mosaicWave</string>
+  <key>CFBundleIconFile</key>
+  <string>mosaicWave</string>
+  <key>LSMinimumSystemVersion</key>
+  <string>11.0</string>
+  <key>LSArchitecturePriority</key>
+  <array>
+    <string>arm64</string>
+    <string>x86_64</string>
+  </array>
+  <key>NSHighResolutionCapable</key>
+  <true/>
+  <key>NSNetworkVolumesUsageDescription</key>
+  <string>mosaicWave stores the photo library on a NAS share.</string>
+</dict>
+</plist>

@@ -1,0 +1,13 @@
+<!-- WinSW 2 config. Exe must be named mosaicWave.exe next to this file. -->
+<service>
+  <id>mosaicWave</id>
+  <name>mosaicWave</name>
+  <description>mosaicWave photo and video library</description>
+  <executable>%SystemRoot%\System32\cmd.exe</executable>
+  <arguments>/c ""%BASE%\mosaicWave-run.cmd""</arguments>
+  <workingdirectory>%BASE%</workingdirectory>
+  <log mode="roll"></log>
+  <stopparentprocessfirst>true</stopparentprocessfirst>
+  <stoptimeout>15 sec</stoptimeout>
+  <onfailure action="restart" delay="10 sec" />
+</service>

@@ -1,0 +1,35 @@
+---
+description: Keep personal and lab identifiers out of the GitHub tree.
+alwaysApply: true
+---
+
+# No personal info in the repo
+
+This project is public on GitHub. **Never** add real personal or lab identifiers to git-tracked files, examples, tests, comments, docs, Postman, screenshots, or commit messages.
+
+## Do not write
+
+- Real NAS / host names (any casing), Bonjour names, IPs, or share URLs from the lab — including Postman `baseUrl`, environment JSON, and archive notes
+- Personal usernames, emails, display names, or home-directory paths (`/Users/…`, `C:\Users\…`)
+- Personal usernames, emails, display names, or home-directory paths (`/Users/…`, `C:\Users\…`)
+- NAS or mosaicWave passwords, keychain dumps, `nsmb.conf`, `smb.auth`, `session.key`, live `config.json`
+- Screenshots or logs that show those values
+
+## Allowed: maintainer identity (only here)
+
+The maintainer name and personal email, and the company (Yun Innovation Technology Limited), may appear **only** in:
+
+- git commit author metadata (maintainer name and personal email)
+- `LICENSE` / `NOTICE` copyright lines (company)
+- the `SECURITY.md` contact: the company address `info@yun-inno.com` only, not the personal email
+- the company name (not the email) as package author: MSI `Manufacturer`, `QPKG_AUTHOR`
+
+Everywhere else they stay banned (code, tests, docs, Postman, examples, screenshots).
+
+## Use instead
+
+Fictional public examples only: host `fileserver`, user `nasuser`, share `Public`, folder `mosaicWave`. macOS dest `/Volumes/mosaicWave-fileserver-Public`. Debug dest `/Volumes/mosaicWave-dev-fileserver-Public`.
+
+## If you see a leak
+
+Replace it with a fictional example in the same change. Do not copy host `config.json` or nsmb files into the repo. `.gitignore` already drops `.env`, `*.db`, `session.key`.

@@ -1,0 +1,21 @@
+---
+description: Submit a plan and wait for go/replan before changing code.
+alwaysApply: true
+---
+
+# Plan before code
+
+Before **any** code, test, or doc edit (except this kind of rule when the user asked for it):
+
+1. **Plan first.** Short plan: what is wrong, what you will change, what you will **not** change.
+2. **Stop.** Do not edit files, run formatters that write, or “quickly fix” extras.
+3. **Wait** for the user to say **go** or **replan**.
+    - **go** — do only the plan. If you notice extra work, stop and plan it; do not tack it on.
+    - **replan** — replace the plan; still no edits until the next **go**.
+
+Do not treat silence, “fix the bug”, or related complaints as **go** for extra design. One bug = the smallest change that fixes it.
+
+```
+❌ BAD: rewrite staging / concurrency / ingest because a sentence mentioned tmp
+✅ GOOD: plan “add this sentence to the Takeout help text”; wait; on go, edit that copy only
+```

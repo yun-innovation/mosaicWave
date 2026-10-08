@@ -1,0 +1,95 @@
+#!/bin/sh
+# QDK hooks. BusyBox /bin/sh only. Must be LF (no CR).
+
+QPKG_CONFIG="/etc/config/qpkg.conf"
+QPKG_NAME="mosaicWave"
+
+qpkg_notify() {
+    _level="$1"
+    _fmt="$2"
+    shift 2
+    if [ -x /usr/local/sbin/notify ]; then
+        /usr/local/sbin/notify send -A A039 -C C001 -M 46 -l "${_level}" -t 3 "${_fmt}" "$@"
+    fi
+}
+
+_python_ok() {
+    [ -x "$1" ] || return 1
+    "$1" -c "import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)" 2>/dev/null
+}
+
+_find_host_python() {
+    for pkg in QPython312 Python312 Python3; do
+        ip=$(/sbin/getcfg "${pkg}" Install_Path -f "${QPKG_CONFIG}" 2>/dev/null) || continue
+        [ -n "${ip}" ] || continue
+        for p in \
+            "${ip}/opt/python3/bin/python3" \
+            "${ip}/bin/python3.12" \
+            "${ip}/bin/python3"
+        do
+            if _python_ok "${p}"; then
+                echo "${p}"
+                return 0
+            fi
+        done
+    done
+    for p in /opt/python3/bin/python3 /opt/QPython312/bin/python3 /opt/bin/python3; do
+        if _python_ok "${p}"; then
+            echo "${p}"
+            return 0
+        fi
+    done
+    return 1
+}
+
+pkg_check_requirement() {
+    if _find_host_python >/dev/null; then
+        return 0
+    fi
+    msg="mosaicWave needs App Center Python 3 (3.10 or newer) before install. Install the Python 3 QPKG, then mosaicWave."
+    qpkg_notify error "[{0}] {1}" "App Center" "${msg}"
+    if [ -x /sbin/log_tool ]; then
+        /sbin/log_tool -t 2 -a "${msg}"
+    fi
+    err_log "${msg}"
+}
+
+pkg_post_install() {
+    ROOT="${SYS_QPKG_DIR}"
+    if [ -z "${ROOT}" ] || [ ! -x "${ROOT}/mosaicWave.sh" ]; then
+        ROOT=$(/sbin/getcfg "${QPKG_NAME}" Install_Path -f "${QPKG_CONFIG}" 2>/dev/null)
+    fi
+    if [ -z "${ROOT}" ] || [ ! -x "${ROOT}/mosaicWave.sh" ]; then
+        err_log "mosaicWave: install path missing mosaicWave.sh"
+    fi
+    if ! /bin/sh "${ROOT}/mosaicWave.sh" deps; then
+        err_log "mosaicWave: venv/pip failed. NAS needs Python 3.10+, HTTPS to pypi.org, and free space on the data volume (not QTS /tmp). See ${ROOT}/mosaicWave.log"
+    fi
+    qpkg_notify info "[{0}] {1} installed. Enable the app, then open the Main menu (or drag the icon to the desktop). Web UI port 8090." "App Center" "${QPKG_NAME}"
+    if [ -x /sbin/log_tool ]; then
+        /sbin/log_tool -t 0 -a "${QPKG_NAME} installed. Enable, then Main menu or desktop shortcut. Port 8090."
+    fi
+    return 0
+}
+
+pkg_pre_remove() {
+    ROOT=$(/sbin/getcfg "${QPKG_NAME}" Install_Path -f "${QPKG_CONFIG}" 2>/dev/null)
+    if [ -n "${ROOT}" ] && [ -x "${ROOT}/mosaicWave.sh" ]; then
+        /bin/sh "${ROOT}/mosaicWave.sh" stop
+    fi
+    # App Center then deletes Install_Path. Keep library.db / photos / thumbs on the volume.
+    case "${ROOT}" in
+        */.qpkg/mosaicWave)
+            dest="$(dirname "$(dirname "${ROOT}")")/.mosaicWave"
+            old="${ROOT}/data"
+            if [ -d "${old}" ] && [ -f "${old}/library.db" ] && [ ! -f "${dest}/library.db" ]; then
+                mkdir -p "${dest}"
+                for x in "${old}"/* "${old}"/.[!.]*; do
+                    [ -e "${x}" ] || continue
+                    mv "${x}" "${dest}/"
+                done
+            fi
+            ;;
+    esac
+    return 0
+}

@@ -1,0 +1,35 @@
+mosaicWave
+Copyright 2026 Yun Innovation Technology Limited
+Licensed under the Functional Source License, Version 1.1, ALv2 Future License (see LICENSE).
+
+AI-assisted project: mosaicWave was built with Cursor and AI assistance, under the
+direction and review of the maintainer.
+
+Third-party software
+--------------------
+
+mosaicWave uses the following open-source software. Each is under its own license;
+see the project's own license text.
+
+Python (installed from PyPI at install or build time):
+  FastAPI, Uvicorn, SQLAlchemy, python-multipart   MIT / BSD
+  Pillow                                           HPND
+  pillow-heif                                      BSD-3-Clause (wheels bundle libheif, LGPL)
+  imageio-ffmpeg                                   BSD-2-Clause (wheels ship an FFmpeg binary, GPL/LGPL build)
+
+Web (compiled into the static web UI):
+  Next.js, React                                   MIT
+
+Packaging:
+  WinSW (Windows service wrapper, shipped in the MSI)   MIT
+  QNAP QDK (build tool, not linked or shipped)          GPL
+  WiX Toolset (build tool, not shipped)                 OSMFEULA
+
+mosaicWave installers do not bundle FFmpeg or libheif themselves. They are installed
+with the Python packages above. If a future installer bundles them, their license texts
+and source offers must be shipped with it.
+
+Trademarks
+----------
+
+The name "mosaicWave" and its logo are not covered by the code license.

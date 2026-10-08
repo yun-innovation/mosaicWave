@@ -1,0 +1,1612 @@
+{
+  "info": {
+    "name": "mosaicWave /api/v1",
+    "description": "Hand-written Postman collection for mosaicWave. Not a generated client.\n\n**Import:** Postman → Import → `postman/mosaicwave.postman_collection.json` and an environment JSON from this folder. Create a Postman workspace if you want (File → New → Workspace); workspaces are not a file format.\n\n**Auth:** `POST /auth/login` sets httponly cookie `mw_session`. The collection copies it into variable `mw_session` and sends `Cookie` on later requests. You can also use Postman’s cookie jar.\n\n**Order that fills ids:** Login → List sources → List assets → List users. Then open thumb/file using `{{assetId}}` / `{{sourceId}}`. Share: owner **Set grants** with a member `userId` (`read` or `write`).\n\n**Share:** `PUT /sources/{id}/grants` is the owner’s replacement list. Grantee keeps their own library and also sees the shared one. Admin has no bypass.\n\n**Album sync:** Pull is `GET /sync/changes` (`since_rev`). Push is `/albums` with `base_rev` (the album `rev`, not `server_rev`). Folder **Sync replica** is create-`id`, membership `base_rev`, delete + tombstone pull. Do not POST the pull JSON back.\n\nHit FastAPI directly (`http://127.0.0.1:8000` debug, `:8090` MSI/QPKG), not the Next.js `:3000` proxy, unless you intend to test the rewrite.\n\nOpenAPI at `{{baseUrl}}/docs` stays the living spec; this collection is a snapshot for manual tests.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:8000"
+    },
+    {
+      "key": "username",
+      "value": "admin"
+    },
+    {
+      "key": "password",
+      "value": ""
+    },
+    {
+      "key": "mw_session",
+      "value": ""
+    },
+    {
+      "key": "userId",
+      "value": ""
+    },
+    {
+      "key": "sourceId",
+      "value": ""
+    },
+    {
+      "key": "assetId",
+      "value": ""
+    },
+    {
+      "key": "assetCursor",
+      "value": ""
+    },
+    {
+      "key": "jobId",
+      "value": ""
+    },
+    {
+      "key": "sinceRev",
+      "value": "0"
+    },
+    {
+      "key": "syncCursor",
+      "value": ""
+    },
+    {
+      "key": "albumId",
+      "value": ""
+    },
+    {
+      "key": "albumRev",
+      "value": ""
+    },
+    {
+      "key": "replicaAlbumId",
+      "value": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee"
+    },
+    {
+      "key": "sourcePath",
+      "value": "C:\\Photos"
+    },
+    {
+      "key": "takeoutPath",
+      "value": "C:\\Takeout"
+    },
+    {
+      "key": "destPath",
+      "value": "C:\\Photos"
+    },
+    {
+      "key": "fsPath",
+      "value": ""
+    },
+    {
+      "key": "dataDir",
+      "value": "D:\\mosaicWave-data"
+    },
+    {
+      "key": "memberUsername",
+      "value": "pat"
+    },
+    {
+      "key": "memberPassword",
+      "value": "memberpass"
+    },
+    {
+      "key": "memberDisplayName",
+      "value": "Pat"
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "const token = pm.collectionVariables.get('mw_session');",
+          "if (token) {",
+          "  pm.request.headers.upsert({ key: 'Cookie', value: 'mw_session=' + token });",
+          "}"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/health",
+            "description": "No session. Process liveness."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Auth status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/auth/status",
+            "description": "platform, needs_setup, me if cookied."
+          }
+        },
+        {
+          "name": "First-run setup",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/auth/setup",
+            "description": "Standalone only, empty DB. Creates first admin and sets mw_session. 409 if already set up.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\",\n  \"display_name\": \"Admin\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function cookieValue() {",
+                  "  const parts = pm.response.headers.all()",
+                  "    .filter((h) => String(h.key).toLowerCase() === 'set-cookie')",
+                  "    .map((h) => String(h.value));",
+                  "  const raw = parts.join('\\n');",
+                  "  const m = raw.match(/mw_session=([^;]+)/);",
+                  "  return m ? m[1] : null;",
+                  "}",
+                  "const token = cookieValue();",
+                  "if (token) { pm.collectionVariables.set('mw_session', token); }",
+                  "if (pm.response.code === 200) {",
+                  "  try {",
+                  "    const body = pm.response.json();",
+                  "    if (body && body.id) { pm.collectionVariables.set('userId', body.id); }",
+                  "  } catch (e) {}",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/auth/login",
+            "description": "Standalone: username + password. QNAP: same, or empty body if NAS session cookies are already in the jar.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function cookieValue() {",
+                  "  const parts = pm.response.headers.all()",
+                  "    .filter((h) => String(h.key).toLowerCase() === 'set-cookie')",
+                  "    .map((h) => String(h.value));",
+                  "  const raw = parts.join('\\n');",
+                  "  const m = raw.match(/mw_session=([^;]+)/);",
+                  "  return m ? m[1] : null;",
+                  "}",
+                  "const token = cookieValue();",
+                  "if (token) { pm.collectionVariables.set('mw_session', token); }",
+                  "if (pm.response.code === 200) {",
+                  "  try {",
+                  "    const body = pm.response.json();",
+                  "    if (body && body.id) { pm.collectionVariables.set('userId', body.id); }",
+                  "  } catch (e) {}",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Me",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/me",
+            "description": "Current user, role, private library ids."
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/auth/logout",
+            "description": "Clears mw_session cookie."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.unset('mw_session');"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Users (admin)",
+      "item": [
+        {
+          "name": "List users",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/users",
+            "description": "Any signed-in user (for share picker). Saves {{userId}} (prefers a member)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const rows = pm.response.json();",
+                  "  const member = rows.find((u) => u.role === 'member') || rows[0];",
+                  "  if (member) { pm.collectionVariables.set('userId', member.id); }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create member",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/users",
+            "description": "Standalone only. Omit id to create. Password min 8. Does not share libraries.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{memberUsername}}\",\n  \"password\": \"{{memberPassword}}\",\n  \"display_name\": \"{{memberDisplayName}}\",\n  \"role\": \"member\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const b = pm.response.json();",
+                  "  if (b.id) { pm.collectionVariables.set('userId', b.id); }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update user",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/users",
+            "description": "Pass id to update. Password optional.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{userId}}\",\n  \"username\": \"{{memberUsername}}\",\n  \"display_name\": \"{{memberDisplayName}}\",\n  \"role\": \"member\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const b = pm.response.json();",
+                  "  if (b.id) { pm.collectionVariables.set('userId', b.id); }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": "Local users on standalone. QNAP rejects create/update. List is available to every signed-in user."
+    },
+    {
+      "name": "Settings (admin)",
+      "item": [
+        {
+          "name": "Get host settings",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/settings",
+            "description": "Admin. data_dir (library), data_dir_smb (durable smb:// when on a NAS), data_dir_mount (macOS share-root dest), smb_user (from that URL; password is not returned), app_dir / default_data_dir (config and session), env_override (true when MOSAICWAVE_DATA_DIR is set)."
+          }
+        },
+        {
+          "name": "Set data folder",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/settings",
+            "description": "Admin. Moves libraries/ and blobs/. library.db stays in the app folder. session.key stays in the app folder. Stores data_dir_smb and optional data_dir_mount; remounts that URL at that dest after reboot. Optional smb_user / smb_password: nsmb.conf username= if missing; System keychain -A -U only when a password is typed; macOS mount_smbfs gets //user:pass@host (percent-encoded). First Save folder should include the NAS password. Returning to app_dir replaces leftover libraries/blobs there. 409 if env is set, a job is running, or dest already has photos/thumbs (not when dest is the app folder).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"data_dir\": \"{{dataDir}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Library",
+      "item": [
+        {
+          "name": "List sources",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/sources",
+            "description": "Own library first (owned=true), then libraries shared with you. Saves {{sourceId}} (owned)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const rows = pm.response.json();",
+                  "  const list = Array.isArray(rows) ? rows : (rows && rows.id ? [rows] : []);",
+                  "  const mine = list.find((r) => r.owned) || list[0];",
+                  "  if (mine) { pm.collectionVariables.set('sourceId', mine.id); }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Add folder source",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/sources",
+            "description": "409 — each user already has one library. Share uses grants, not a second source.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"path\": \"{{sourcePath}}\",\n  \"kind\": \"folder\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Get grants",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/sources/{{sourceId}}/grants",
+            "description": "Owner only. Live grants (read|write). 404 if you do not own this source."
+          }
+        },
+        {
+          "name": "Set grants",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/sources/{{sourceId}}/grants",
+            "description": "Owner only. Replaces live grants. {{userId}} from List users. Empty array revokes all. Cannot grant to yourself.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grants\": [\n    { \"user_id\": \"{{userId}}\", \"perm\": \"read\" }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Scan source",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/sources/{{sourceId}}/scan",
+            "description": "Re-index the caller's library."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const rows = pm.response.json();",
+                  "  const list = Array.isArray(rows) ? rows : (rows && rows.id ? [rows] : []);",
+                  "  const mine = list.find((r) => r.owned) || list[0];",
+                  "  if (mine) { pm.collectionVariables.set('sourceId', mine.id); }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete source",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/sources/{{sourceId}}",
+            "description": "400 — cannot delete your library."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Assets",
+      "item": [
+        {
+          "name": "List assets",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/assets?limit=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "assets"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "50",
+                  "description": "1–200"
+                },
+                {
+                  "key": "cursor",
+                  "value": "{{assetCursor}}",
+                  "disabled": true,
+                  "description": "From previous next_cursor"
+                },
+                {
+                  "key": "album_id",
+                  "value": "{{albumId}}",
+                  "disabled": true,
+                  "description": "Only assets in this album"
+                }
+              ]
+            },
+            "description": "Cursor pagination. Saves {{assetId}} and {{assetCursor}}."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const b = pm.response.json();",
+                  "  if (b.items && b.items[0]) { pm.collectionVariables.set('assetId', b.items[0].id); }",
+                  "  if (b.next_cursor) { pm.collectionVariables.set('assetCursor', b.next_cursor); }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Asset metadata",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/assets/{{assetId}}",
+            "description": ""
+          }
+        },
+        {
+          "name": "Thumb",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/assets/{{assetId}}/thumb",
+            "description": "JPEG. May generate on first hit."
+          }
+        },
+        {
+          "name": "Preview",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/assets/{{assetId}}/preview",
+            "description": "JPEG display for HEIC/TIFF/DNG and similar."
+          }
+        },
+        {
+          "name": "Original file",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Range",
+                "value": "bytes=0-1023",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/assets/{{assetId}}/file",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "assets",
+                "{{assetId}}",
+                "file"
+              ],
+              "query": [
+                {
+                  "key": "download",
+                  "value": "false",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Original media. The gallery player skips by time."
+          }
+        },
+        {
+          "name": "Original download",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/assets/{{assetId}}/file?download=true",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "assets",
+                "{{assetId}}",
+                "file"
+              ],
+              "query": [
+                {
+                  "key": "download",
+                  "value": "true"
+                }
+              ]
+            },
+            "description": "Content-Disposition attachment."
+          }
+        },
+        {
+          "name": "Upload",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/assets",
+            "description": "multipart. Uploads into the caller's library. Pick a file in Postman (src is empty on purpose).",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "source_id",
+                  "value": "{{sourceId}}",
+                  "type": "text"
+                },
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "",
+                  "description": "Choose an image or video in Postman"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const b = pm.response.json();",
+                  "  if (b.id) { pm.collectionVariables.set('assetId', b.id); }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Generate thumbs",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/thumbs/generate",
+            "description": "Admin. Starts thumb_batch job. 409 if another job is running."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const b = pm.response.json();",
+                  "  const id = b.id || (b.items && b.items[0] && b.items[0].id);",
+                  "  if (id) { pm.collectionVariables.set('jobId', id); }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Albums",
+      "item": [
+        {
+          "name": "List albums",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/albums",
+            "description": "Virtual albums in the caller's library (Takeout + manual)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const b = pm.response.json();",
+                  "  if (Array.isArray(b) && b[0]) {",
+                  "    pm.collectionVariables.set('albumId', b[0].id);",
+                  "    if (b[0].rev != null) { pm.collectionVariables.set('albumRev', String(b[0].rev)); }",
+                  "  } else if (b && b.id) {",
+                  "    pm.collectionVariables.set('albumId', b.id);",
+                  "    if (b.rev != null) { pm.collectionVariables.set('albumRev', String(b.rev)); }",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create album",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/albums",
+            "description": "Metadata only; originals stay in FileStore. Optional `id` (UUID) for a replica-created album. 409 if the name exists.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Weekend\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const b = pm.response.json();",
+                  "  if (Array.isArray(b) && b[0]) {",
+                  "    pm.collectionVariables.set('albumId', b[0].id);",
+                  "    if (b[0].rev != null) { pm.collectionVariables.set('albumRev', String(b[0].rev)); }",
+                  "  } else if (b && b.id) {",
+                  "    pm.collectionVariables.set('albumId', b.id);",
+                  "    if (b.rev != null) { pm.collectionVariables.set('albumRev', String(b.rev)); }",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get album",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/albums/{{albumId}}",
+            "description": ""
+          }
+        },
+        {
+          "name": "Rename album",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/albums/{{albumId}}",
+            "description": "name and/or cover_asset_id. Replica: {{albumRev}} as base_rev (not sinceRev). Omit base_rev for live UI.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Holiday\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const b = pm.response.json();",
+                  "  if (Array.isArray(b) && b[0]) {",
+                  "    pm.collectionVariables.set('albumId', b[0].id);",
+                  "    if (b[0].rev != null) { pm.collectionVariables.set('albumRev', String(b[0].rev)); }",
+                  "  } else if (b && b.id) {",
+                  "    pm.collectionVariables.set('albumId', b.id);",
+                  "    if (b.rev != null) { pm.collectionVariables.set('albumRev', String(b.rev)); }",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Add assets",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/albums/{{albumId}}/assets",
+            "description": "Optional `base_rev` for replica push (409 if stale).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"asset_ids\": [\"{{assetId}}\"]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const b = pm.response.json();",
+                  "  if (Array.isArray(b) && b[0]) {",
+                  "    pm.collectionVariables.set('albumId', b[0].id);",
+                  "    if (b[0].rev != null) { pm.collectionVariables.set('albumRev', String(b[0].rev)); }",
+                  "  } else if (b && b.id) {",
+                  "    pm.collectionVariables.set('albumId', b.id);",
+                  "    if (b.rev != null) { pm.collectionVariables.set('albumRev', String(b.rev)); }",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Remove asset",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/albums/{{albumId}}/assets/{{assetId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "albums",
+                "{{albumId}}",
+                "assets",
+                "{{assetId}}"
+              ],
+              "query": [
+                {
+                  "key": "base_rev",
+                  "value": "{{sinceRev}}",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Optional query base_rev for replica push."
+          }
+        },
+        {
+          "name": "Delete album",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/albums/{{albumId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "albums",
+                "{{albumId}}"
+              ],
+              "query": [
+                {
+                  "key": "base_rev",
+                  "value": "{{sinceRev}}",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Tombstone the album and its memberships. Same name can be created again (same id). Replica: query base_rev; 409 if stale."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Sync",
+      "item": [
+        {
+          "name": "Pull changes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/sync/changes?since_rev={{sinceRev}}&limit=200",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "sync",
+                "changes"
+              ],
+              "query": [
+                {
+                  "key": "since_rev",
+                  "value": "{{sinceRev}}",
+                  "description": "0 for full pull"
+                },
+                {
+                  "key": "limit",
+                  "value": "200",
+                  "description": "1–500"
+                },
+                {
+                  "key": "cursor",
+                  "value": "{{syncCursor}}",
+                  "disabled": true,
+                  "description": "From previous next_cursor"
+                }
+              ]
+            },
+            "description": "Metadata replica pull. Saves {{sinceRev}} from server_rev. Album push is /albums with base_rev (not this URL)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const b = pm.response.json();",
+                  "  if (b.server_rev != null) { pm.collectionVariables.set('sinceRev', String(b.server_rev)); }",
+                  "  if (b.next_cursor) { pm.collectionVariables.set('syncCursor', b.next_cursor); }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Sync replica",
+      "item": [
+        {
+          "name": "1 Pull (watermark)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/sync/changes?since_rev=0&limit=200",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "sync",
+                "changes"
+              ],
+              "query": [
+                {
+                  "key": "since_rev",
+                  "value": "0",
+                  "description": "Full pull once"
+                },
+                {
+                  "key": "limit",
+                  "value": "200"
+                }
+              ]
+            },
+            "description": "Run first. Saves {{sinceRev}}. Later pull after delete uses this so only new revs return."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const b = pm.response.json();",
+                  "  if (b.server_rev != null) { pm.collectionVariables.set('sinceRev', String(b.server_rev)); }",
+                  "  if (b.next_cursor) { pm.collectionVariables.set('syncCursor', b.next_cursor); }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2 Create album with client id",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/albums",
+            "description": "Replica-created UUID. Idempotent if you send the same id+name again. Saves {{albumId}} and {{albumRev}}.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{replicaAlbumId}}\",\n  \"name\": \"Postman replica\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const b = pm.response.json();",
+                  "  if (Array.isArray(b) && b[0]) {",
+                  "    pm.collectionVariables.set('albumId', b[0].id);",
+                  "    if (b[0].rev != null) { pm.collectionVariables.set('albumRev', String(b[0].rev)); }",
+                  "  } else if (b && b.id) {",
+                  "    pm.collectionVariables.set('albumId', b.id);",
+                  "    if (b.rev != null) { pm.collectionVariables.set('albumRev', String(b.rev)); }",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3 Add assets with base_rev",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/albums/{{albumId}}/assets",
+            "description": "Needs {{assetId}} from List assets. {{albumRev}} from step 2. 200 bumps rev.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"asset_ids\": [\"{{assetId}}\"],\n  \"base_rev\": {{albumRev}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const b = pm.response.json();",
+                  "  if (Array.isArray(b) && b[0]) {",
+                  "    pm.collectionVariables.set('albumId', b[0].id);",
+                  "    if (b[0].rev != null) { pm.collectionVariables.set('albumRev', String(b[0].rev)); }",
+                  "  } else if (b && b.id) {",
+                  "    pm.collectionVariables.set('albumId', b.id);",
+                  "    if (b.rev != null) { pm.collectionVariables.set('albumRev', String(b.rev)); }",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4 Add assets stale base_rev (expect 409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/albums/{{albumId}}/assets",
+            "description": "Outdated JSON: base_rev 0 never matches a real album rev.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"asset_ids\": [\"{{assetId}}\"],\n  \"base_rev\": 0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('stale base_rev is 409', function () {",
+                  "  pm.response.to.have.status(409);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5 Delete album with base_rev",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/albums/{{albumId}}?base_rev={{albumRev}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "albums",
+                "{{albumId}}"
+              ],
+              "query": [
+                {
+                  "key": "base_rev",
+                  "value": "{{albumRev}}",
+                  "description": "Must match current album rev"
+                }
+              ]
+            },
+            "description": "Tombstone. Use {{albumRev}} from step 3 (after the 200 add)."
+          }
+        },
+        {
+          "name": "6 Pull tombstone",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/sync/changes?since_rev={{sinceRev}}&limit=200",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "sync",
+                "changes"
+              ],
+              "query": [
+                {
+                  "key": "since_rev",
+                  "value": "{{sinceRev}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "200"
+                }
+              ]
+            },
+            "description": "since_rev from step 1. Asserts the deleted album appears with deleted_at set."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const b = pm.response.json();",
+                  "  if (b.server_rev != null) { pm.collectionVariables.set('sinceRev', String(b.server_rev)); }",
+                  "  if (b.next_cursor) { pm.collectionVariables.set('syncCursor', b.next_cursor); }",
+                  "}",
+                  "if (pm.response.code === 200) {",
+                  "  const b = pm.response.json();",
+                  "  const id = pm.collectionVariables.get('albumId');",
+                  "  const hit = (b.albums || []).find((a) => a.id === id);",
+                  "  pm.test('deleted album is in pull as a tombstone', function () {",
+                  "    pm.expect(hit, 'album id among albums').to.exist;",
+                  "    pm.expect(hit.deleted_at, 'deleted_at').to.not.equal(null);",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": "Extra album sync (API already in). Login + List assets first. Order 1–6. base_rev is the album rev, not server_rev. Do not POST the pull JSON."
+    },
+    {
+      "name": "Filesystem",
+      "item": [
+        {
+          "name": "List host folder",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/fs/list",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "fs",
+                "list"
+              ],
+              "query": [
+                {
+                  "key": "path",
+                  "value": "{{fsPath}}",
+                  "disabled": true,
+                  "description": "Absolute path on the server"
+                }
+              ]
+            },
+            "description": "Browse folders on the API host (Takeout picker). Other users' library dirs are hidden."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Takeout",
+      "item": [
+        {
+          "name": "Inspect dump",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/import/takeout/inspect",
+            "description": "Verify zip parts / extract. path is on the API host.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"path\": \"{{takeoutPath}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Start import",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/import/takeout",
+            "description": "Copy unique files into the caller's library. dest is ignored. Dump may be deleted after. 409 if a job is already running. Host path only.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"path\": \"{{takeoutPath}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const b = pm.response.json();",
+                  "  const id = b.id || (b.items && b.items[0] && b.items[0].id);",
+                  "  if (id) { pm.collectionVariables.set('jobId', id); }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Start client push",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/import/takeout/push",
+            "description": "Mobile / this-device dump. Saves {{jobId}}. Then POST .../file?relative_path= for each dump path and POST .../finish.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"file_count\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const b = pm.response.json();",
+                  "  const id = b.id || (b.items && b.items[0] && b.items[0].id);",
+                  "  if (id) { pm.collectionVariables.set('jobId', id); }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Upload dump file",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/octet-stream"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/import/takeout/push/{{jobId}}/file?relative_path=Google Photos/Photos from 2024/IMG_1234.jpg",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "import",
+                "takeout",
+                "push",
+                "{{jobId}}",
+                "file"
+              ],
+              "query": [
+                {
+                  "key": "relative_path",
+                  "value": "Google Photos/Photos from 2024/IMG_1234.jpg",
+                  "description": "Path inside the dump folder"
+                }
+              ]
+            },
+            "description": "Query relative_path + raw file body (not multipart). Path is inside the dump folder, not a host path.",
+            "body": {
+              "mode": "file",
+              "file": {
+                "src": ""
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const b = pm.response.json();",
+                  "  const id = b.id || (b.items && b.items[0] && b.items[0].id);",
+                  "  if (id) { pm.collectionVariables.set('jobId', id); }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Finish client push",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/import/takeout/push/{{jobId}}/finish",
+            "description": "Run hash-dedup import on uploaded files; delete staging."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const b = pm.response.json();",
+                  "  const id = b.id || (b.items && b.items[0] && b.items[0].id);",
+                  "  if (id) { pm.collectionVariables.set('jobId', id); }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cancel client push",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/import/takeout/push/{{jobId}}/cancel",
+            "description": "Abort while files are still arriving."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const b = pm.response.json();",
+                  "  const id = b.id || (b.items && b.items[0] && b.items[0].id);",
+                  "  if (id) { pm.collectionVariables.set('jobId', id); }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Import status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/import/takeout/status",
+            "description": "Latest Takeout job. Prefer GET /jobs/{{jobId}}."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const b = pm.response.json();",
+                  "  const id = b.id || (b.items && b.items[0] && b.items[0].id);",
+                  "  if (id) { pm.collectionVariables.set('jobId', id); }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Jobs",
+      "item": [
+        {
+          "name": "List jobs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/jobs?limit=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "jobs"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "50"
+                },
+                {
+                  "key": "kind",
+                  "value": "takeout_import",
+                  "disabled": true,
+                  "description": "Optional filter"
+                }
+              ]
+            },
+            "description": "Saves {{jobId}} from the first item."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const b = pm.response.json();",
+                  "  const id = b.id || (b.items && b.items[0] && b.items[0].id);",
+                  "  if (id) { pm.collectionVariables.set('jobId', id); }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get job",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/jobs/{{jobId}}",
+            "description": ""
+          }
+        },
+        {
+          "name": "Job events",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/jobs/{{jobId}}/events",
+            "description": ""
+          }
+        }
+      ]
+    }
+  ]
+}
