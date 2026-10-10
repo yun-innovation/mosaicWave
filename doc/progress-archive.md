@@ -122,6 +122,7 @@ Dated milestones and decisions. Day-to-day process notes: [process.md](process.m
 | 2026-10-08 | Milestone | Published: `yun-innovation/mosaicWave` on GitHub, single commit plus tag `v0.1.0`, repo made public. Author uses a GitHub no-reply address (GitHub blocked the personal email). Azure remote renamed `azure-archive`; global `http.sslVerify` restored to true |
 | 2026-10-09 | Decision | Branch/commit policy written into `process.md`: never work on `main`; branch, PR, squash-merge; Conventional Commits kept as written (guidance, not enforced) |
 | 2026-10-09 | Milestone | Dependabot PRs merged: Next 16.3.8, React, TypeScript 7, `@types/node` 26, react-dom. Merged by the owner; Next and React were tested locally, the rest not verified here (no CI). Release assets still to be built from the `v0.1.0` tag |
+| 2026-10-10 | Milestone | Version bumped to `0.1.1` (#8); tag `v0.1.1` pushed at `f4697e4`. MSI, QPKG x86_64 and posix tarball built from a clean clone of the tag, with SHA-256 sums; ARM64 QPKG skipped. Personal-string scan of the staged files clean (the only hit was a false positive inside the bundled WinSW binary). Installers not yet run on a test machine; GitHub pre-release not yet published |
 
 
 ---
