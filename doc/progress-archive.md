@@ -120,6 +120,8 @@ Dated milestones and decisions. Day-to-day process notes: [process.md](process.m
 | 2026-10-07 | Decision | Counsel review of the license and name waived by the owner (re-check before SaaS launch). No CI workflow for now |
 | 2026-10-07 | Tooling | Private backup bundle of the Azure repo; local orphan branch `public-release` (single commit) for the GitHub push |
 | 2026-10-08 | Milestone | Published: `yun-innovation/mosaicWave` on GitHub, single commit plus tag `v0.1.0`, repo made public. Author uses a GitHub no-reply address (GitHub blocked the personal email). Azure remote renamed `azure-archive`; global `http.sslVerify` restored to true |
+| 2026-10-09 | Decision | Branch/commit policy written into `process.md`: never work on `main`; branch, PR, squash-merge; Conventional Commits kept as written (guidance, not enforced) |
+| 2026-10-09 | Milestone | Dependabot PRs merged: Next 16.3.8, React, TypeScript 7, `@types/node` 26, react-dom. Merged by the owner; Next and React were tested locally, the rest not verified here (no CI). Release assets still to be built from the `v0.1.0` tag |
 
 
 ---
