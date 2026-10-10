@@ -1,7 +1,7 @@
 {
   "name": "mosaicwave-web",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "license": "SEE LICENSE IN ../../LICENSE",
   "scripts": {
     "dev": "next dev --port 3000",

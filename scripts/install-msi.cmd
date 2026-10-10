@@ -3,7 +3,7 @@ setlocal
 rem Install the built MSI. Run this cmd as Administrator.
 rem Optional first argument is the listen port (default 8090, or the installer dialog).
 rem msiexec cannot open paths that contain ".." — resolve to a full path first.
-for %%I in ("%~dp0..\dist\msi\mosaicWave_0.1.0_x64.msi") do set "MSI=%%~fI"
+for %%I in ("%~dp0..\dist\msi\mosaicWave_0.1.1_x64.msi") do set "MSI=%%~fI"
 if not exist "%MSI%" (
   echo MSI not found: %MSI%
   echo Run .\scripts\publish-msi.cmd then .\scripts\pack-msi.cmd

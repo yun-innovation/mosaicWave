@@ -58,14 +58,14 @@ Same as `publish-msi.cmd` / `pack-msi.cmd`.
 
 Once per machine: Python **3.10+** on PATH (`py -3` or `python`), and WiX CLI (`dotnet tool install --global wix`). WiX 7 asks you to accept the OSMF EULA once (`wix eula accept wix7`); `pack-msi` also passes `--acceptEula` so a fresh install still packs. `get-winsw` saves `tools\WinSW-x64.exe` (service wrapper).
 
-`pack-msi` writes `dist\msi\mosaicWave_0.1.0_x64.msi`. Install on **this PC** (Administrator):
+`pack-msi` writes `dist\msi\mosaicWave_0.1.1_x64.msi`. Install on **this PC** (Administrator):
 
 ```text
 .\scripts\install-msi.cmd
 .\scripts\install-msi.cmd 8090
 ```
 
-The script resolves `dist\msi\mosaicWave_0.1.0_x64.msi` to a full path (`msiexec` cannot open `..\`). Double-click the `.msi` (or `install-msi.cmd` with **no** argument) for the full wizard: license → install folder → **Web / API port** (same origin, default **8090**) and **Install Windows service** (on by default) → Install. Silent: `msiexec /i mosaicWave_0.1.0_x64.msi INSTALLSERVICE=1 /qb` (add `PORT=8100` to override). `INSTALLSERVICE=0` is files only (Start Menu **Start mosaicWave**). Start Menu and desktop URL shortcuts use that port (`http://127.0.0.1:<port>/`). After install, use the shortcut and **Create admin**. Remove: `.\scripts\uninstall-msi.cmd` or Settings → Apps. Uncheck the service only if you will start `mosaicWave-run.cmd` yourself.
+The script resolves `dist\msi\mosaicWave_0.1.1_x64.msi` to a full path (`msiexec` cannot open `..\`). Double-click the `.msi` (or `install-msi.cmd` with **no** argument) for the full wizard: license → install folder → **Web / API port** (same origin, default **8090**) and **Install Windows service** (on by default) → Install. Silent: `msiexec /i mosaicWave_0.1.1_x64.msi INSTALLSERVICE=1 /qb` (add `PORT=8100` to override). `INSTALLSERVICE=0` is files only (Start Menu **Start mosaicWave**). Start Menu and desktop URL shortcuts use that port (`http://127.0.0.1:<port>/`). After install, use the shortcut and **Create admin**. Remove: `.\scripts\uninstall-msi.cmd` or Settings → Apps. Uncheck the service only if you will start `mosaicWave-run.cmd` yourself.
 
 Upgrade: install the new `.msi` over the old one (`MajorUpgrade`). Photos stay in ProgramData.
 
@@ -82,12 +82,12 @@ From the repo root:
 .\scripts\pack.cmd posix
 ```
 
-Same as `publish-posix.cmd` / `pack-posix.cmd`. On Linux/macOS: `sh scripts/publish-posix.sh` then `sh scripts/pack-posix.sh`. Output: `dist/posix/mosaicWave_0.1.0_posix.tar.gz`. Node.js is a **build host** dependency (`npm install` in `src/web` when `node_modules` is missing); the install target does not need Node.
+Same as `publish-posix.cmd` / `pack-posix.cmd`. On Linux/macOS: `sh scripts/publish-posix.sh` then `sh scripts/pack-posix.sh`. Output: `dist/posix/mosaicWave_0.1.1_posix.tar.gz`. Node.js is a **build host** dependency (`npm install` in `src/web` when `node_modules` is missing); the install target does not need Node.
 
 On the target (Python 3.10+ on PATH):
 
 ```sh
-tar xf mosaicWave_0.1.0_posix.tar.gz
+tar xf mosaicWave_0.1.1_posix.tar.gz
 cd mosaicWave
 sudo sh install.sh
 ```
@@ -156,7 +156,7 @@ Same as `publish-qpkg.cmd` / `publish-qpkg.ps1`. On Linux: `sh scripts/publish-q
 
 That folder is a **QDK tree**, not an installable `.qpkg`. Next step is `pack-qpkg` (`qbuild`).
 
-`qpkg.cfg` and the start script must be **LF** (no CR). If `QPKG_NAME`/`QPKG_VER` include a carriage return, `qbuild` names the file `mosaicWave<CR>_0.1.0<CR>_x86_64.qpkg`. Windows shows that CR as a box (U+F00D). QDK also looks for `icons/mosaicWave.png` using that same name, so **App Center gets no icon**. `publish-qpkg` / `pack-qpkg` strip CR; `.gitattributes` keeps `src/qpkg` on LF.
+`qpkg.cfg` and the start script must be **LF** (no CR). If `QPKG_NAME`/`QPKG_VER` include a carriage return, `qbuild` names the file `mosaicWave<CR>_0.1.1<CR>_x86_64.qpkg`. Windows shows that CR as a box (U+F00D). QDK also looks for `icons/mosaicWave.png` using that same name, so **App Center gets no icon**. `publish-qpkg` / `pack-qpkg` strip CR; `.gitattributes` keeps `src/qpkg` on LF.
 
 App Center icons are `src/qpkg/icons/mosaicWave.png` (64×64), `mosaicWave_80.png` (80×80), and `mosaicWave_gray.png` (disabled) — the blue mosaic wave mark. Source: `src/brand/mosaicWave-icon.png`; regenerate with `python scripts/export-icons.py`. QDK copies them into the package as `.qpkg_icon*.gif`. Web favicon / Apple touch / Windows `mosaicWave.ico` (Add/Remove Programs) / macOS `src/posix/mosaicWave.icns` (Finder `.app`) come from the same export.
 
@@ -196,7 +196,7 @@ After staging exists and QDK is installed in WSL, from the repo root **on Window
 
 Same as `pack-qpkg.cmd`. No extra arch packs **every shipped arch** (`x86_64` and `arm_64`). Pass a QDK arch to pack only that platform (`x86_64`, `arm_64`; aliases `x64` / `arm64` also work). On Linux/NAS: `sh scripts/pack-qpkg.sh` or `sh scripts/pack-qpkg.sh x86_64`.
 
-The `.qpkg` files land under `build/` in that folder (`dist/qpkg/mosaicWave/build/`). Default pack writes `mosaicWave_0.1.0_x86_64.qpkg` and `mosaicWave_0.1.0_arm_64.qpkg`.
+The `.qpkg` files land under `build/` in that folder (`dist/qpkg/mosaicWave/build/`). Default pack writes `mosaicWave_0.1.1_x86_64.qpkg` and `mosaicWave_0.1.1_arm_64.qpkg`.
 
 ### Pack on the NAS (optional)
 
@@ -204,7 +204,7 @@ Install **QDK** from App Center (the `QDK_*.qpkg` asset on the same releases pag
 
 ### Sideload (Install Manually)
 
-App Center → **Install Manually** → choose the `.qpkg` on **this computer** (the PC whose browser is open to App Center), not a file already on the NAS. After `pack-qpkg` pick the file that matches the NAS CPU: `mosaicWave_0.1.0_x86_64.qpkg` or `mosaicWave_0.1.0_arm_64.qpkg` under `dist/qpkg/mosaicWave/build/`. No extra character before the underscores.
+App Center → **Install Manually** → choose the `.qpkg` on **this computer** (the PC whose browser is open to App Center), not a file already on the NAS. After `pack-qpkg` pick the file that matches the NAS CPU: `mosaicWave_0.1.1_x86_64.qpkg` or `mosaicWave_0.1.1_arm_64.qpkg` under `dist/qpkg/mosaicWave/build/`. No extra character before the underscores.
 
 If an earlier install used a broken filename, **Remove** that package first, then Install Manually again. The library is **not** in the QPKG folder: it lives at `{volume}/.mosaicWave` (example `/share/CACHEDEV1_DATA/.mosaicWave`). Remove/reinstall keeps that folder. To wipe photos, delete `.mosaicWave` yourself (File Station: show hidden). Watch App Center finish (progress) and the QTS notification for success or failure. **Enable**, then open mosaicWave from the **Main menu** (or drag that icon to the desktop). Sign in with a QNAP account (or a QTS session cookie). Import Takeout from a folder on the NAS. Confirm **stop / start / reboot** still serves the gallery.
 
@@ -214,8 +214,8 @@ App Center **Install Manually** must get a file whose **CPU** and **QTS version*
 
 | NAS CPU (example) | QDK arch | File |
 | --- | --- | --- |
-| Intel/AMD 64-bit | `x86_64` | `mosaicWave_0.1.0_x86_64.qpkg` |
-| ARM 64-bit (A53/A55/A57, “arm_64”) | `arm_64` | `mosaicWave_0.1.0_arm_64.qpkg` |
+| Intel/AMD 64-bit | `x86_64` | `mosaicWave_0.1.1_x86_64.qpkg` |
+| ARM 64-bit (A53/A55/A57, “arm_64”) | `arm_64` | `mosaicWave_0.1.1_arm_64.qpkg` |
 | ARM 32-bit Alpine (TS-x31 / TS-x31P2, “arm-x31” / “arm-x41”) | `arm-x31` or `arm-x41` | not in the default pack; `.\scripts\pack-qpkg.cmd arm-x31` |
 
 `qpkg.cfg` sets **`QTS_MINI_VERSION=5.0.0`**. QTS **4.3.x cannot install** this package, even with the right CPU name.

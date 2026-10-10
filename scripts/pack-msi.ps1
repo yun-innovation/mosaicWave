@@ -1,4 +1,4 @@
-# Build mosaicWave_0.1.0_x64.msi from dist/msi/mosaicWave. See doc/qpkg.md.
+# Build mosaicWave_0.1.1_x64.msi from dist/msi/mosaicWave. See doc/qpkg.md.
 
 $ErrorActionPreference = "Stop"
 $RepoRoot = Split-Path -Parent $PSScriptRoot
@@ -7,7 +7,7 @@ $Wxs = Join-Path $RepoRoot "src\msi\mosaicWave.wxs"
 $WxsUi = Join-Path $RepoRoot "src\msi\WixUI_mosaicWave.wxs"
 $WinSw = Join-Path $RepoRoot "tools\WinSW-x64.exe"
 $OutDir = Join-Path $RepoRoot "dist\msi"
-$Msi = Join-Path $OutDir "mosaicWave_0.1.0_x64.msi"
+$Msi = Join-Path $OutDir "mosaicWave_0.1.1_x64.msi"
 
 if (-not (Test-Path (Join-Path $Stage "server\mosaicwave"))) {
     throw "MSI staging missing. Run .\scripts\publish-msi.cmd first."
