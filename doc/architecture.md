@@ -309,7 +309,7 @@ src/msi/
   shared/mosaicWave-run.cmd
 ```
 
-Publish: `scripts/publish-msi.ps1` → `dist/msi/mosaicWave/`. Pack: `scripts/pack-msi.ps1` (WiX) → `dist/msi/mosaicWave_0.1.0_x64.msi`. Bind `127.0.0.1` and installer **PORT** (default 8090, Web / API page). **INSTALLSERVICE** (default 1) installs the WinSW service; 0 is files only. Start Menu + desktop shortcuts follow that port. `MOSAICWAVE_PROFILE=prod` (library `%PROGRAMDATA%\mosaicWave`). Do **not** set `MOSAICWAVE_DATA_DIR` so Settings can still move it; uninstall leaves ProgramData. Local debug is `%PROGRAMDATA%\mosaicWave-dev`. Python 3.10+ is a host dependency. Procedure: [qpkg.md](qpkg.md).
+Publish: `scripts/publish-msi.ps1` → `dist/msi/mosaicWave/`. Pack: `scripts/pack-msi.ps1` (WiX) → `dist/msi/mosaicWave_0.1.1_x64.msi`. Bind `127.0.0.1` and installer **PORT** (default 8090, Web / API page). **INSTALLSERVICE** (default 1) installs the WinSW service; 0 is files only. Start Menu + desktop shortcuts follow that port. `MOSAICWAVE_PROFILE=prod` (library `%PROGRAMDATA%\mosaicWave`). Do **not** set `MOSAICWAVE_DATA_DIR` so Settings can still move it; uninstall leaves ProgramData. Local debug is `%PROGRAMDATA%\mosaicWave-dev`. Python 3.10+ is a host dependency. Procedure: [qpkg.md](qpkg.md).
 
 ## Linux / macOS packaging
 
@@ -324,7 +324,7 @@ src/posix/
   mosaicWave.icns / mosaicWave-icon.png  # Finder app icon (iconutil on install)
 ```
 
-Publish: `scripts/publish-posix.ps1` (or `.sh`) → `dist/posix/mosaicWave/`. Pack: `scripts/pack-posix.ps1` (or `.sh`) → `dist/posix/mosaicWave_0.1.0_posix.tar.gz`. On the target: `sh install.sh` (macOS: `sudo sh install.sh`; LaunchDaemon — do not run `mosaicWave.sh start` as a normal user). Bind `127.0.0.1:8090`. Do **not** set `MOSAICWAVE_DATA_DIR` so Settings can still move it. Data: Linux `~/.local/share/mosaicWave` (debug `mosaicWave-dev`); macOS packaged `/Library/Application Support/mosaicWave` (`MOSAICWAVE_PROFILE=prod`); local Mac debug `/Library/Application Support/mosaicWave-dev`. Python 3.10+ is a host dependency. Procedure: [qpkg.md](qpkg.md).
+Publish: `scripts/publish-posix.ps1` (or `.sh`) → `dist/posix/mosaicWave/`. Pack: `scripts/pack-posix.ps1` (or `.sh`) → `dist/posix/mosaicWave_0.1.1_posix.tar.gz`. On the target: `sh install.sh` (macOS: `sudo sh install.sh`; LaunchDaemon — do not run `mosaicWave.sh start` as a normal user). Bind `127.0.0.1:8090`. Do **not** set `MOSAICWAVE_DATA_DIR` so Settings can still move it. Data: Linux `~/.local/share/mosaicWave` (debug `mosaicWave-dev`); macOS packaged `/Library/Application Support/mosaicWave` (`MOSAICWAVE_PROFILE=prod`); local Mac debug `/Library/Application Support/mosaicWave-dev`. Python 3.10+ is a host dependency. Procedure: [qpkg.md](qpkg.md).
 
 ## Authentication
 

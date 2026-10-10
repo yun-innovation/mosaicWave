@@ -96,7 +96,7 @@ Same Python app as `MOSAICWAVE_WEB_ROOT` one-process serve. Staging and pack liv
 
 1. `scripts/publish.cmd msi` (or `publish-msi`): `next build`, copy export + `mosaicwave/` + service scripts into `dist/msi/mosaicWave/`.
 2. Once: `.\scripts\get-winsw.cmd` → `tools\WinSW-x64.exe`; `dotnet tool install --global wix`. WiX 7: `wix eula accept wix7` (or rely on `pack-msi` `--acceptEula`).
-3. `scripts/pack.cmd msi` (or `pack-msi`): WiX → `dist/msi/mosaicWave_0.1.0_x64.msi`.
+3. `scripts/pack.cmd msi` (or `pack-msi`): WiX → `dist/msi/mosaicWave_0.1.1_x64.msi`.
 4. Administrator: `.\scripts\install-msi.cmd` (optional port argument). Full UI: Web / API port and Windows service (first page). Start Menu + desktop shortcuts open `http://127.0.0.1:<port>/`. Confirm **Create admin**.
 5. Uninstall does **not** delete `%PROGRAMDATA%\mosaicWave`.
 
@@ -107,7 +107,7 @@ Python 3.10+ on the target PC is a documented dependency (venv on first service 
 Same app as MSI. Staging and pack:
 
 1. `scripts/publish.cmd posix` (or `publish-posix`): `npm install` if needed, `next build`, copy export + `mosaicwave/` + `src/posix` scripts into `dist/posix/mosaicWave/`. Node.js is a build-host dependency, not on the install target.
-2. `scripts/pack.cmd posix` (or `pack-posix`): `tar` → `dist/posix/mosaicWave_0.1.0_posix.tar.gz`.
+2. `scripts/pack.cmd posix` (or `pack-posix`): `tar` → `dist/posix/mosaicWave_0.1.1_posix.tar.gz`.
 3. On the target: `tar xf … && cd mosaicWave && sh install.sh` (macOS: `sudo sh install.sh`) then `mosaicWave start` if the service is not installed (Python 3.10+ on PATH). Optional `--systemd` / `--no-launchd`.
 4. Uninstall does **not** delete `~/.local/share/mosaicWave` (Linux packaged), `~/.local/share/mosaicWave-dev` (Linux debug), `/Library/Application Support/mosaicWave` (macOS packaged), or `/Library/Application Support/mosaicWave-dev` (macOS debug).
 

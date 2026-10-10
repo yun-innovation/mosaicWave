@@ -43,7 +43,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         consume_restart_flag()
         settings = Settings.from_env()
 
-    app = FastAPI(title="mosaicWave", version="0.1.0")
+    app = FastAPI(title="mosaicWave", version="0.1.1")
     attach_runtime(app, settings, recover=True)
     app.add_middleware(
         CORSMiddleware,
