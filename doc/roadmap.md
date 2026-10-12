@@ -1,12 +1,12 @@
 # Roadmap
 
-**Being rebuilt.** The earlier phased plan (Phases 0–9) is archived in [roadmap-archive.md](roadmap-archive.md). A new roadmap will replace this page.
+Work is tracked as **ordered milestones**, not the old Phase 0–9 plan (archived in [roadmap-archive.md](roadmap-archive.md)).
 
-See [system overview](system-overview.md) for product scope and [architecture](architecture.md) for the stack.
+See [system overview](system-overview.md) for product scope and [architecture](architecture.md) for the stack. Gate language: only **`milestone N done`** marks a milestone complete ([index.md](index.md)).
 
-## What exists today (v0.1)
+## What exists today (v0.1.1)
 
-A multi-platform photo/video library: Python API, static web UI, one `/api/v1`.
+A multi-platform photo/video library: Python API, static web UI, one `/api/v1`. Pre-release packages are on GitHub ([releases](https://github.com/yun-innovation/mosaicWave/releases)).
 
 - Gallery: thumbnails, timeline, detail view, video playback, manual albums
 - Google Takeout import (zips read in place, SHA-256 dedup, device upload)
@@ -14,13 +14,22 @@ A multi-platform photo/video library: Python API, static web UI, one `/api/v1`.
 - Metadata sync pull and album push for offline clients
 - Packages: Windows MSI, QNAP QPKG (x86_64), Linux/macOS tarball
 
-## Known open items
+## Ordered milestones
 
-- Linux/macOS tarball unpack is not tested on a real host
-- ARM64 QPKG is not tested (needs a QTS 5 ARM64 NAS)
+| # | Milestone | Exit when |
+| --- | --- | --- |
+| **1** | AI rules + doc structure | Always-on rules force `index.md` at session start and docs-before-code; thin `doc/naming.md` (add in this milestone); status/index use milestones (not phases); status **Next** is one task |
+| **2** | Packaging verify | MSI installed on a test PC; QPKG x86_64 sideloaded on QTS 5; Linux/macOS tarball unpacked on a real host |
+| **3** | Backup / restore / export | Library archive of SQLite + FileStore + thumbs (not sync JSON) |
+| **4** | ARM64 QPKG | Sideload on a QTS 5 ARM64 NAS |
+
+**Current:** milestone **1**.
+
+## Known open items (not a milestone yet)
+
 - Packaged macOS: a Save-folder SMB mount can be torn down by macOS ([smb-paths.md](smb-paths.md))
-- Backup / restore / export of the library is not built (sync JSON is never a backup)
 - Idea, not scheduled: the user's own cloud drive as a FileStore backend ([filestore-later.md](filestore-later.md))
+- Next 16 `tsconfig.json` / `next-env.d.ts` local drift (commit or discard)
 
 ## Intentionally later or never
 
