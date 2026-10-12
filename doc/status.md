@@ -51,5 +51,3 @@ Say **`milestone 1 done`** to close milestone 1 and move Next to **Milestone 2 â
 | QPKG / standalone hosts | [qpkg.md](qpkg.md) |
 | How to run locally | [README.md](README.md) |
 | Postman `/api/v1` tests | [`postman/`](../postman/mosaicwave.postman_collection.json) |
-
-Do not read [index.md.sample](index.md.sample) (other project template).
