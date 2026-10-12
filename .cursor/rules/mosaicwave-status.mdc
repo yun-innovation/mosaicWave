@@ -32,7 +32,7 @@ alwaysApply: true
 - **Authorization:** one private library per user — others only via **share** (`source_grant`; no admin bypass) (`doc/architecture.md`)
 - **Takeout:** one-shot ingest into the caller’s library (SHA-256 dedup); dump may be deleted (`doc/takeout.md`)
 - Server SQLite is canonical; clients may **replicate** metadata for offline (`doc/schema.md`) — originals stay in FileStore. Sync pull is in; album **push** is `POST`/`PATCH`/`DELETE /albums` with `base_rev`
-- **Milestone complete:** only **`milestone N done`**. Wrap-up (`mosaic done` / `unity done`) must not mark a milestone done
+- **Milestone complete:** only **`milestone N done`**. Wrap-up (`mosaic done`) must not mark a milestone done
 
 ## Docs on demand
 
@@ -59,4 +59,4 @@ alwaysApply: true
 
 ## Session end (`mosaic done`)
 
-When the user says **`mosaic done`**, **`mosaicwave done`**, or **`unity done`**, wrap up, hand off, or this is the last turn after **substantive** doc/code work: run `doc/index.md` § mosaic done. Tick work items in `progress-todo.md`. **Do not** mark a milestone done. That is only **`milestone N done`**. Do not cold-read roadmap/architecture.
+When the user says **`mosaic done`** or **`mosaicwave done`**, wrap up, hand off, or this is the last turn after **substantive** doc/code work: run `doc/index.md` § mosaic done. Tick work items in `progress-todo.md`. **Do not** mark a milestone done. That is only **`milestone N done`**. Do not cold-read roadmap/architecture.

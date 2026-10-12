@@ -60,7 +60,7 @@ When you change source or **locked decisions**, keep documentation in sync in th
 
 ### mosaic done — session wrap-up
 
-> **Trigger:** user says **`mosaic done`** or **`unity done`**, or asks to wrap up / hand off / end the session after substantive work.
+> **Trigger:** user says **`mosaic done`** (or **`mosaicwave done`**), or asks to wrap up / hand off / end the session after substantive work.
 >
 > **Also run** (without waiting for the command) when you have finished the requested task and would otherwise stop after **doc or code edits** — tick progress and refresh status so the next session is not stale.
 
@@ -68,7 +68,7 @@ Use when closing a session after substantive work. **Do not** re-read roadmap, a
 
 1. **Summarize** — what changed (files + intent) this session, or “no code changes”.
 2. **Doc audit** — against [§ After program changes](#after-program-changes): related docs updated, or explicitly “none needed”.
-3. **Progress** — tick **work** checkboxes in [progress-todo.md](progress-todo.md) for what this session actually shipped. Refresh [status.md](status.md) / [`.cursor/rules/mosaicwave-status.mdc`](../.cursor/rules/mosaicwave-status.mdc) **Next** only for the next *task*. **Do not** write **Milestone N — done**, do not archive “Milestone N complete”, and do not move the snapshot to milestone N+1. That is only [**`milestone N done`**](#user-commands-shortcuts). `unity done` is this wrap-up, not a milestone gate.
+3. **Progress** — tick **work** checkboxes in [progress-todo.md](progress-todo.md) for what this session actually shipped. Refresh [status.md](status.md) / [`.cursor/rules/mosaicwave-status.mdc`](../.cursor/rules/mosaicwave-status.mdc) **Next** only for the next *task*. **Do not** write **Milestone N — done**, do not archive “Milestone N complete”, and do not move the snapshot to milestone N+1. That is only [**`milestone N done`**](#user-commands-shortcuts). `mosaic done` is wrap-up, not a milestone gate.
 4. **Handoff** — bullet list of open follow-ups for the next session (from conversation, not a full todo re-read).
 5. **Report** — short structured reply only; no waiting for approval.
 

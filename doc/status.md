@@ -27,7 +27,7 @@ Say **`milestone 1 done`** to close milestone 1 and move Next to **Milestone 2 �
 - **Authorization:** one private library per user (`source.owner_user_id`) plus owner `source_grant`. Admin does not see others’ photos without a grant
 - **Takeout:** ingest unique files into the caller’s library (`{data_dir}/libraries/{user_id}`); dump may be deleted after import
 - Client **offline** = replica of metadata/thumbs; originals stay in FileStore; sync **pull** is `GET /api/v1/sync/changes`. Album **push** is `POST`/`PATCH`/`DELETE /albums` with `base_rev`
-- **Milestone complete:** only **`milestone N done`**. Wrap-up (`mosaic done` / `unity done`) does not mark a milestone done
+- **Milestone complete:** only **`milestone N done`**. Wrap-up (`mosaic done`) does not mark a milestone done
 
 ## Read on demand
 
