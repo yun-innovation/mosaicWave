@@ -9,8 +9,6 @@ Human summary: [README.md](README.md).
 ## For AI Agents
 
 > **Mandatory at session start.** Every new session or task: **read this file** (For AI Agents + Planning TOC) **before** opening source. Then use `.cursor/rules/mosaicwave-status.mdc` for Now / Next / constraints. Docs before code.
->
-> **Ignore** [index.md.sample](index.md.sample) — that is a copy from another project (ARRehab.Unity), not mosaicWave.
 
 ### User commands (shortcuts)
 
