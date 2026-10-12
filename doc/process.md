@@ -128,7 +128,7 @@ When we reverse a decision in these docs, add a one-line note here.
 | 2026-08-28 | Google Photos API full-library sync is not a feature; Takeout is later |
 | 2026-08-28 | SQLite for photo index and albums; MongoDB rejected for native QPKG |
 | 2026-08-28 | Agent onboarding via `doc/index.md` + always-on `mosaicwave-status.mdc`; wrap-up is `mosaic done` |
-| 2026-09-02 | Phase complete only on **`phase N done`**. `mosaic done` / `unity done` is wrap-up, not a phase gate |
+| 2026-09-02 | Phase complete only on **`phase N done`**. `mosaic done` is wrap-up, not a phase gate |
 | 2026-10-12 | Gate language switched to **`milestone N done`** (roadmap is ordered milestones). Thin `doc/naming.md` added |
 | 2026-09-02 | Phase 3 is job workflow/audit (`workflow.md`). Gallery is Phase 4. Sync HTTP is Phase 7 |
 | 2026-08-29 | NAS identity is QNAP accounts; FastAPI checks QTS/QNAP then issues `/api/v1` session |
