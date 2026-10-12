@@ -1,17 +1,17 @@
 # Status
 
-**Updated:** 2026-10-07  
+**Updated:** 2026-10-12  
 **Keep in sync with:** [`.cursor/rules/mosaicwave-status.mdc`](../.cursor/rules/mosaicwave-status.mdc) (same date, same next step).
 
-Short onboarding snapshot for agents. Full TOC and commands: [index.md](index.md).
+Short onboarding snapshot for agents. **Session start:** always read [index.md](index.md) first (For AI Agents + Planning).
 
 ## Now
 
-**v0.1, paused for GitHub migration. The roadmap is being rebuilt** (old Phase 0–9 plan: [roadmap-archive.md](roadmap-archive.md)). No phase is marked done by the reset.
+**v0.1.1 published** (GitHub pre-release with MSI, QPKG x86_64, posix tarball, `SHA256SUMS.txt`). Repo: https://github.com/yun-innovation/mosaicWave. License FSL-1.1-Apache-2.0. Never work on `main`: branch, push, PR, squash-merge ([process.md](process.md)). Roadmap uses **ordered milestones** ([roadmap.md](roadmap.md)); old Phase 0–9 plan: [roadmap-archive.md](roadmap-archive.md).
 
 ## Next
 
-**Published:** the repo is public at https://github.com/yun-innovation/mosaicWave (single commit, tag `v0.1.0`, license FSL-1.1-Apache-2.0). Never work on `main`: branch, push, PR, squash-merge ([process.md](process.md)). The five Dependabot bumps (Next 16, React, TypeScript 7, `@types/node` 26, react-dom) are merged. Release plan: `v0.1.0` stays as a tag only (no GitHub Release). Version is `0.1.1`; tag `v0.1.1` is pushed and the assets (MSI, QPKG x86_64, tarball, `SHA256SUMS.txt`) are built from a clean clone of it under `build/` (outside the repo). Left: publish the GitHub pre-release and test the installers on real machines. Old Azure history stays in a private archive repo and a backup bundle; its plan branch must never go to GitHub. Open items ([progress-todo.md](progress-todo.md)): Linux tarball unpack untested; ARM64 QPKG needs a QTS 5 ARM64 NAS; backup / restore / export not built. Packaged macOS Save-folder SMB limitation: [smb-paths.md](smb-paths.md).
+**Milestone 1 — AI rules + doc structure:** thin `doc/naming.md`; strengthen always-on docs-before-code; finish aligning rules/index with milestones (this snapshot already forces `index.md` at session start).
 
 ## Constraints
 
@@ -21,11 +21,11 @@ Short onboarding snapshot for agents. Full TOC and commands: [index.md](index.md
 - **SQLite** for index and later albums
 - One **`/api/v1`** for web and mobile
 - Originals via **FileStore**; thumbs via **BlobStore**. On Windows MSI: `%PROGRAMDATA%\mosaicWave`; local debug: `%PROGRAMDATA%\mosaicWave-dev`. QNAP `{volume}/.mosaicWave` (survives QPKG Remove); Linux packaged `~/.local/share/mosaicWave`; Linux debug `~/.local/share/mosaicWave-dev`; macOS packaged `/Library/Application Support/mosaicWave`; macOS debug `/Library/Application Support/mosaicWave-dev`. Admin Settings can move the folder (`config.json`). `MOSAICWAVE_DATA_DIR` wins (QPKG sets it). No Google Photos Library/Picker full-library sync
-- **Auth:** QNAP users on QTS; local hashed users on standalone (`local_credential`). Enforced in Phase 5.
+- **Auth:** QNAP users on QTS; local hashed users on standalone (`local_credential`)
 - **Authorization:** one private library per user (`source.owner_user_id`) plus owner `source_grant`. Admin does not see others’ photos without a grant
 - **Takeout:** ingest unique files into the caller’s library (`{data_dir}/libraries/{user_id}`); dump may be deleted after import
 - Client **offline** = replica of metadata/thumbs; originals stay in FileStore; sync **pull** is `GET /api/v1/sync/changes`. Album **push** is `POST`/`PATCH`/`DELETE /albums` with `base_rev`
-- **Phase complete:** only **`phase N done`**. Wrap-up (`mosaic done` / `unity done`) does not mark a phase done
+- **Milestone complete:** only **`milestone N done`**. Wrap-up (`mosaic done` / `unity done`) does not mark a milestone done
 
 ## Read on demand
 
@@ -38,7 +38,7 @@ Short onboarding snapshot for agents. Full TOC and commands: [index.md](index.md
 | FileStore (originals I/O) | [filestore.md](filestore.md) |
 | FileStore later (BYO cloud) | [filestore-later.md](filestore-later.md) |
 | How we work | [process.md](process.md) |
-| Roadmap (being rebuilt) | [roadmap.md](roadmap.md) |
+| Roadmap (milestones) | [roadmap.md](roadmap.md) |
 | Checklists | [progress-todo.md](progress-todo.md) |
 | Dated log | [progress-archive.md](progress-archive.md) |
 | Takeout import | [takeout.md](takeout.md) |

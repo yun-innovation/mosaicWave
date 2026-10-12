@@ -1,15 +1,23 @@
 ---
-description: mosaicWave session snapshot — phase, next step, constraints. Always loaded; do not cold-read all of doc/.
+description: mosaicWave session snapshot — milestone, next step, constraints. Always loaded. At session start, read doc/index.md first.
 alwaysApply: true
 ---
 
-# mosaicWave status (2026-10-07)
+# mosaicWave status (2026-10-12)
 
-**v0.1, paused for GitHub migration. The roadmap is being rebuilt** (old Phase 0–9 plan: `doc/roadmap-archive.md`). No phase is marked done by the reset.
+**v0.1.1 published** (GitHub pre-release: MSI, QPKG x86_64, posix tarball, `SHA256SUMS.txt`). Repo https://github.com/yun-innovation/mosaicWave. FSL-1.1-Apache-2.0. Never work on `main`: branch, push, PR, squash-merge (`doc/process.md`). Roadmap uses **ordered milestones** (`doc/roadmap.md`); old Phase 0–9 plan: `doc/roadmap-archive.md`.
 
-**Next:** **Published:** the repo is public at https://github.com/yun-innovation/mosaicWave (single commit, tag `v0.1.0`, FSL-1.1-Apache-2.0). Never work on `main`: branch, push, PR, squash-merge (`doc/process.md`). The five Dependabot bumps (Next 16, React, TypeScript 7, `@types/node` 26, react-dom) are merged. Release plan: `v0.1.0` stays as a tag only (no GitHub Release). Version is `0.1.1`; tag `v0.1.1` is pushed and the assets (MSI, QPKG x86_64, tarball, `SHA256SUMS.txt`) are built from a clean clone of it under `build/` (outside the repo). Left: publish the GitHub pre-release and test the installers on real machines. Old Azure history stays in a private archive repo and a backup bundle; its plan branch must never go to GitHub. Open items (`doc/progress-todo.md`): Linux tarball unpack untested; ARM64 QPKG needs a QTS 5 ARM64 NAS; backup / restore / export not built. Packaged macOS Save-folder SMB limitation: `doc/smb-paths.md`.
+**Next:** **Milestone 1 — AI rules + doc structure** (thin `doc/naming.md`; finish always-on docs-before-code; align remaining rules with milestones). Session start already forces `doc/index.md`.
 
-**Do not** read `doc/index.md` or the full roadmap/architecture on session start. Use this rule. Open other docs only from the table below.
+## Session start (mandatory)
+
+1. **Read `doc/index.md`** — For AI Agents + Planning TOC. Do this on every new session / task before code.
+2. Use this rule for **Now / Next / constraints** (skip `doc/status.md` unless verifying freshness).
+3. One sentence: milestone, next step, which task doc you will open.
+4. Open that task doc from the table below (or Planning in `index.md`).
+5. **Only then** inspect source. Prefer docs over code.
+
+**Do not** skip step 1. **Do not** cold-read the full roadmap/architecture/archive unless the task needs them.
 
 ## Constraints (do not reverse without updating docs)
 
@@ -17,20 +25,20 @@ alwaysApply: true
 - Web: Next.js **static export** — no Node as product runtime
 - **SQLite** for photo/album metadata — not MongoDB
 - One **`/api/v1`** for web and mobile
-- Originals via **FileStore**; thumbs via **BlobStore** ([storage.md](storage.md)). Windows MSI: `%PROGRAMDATA%\mosaicWave`. Local debug: `%PROGRAMDATA%\mosaicWave-dev`. QNAP: `{volume}/.mosaicWave` (survives Remove). Linux packaged: `~/.local/share/mosaicWave`. Linux debug: `~/.local/share/mosaicWave-dev`. macOS packaged: `/Library/Application Support/mosaicWave`. macOS debug: `/Library/Application Support/mosaicWave-dev`. Admin Settings can move it (`config.json`); `MOSAICWAVE_DATA_DIR` wins. No Google Photos API library dump
+- Originals via **FileStore**; thumbs via **BlobStore** (`doc/storage.md`). Windows MSI: `%PROGRAMDATA%\mosaicWave`. Local debug: `%PROGRAMDATA%\mosaicWave-dev`. QNAP: `{volume}/.mosaicWave` (survives Remove). Linux packaged: `~/.local/share/mosaicWave`. Linux debug: `~/.local/share/mosaicWave-dev`. macOS packaged: `/Library/Application Support/mosaicWave`. macOS debug: `/Library/Application Support/mosaicWave-dev`. Admin Settings can move it (`config.json`); `MOSAICWAVE_DATA_DIR` wins. No Google Photos API library dump
 - **Auth:** QNAP users on QTS; local users on standalone (not a password table on the QNAP profile)
-- **Authorization:** one private library per user — others only via **share** (`source_grant`; no admin bypass) ([architecture.md](architecture.md))
-- **Takeout:** one-shot ingest into the caller’s library (SHA-256 dedup); dump may be deleted ([takeout.md](takeout.md))
-- Server SQLite is canonical; clients may **replicate** metadata for offline ([schema.md](schema.md)) — originals stay in FileStore. Sync pull is in; album **push** is `POST`/`PATCH`/`DELETE /albums` with `base_rev`
-- **Phase complete:** only **`phase N done`**. Wrap-up (`mosaic done` / `unity done`) must not mark a phase done
+- **Authorization:** one private library per user — others only via **share** (`source_grant`; no admin bypass) (`doc/architecture.md`)
+- **Takeout:** one-shot ingest into the caller’s library (SHA-256 dedup); dump may be deleted (`doc/takeout.md`)
+- Server SQLite is canonical; clients may **replicate** metadata for offline (`doc/schema.md`) — originals stay in FileStore. Sync pull is in; album **push** is `POST`/`PATCH`/`DELETE /albums` with `base_rev`
+- **Milestone complete:** only **`milestone N done`**. Wrap-up (`mosaic done` / `unity done`) must not mark a milestone done
 
 ## Docs on demand
 
 | Need | Read |
 | --- | --- |
-| Commands, TOC, wrap-up | `doc/index.md` (For AI Agents + Planning only) |
+| Commands, TOC, wrap-up | `doc/index.md` (**always** at session start) |
 | Verify this snapshot | `doc/status.md` |
-| Roadmap (being rebuilt; old plan in `doc/roadmap-archive.md`) | `doc/roadmap.md` |
+| Roadmap (milestones; old plan in `doc/roadmap-archive.md`) | `doc/roadmap.md` |
 | Stack / API / DB | `doc/architecture.md` |
 | Virtual file / blob | `doc/storage.md` |
 | UNC / `smb://` paths | `doc/smb-paths.md` |
@@ -46,10 +54,6 @@ alwaysApply: true
 | Postman API tests | `postman/mosaicwave.postman_collection.json` |
 | Checkboxes | `doc/progress-todo.md` |
 
-## Session start
-
-One sentence: phase, next step, which doc you will open for **this** task. Then that doc (if needed), then code. Prefer docs over source.
-
 ## Session end (`mosaic done`)
 
-When the user says **`mosaic done`**, **`mosaicwave done`**, or **`unity done`**, wrap up, hand off, or this is the last turn after **substantive** doc/code work: run `doc/index.md` § mosaic done. Tick work items in `progress-todo.md`. **Do not** mark a phase done. That is only **`phase N done`**. Do not cold-read roadmap/architecture.
+When the user says **`mosaic done`**, **`mosaicwave done`**, or **`unity done`**, wrap up, hand off, or this is the last turn after **substantive** doc/code work: run `doc/index.md` § mosaic done. Tick work items in `progress-todo.md`. **Do not** mark a milestone done. That is only **`milestone N done`**. Do not cold-read roadmap/architecture.
