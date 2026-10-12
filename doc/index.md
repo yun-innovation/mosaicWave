@@ -33,8 +33,8 @@ Follow this order on every new session or task:
 1. **Read this index** — For AI Agents + Planning TOC (do not skip).
 2. **Current status** — if `.cursor/rules/mosaicwave-status.mdc` is loaded, use it and **skip** [status.md](status.md) unless verifying freshness. Otherwise read [status.md](status.md).
 3. **Acknowledge in one sentence** — milestone, next step, and which doc you will open for this task. **Do not** restate roadmap/architecture content or wait for approval unless the user asked you to.
-4. **Read task-specific docs** — use the status “Docs on demand” / “Read on demand” table or **Planning** below. Prefer documentation over source code when analyzing a task.
-5. **Only then inspect source code** — after docs give you context, intent, and constraints.
+4. **Read task-specific docs** — use the status “Docs on demand” / “Read on demand” table or **Planning** below. Prefer documentation over source code when analyzing a task. Product / path names: [naming.md](naming.md).
+5. **Only then inspect source code** — after docs give you context, intent, and constraints. Always-on rule: `.cursor/rules/docs-before-code.mdc`.
 
 Root planning docs (open only when the task needs them):
 
@@ -90,6 +90,7 @@ If the session was Q&A only with no edits, steps 2–3 are “N/A” — one-lin
 | [FileStore](filestore.md) | Originals I/O: virtual paths, LocalFileStore, walk/scan (**v1 done**) |
 | [FileStore later](filestore-later.md) | BYO Drive/OneDrive/iCloud — **not a milestone** |
 | [Process](process.md) | API-first loop, git, QPKG / standalone |
+| [Naming](naming.md) | Product string, data dirs, env keys, branches, packages |
 | [Roadmap](roadmap.md) | Ordered milestones; old Phase 0–9 plan in [roadmap-archive.md](roadmap-archive.md) |
 | [Status](status.md) | **Agent onboarding** — current milestone, next step, constraints |
 | [Progress](progress.md) | Hub — status, todo, archive |

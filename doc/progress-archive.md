@@ -124,6 +124,7 @@ Dated milestones and decisions. Day-to-day process notes: [process.md](process.m
 | 2026-10-09 | Milestone | Dependabot PRs merged: Next 16.3.8, React, TypeScript 7, `@types/node` 26, react-dom. Merged by the owner; Next and React were tested locally, the rest not verified here (no CI). Release assets still to be built from the `v0.1.0` tag |
 | 2026-10-10 | Milestone | Version bumped to `0.1.1` (#8); tag `v0.1.1` pushed at `f4697e4`. MSI, QPKG x86_64 and posix tarball built from a clean clone of the tag, with SHA-256 sums; ARM64 QPKG skipped. Personal-string scan of the staged files clean (the only hit was a false positive inside the bundled WinSW binary). Installers not yet run on a test machine; GitHub pre-release not yet published |
 | 2026-10-12 | Milestone | GitHub pre-release `v0.1.1` published (MSI, QPKG x86_64, posix tarball, `SHA256SUMS.txt`). Roadmap rebuilt as ordered milestones 1–4 (AI rules/docs → packaging verify → backup/export → ARM64 QPKG). Agent onboarding switched from phases to milestones; session start **must** read `doc/index.md` before code |
+| 2026-10-12 | Docs | Milestone 1 deliverables: thin `doc/naming.md`; always-on `.cursor/rules/docs-before-code.mdc`; deduped `no-personal-info.mdc`; `process.md` gate → `milestone N done`; GitHub as daily remote |
 
 
 ---

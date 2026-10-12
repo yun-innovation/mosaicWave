@@ -11,7 +11,6 @@ This project is public on GitHub. **Never** add real personal or lab identifiers
 
 - Real NAS / host names (any casing), Bonjour names, IPs, or share URLs from the lab — including Postman `baseUrl`, environment JSON, and archive notes
 - Personal usernames, emails, display names, or home-directory paths (`/Users/…`, `C:\Users\…`)
-- Personal usernames, emails, display names, or home-directory paths (`/Users/…`, `C:\Users\…`)
 - NAS or mosaicWave passwords, keychain dumps, `nsmb.conf`, `smb.auth`, `session.key`, live `config.json`
 - Screenshots or logs that show those values
 
@@ -28,7 +27,7 @@ Everywhere else they stay banned (code, tests, docs, Postman, examples, screensh
 
 ## Use instead
 
-Fictional public examples only: host `fileserver`, user `nasuser`, share `Public`, folder `mosaicWave`. macOS dest `/Volumes/mosaicWave-fileserver-Public`. Debug dest `/Volumes/mosaicWave-dev-fileserver-Public`.
+Fictional public examples only: host `fileserver`, user `nasuser`, share `Public`, folder `mosaicWave`. macOS dest `/Volumes/mosaicWave-fileserver-Public`. Debug dest `/Volumes/mosaicWave-dev-fileserver-Public`. Product path names: `doc/naming.md`.
 
 ## If you see a leak
 

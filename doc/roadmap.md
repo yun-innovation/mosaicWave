@@ -18,12 +18,12 @@ A multi-platform photo/video library: Python API, static web UI, one `/api/v1`. 
 
 | # | Milestone | Exit when |
 | --- | --- | --- |
-| **1** | AI rules + doc structure | Always-on rules force `index.md` at session start and docs-before-code; thin `doc/naming.md` (add in this milestone); status/index use milestones (not phases); status **Next** is one task |
+| **1** | AI rules + doc structure | Always-on rules force `index.md` at session start and docs-before-code; thin [naming.md](naming.md); status/index use milestones (not phases); status **Next** is one task |
 | **2** | Packaging verify | MSI installed on a test PC; QPKG x86_64 sideloaded on QTS 5; Linux/macOS tarball unpacked on a real host |
 | **3** | Backup / restore / export | Library archive of SQLite + FileStore + thumbs (not sync JSON) |
 | **4** | ARM64 QPKG | Sideload on a QTS 5 ARM64 NAS |
 
-**Current:** milestone **1**.
+**Current:** milestone **1** (deliverables shipped; owner says **`milestone 1 done`** to advance).
 
 ## Known open items (not a milestone yet)
 

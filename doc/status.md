@@ -3,15 +3,17 @@
 **Updated:** 2026-10-12  
 **Keep in sync with:** [`.cursor/rules/mosaicwave-status.mdc`](../.cursor/rules/mosaicwave-status.mdc) (same date, same next step).
 
-Short onboarding snapshot for agents. **Session start:** always read [index.md](index.md) first (For AI Agents + Planning).
+Short onboarding snapshot for agents. **Session start:** always read [index.md](index.md) first (For AI Agents + Planning). Names: [naming.md](naming.md).
 
 ## Now
 
 **v0.1.1 published** (GitHub pre-release with MSI, QPKG x86_64, posix tarball, `SHA256SUMS.txt`). Repo: https://github.com/yun-innovation/mosaicWave. License FSL-1.1-Apache-2.0. Never work on `main`: branch, push, PR, squash-merge ([process.md](process.md)). Roadmap uses **ordered milestones** ([roadmap.md](roadmap.md)); old Phase 0–9 plan: [roadmap-archive.md](roadmap-archive.md).
 
+**Milestone 1 deliverables are in tree** (`naming.md`, `docs-before-code.mdc`, milestone gate language). Not closed until the owner says **`milestone 1 done`**.
+
 ## Next
 
-**Milestone 1 — AI rules + doc structure:** thin `doc/naming.md`; strengthen always-on docs-before-code; finish aligning rules/index with milestones (this snapshot already forces `index.md` at session start).
+Say **`milestone 1 done`** to close milestone 1 and move Next to **Milestone 2 — packaging verify** (MSI test PC, QPKG x86_64 sideload, Linux/macOS tarball unpack).
 
 ## Constraints
 
@@ -33,6 +35,7 @@ Short onboarding snapshot for agents. **Session start:** always read [index.md](
 | --- | --- |
 | What we are building | [system-overview.md](system-overview.md) |
 | How it is split | [architecture.md](architecture.md) |
+| Product / path names | [naming.md](naming.md) |
 | Virtual file / blob | [storage.md](storage.md) |
 | UNC / `smb://` paths | [smb-paths.md](smb-paths.md) |
 | FileStore (originals I/O) | [filestore.md](filestore.md) |
