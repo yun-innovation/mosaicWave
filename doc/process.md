@@ -1,13 +1,13 @@
 # Process
 
-How we work from idea to a running host (standalone or QPKG). Architecture is in [architecture.md](architecture.md); open items are in [roadmap.md](roadmap.md) (being rebuilt). Storage rules: [storage.md](storage.md).
+How we work from idea to a running host (standalone or QPKG). Architecture is in [architecture.md](architecture.md); ordered milestones are in [roadmap.md](roadmap.md). Names: [naming.md](naming.md). Storage rules: [storage.md](storage.md).
 
 ## Principles
 
 1. **API first.** If the web UI needs data, define or extend OpenAPI, then implement FastAPI, then the UI.
 2. **PC first, QNAP when needed.** Prove a feature on standalone Windows (Python + Next), then package for QNAP. Linux standalone uses the same Python.
 3. **Docs follow decisions.** If we change stack or product scope, update `doc/` in the same change. Session start/end for agents: [index.md](index.md) **For AI Agents**.
-4. **One repo.** `src/` and `doc/` live together. Azure DevOps `origin` is the daily remote.
+4. **One repo.** `src/` and `doc/` live together. GitHub `origin` (`yun-innovation/mosaicWave`) is the daily remote.
 5. **No Node as product runtime.** Next.js is a build-time tool. Do not add a Node service “just for convenience” on QNAP, Windows, or Linux.
 6. **No extra database server.** Photo metadata and albums live in **SQLite** inside the Python app. Do not add MongoDB/PostgreSQL “for flexibility.”
 7. **Storage only through FileStore/BlobStore.** Do not `open()` library files in scan, Takeout, media, or thumb code. FileStore reference: [filestore.md](filestore.md).
@@ -57,7 +57,7 @@ flowchart LR
 - **No CI yet:** before merging, run `pytest` in `src/server` and `npm run build` in `src/web` by hand. This also applies to Dependabot PRs.
 - **Commit messages:** Conventional Commits (`feat:`, `fix:`, `docs:`, `chore:`, `build:`, `test:`), imperative, summary under 72 characters. Focus on **why** (e.g. `feat: add cursor pagination so the timeline can scroll`).
 - **Identity:** commit with the GitHub no-reply address (`git config user.email`), because GitHub blocks pushes that expose a private email.
-- **Phases:** only the owner's `phase N done` message marks a phase. A commit message never does.
+- **Milestones:** only the owner's `milestone N done` message marks a milestone. A commit message never does. Wrap-up (`mosaic done`) is not a gate.
 - **Tags and releases:** `vMAJOR.MINOR.PATCH`, protected. Build installers from a clean checkout of the tag and attach them to a GitHub Release. No binaries in git.
 - Commit when asked or at a coherent checkpoint; do not commit secrets (`.env`, NAS passwords, certificates).
 - Prefer small PRs: API slice, then UI slice, rather than a giant QPKG dump.
@@ -114,7 +114,7 @@ Same app as MSI. Staging and pack:
 ## Tooling notes (this project)
 
 - Develop on **Windows** (a supported standalone host). `publish-qpkg` stages the tree; `pack-qpkg` runs `qbuild` via WSL. Once: `scripts\get-qdk.cmd` → `tools\`, then **WSL** `apt-get install` ([qpkg.md](qpkg.md)).
-- Azure DevOps is `origin`. Do not require Cursor Origin for daily push.
+- GitHub is `origin` (`yun-innovation/mosaicWave`). Do not require Cursor Origin for daily push.
 - TLS/proxy settings are environment-specific; document ports per host when packaging exists.
 
 ## Decision log (lightweight)
@@ -128,7 +128,8 @@ When we reverse a decision in these docs, add a one-line note here.
 | 2026-08-28 | Google Photos API full-library sync is not a feature; Takeout is later |
 | 2026-08-28 | SQLite for photo index and albums; MongoDB rejected for native QPKG |
 | 2026-08-28 | Agent onboarding via `doc/index.md` + always-on `mosaicwave-status.mdc`; wrap-up is `mosaic done` |
-| 2026-09-02 | Phase complete only on **`phase N done`**. `mosaic done` / `unity done` is wrap-up, not a phase gate |
+| 2026-09-02 | Phase complete only on **`phase N done`**. `mosaic done` is wrap-up, not a phase gate |
+| 2026-10-12 | Gate language switched to **`milestone N done`** (roadmap is ordered milestones). Thin `doc/naming.md` added |
 | 2026-09-02 | Phase 3 is job workflow/audit (`workflow.md`). Gallery is Phase 4. Sync HTTP is Phase 7 |
 | 2026-08-29 | NAS identity is QNAP accounts; FastAPI checks QTS/QNAP then issues `/api/v1` session |
 | 2026-08-29 | Google Takeout import is Phase 2 (sample SQLite); not deferred to Phase 7 |

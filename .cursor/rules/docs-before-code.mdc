@@ -1,0 +1,15 @@
+---
+description: Force docs before source on every mosaicWave task.
+alwaysApply: true
+---
+
+# Docs before code
+
+On every new session or task:
+
+1. **Read `doc/index.md`** (For AI Agents + Planning TOC).
+2. Use `.cursor/rules/mosaicwave-status.mdc` for Now / Next / constraints.
+3. Open the **task** doc from that table or from Planning (include `doc/naming.md` when inventing names).
+4. **Only then** open or edit `src/`.
+
+Do not start in source, tests, or “quick greps” of `src/` until steps 1–3 are done. Prefer documentation over reversing design from code.

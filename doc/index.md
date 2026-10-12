@@ -9,8 +9,6 @@ Human summary: [README.md](README.md).
 ## For AI Agents
 
 > **Mandatory at session start.** Every new session or task: **read this file** (For AI Agents + Planning TOC) **before** opening source. Then use `.cursor/rules/mosaicwave-status.mdc` for Now / Next / constraints. Docs before code.
->
-> **Ignore** [index.md.sample](index.md.sample) — that is a copy from another project (ARRehab.Unity), not mosaicWave.
 
 ### User commands (shortcuts)
 
@@ -33,8 +31,8 @@ Follow this order on every new session or task:
 1. **Read this index** — For AI Agents + Planning TOC (do not skip).
 2. **Current status** — if `.cursor/rules/mosaicwave-status.mdc` is loaded, use it and **skip** [status.md](status.md) unless verifying freshness. Otherwise read [status.md](status.md).
 3. **Acknowledge in one sentence** — milestone, next step, and which doc you will open for this task. **Do not** restate roadmap/architecture content or wait for approval unless the user asked you to.
-4. **Read task-specific docs** — use the status “Docs on demand” / “Read on demand” table or **Planning** below. Prefer documentation over source code when analyzing a task.
-5. **Only then inspect source code** — after docs give you context, intent, and constraints.
+4. **Read task-specific docs** — use the status “Docs on demand” / “Read on demand” table or **Planning** below. Prefer documentation over source code when analyzing a task. Product / path names: [naming.md](naming.md).
+5. **Only then inspect source code** — after docs give you context, intent, and constraints. Always-on rule: `.cursor/rules/docs-before-code.mdc`.
 
 Root planning docs (open only when the task needs them):
 
@@ -62,7 +60,7 @@ When you change source or **locked decisions**, keep documentation in sync in th
 
 ### mosaic done — session wrap-up
 
-> **Trigger:** user says **`mosaic done`** or **`unity done`**, or asks to wrap up / hand off / end the session after substantive work.
+> **Trigger:** user says **`mosaic done`** (or **`mosaicwave done`**), or asks to wrap up / hand off / end the session after substantive work.
 >
 > **Also run** (without waiting for the command) when you have finished the requested task and would otherwise stop after **doc or code edits** — tick progress and refresh status so the next session is not stale.
 
@@ -70,7 +68,7 @@ Use when closing a session after substantive work. **Do not** re-read roadmap, a
 
 1. **Summarize** — what changed (files + intent) this session, or “no code changes”.
 2. **Doc audit** — against [§ After program changes](#after-program-changes): related docs updated, or explicitly “none needed”.
-3. **Progress** — tick **work** checkboxes in [progress-todo.md](progress-todo.md) for what this session actually shipped. Refresh [status.md](status.md) / [`.cursor/rules/mosaicwave-status.mdc`](../.cursor/rules/mosaicwave-status.mdc) **Next** only for the next *task*. **Do not** write **Milestone N — done**, do not archive “Milestone N complete”, and do not move the snapshot to milestone N+1. That is only [**`milestone N done`**](#user-commands-shortcuts). `unity done` is this wrap-up, not a milestone gate.
+3. **Progress** — tick **work** checkboxes in [progress-todo.md](progress-todo.md) for what this session actually shipped. Refresh [status.md](status.md) / [`.cursor/rules/mosaicwave-status.mdc`](../.cursor/rules/mosaicwave-status.mdc) **Next** only for the next *task*. **Do not** write **Milestone N — done**, do not archive “Milestone N complete”, and do not move the snapshot to milestone N+1. That is only [**`milestone N done`**](#user-commands-shortcuts). `mosaic done` is wrap-up, not a milestone gate.
 4. **Handoff** — bullet list of open follow-ups for the next session (from conversation, not a full todo re-read).
 5. **Report** — short structured reply only; no waiting for approval.
 
@@ -90,6 +88,7 @@ If the session was Q&A only with no edits, steps 2–3 are “N/A” — one-lin
 | [FileStore](filestore.md) | Originals I/O: virtual paths, LocalFileStore, walk/scan (**v1 done**) |
 | [FileStore later](filestore-later.md) | BYO Drive/OneDrive/iCloud — **not a milestone** |
 | [Process](process.md) | API-first loop, git, QPKG / standalone |
+| [Naming](naming.md) | Product string, data dirs, env keys, branches, packages |
 | [Roadmap](roadmap.md) | Ordered milestones; old Phase 0–9 plan in [roadmap-archive.md](roadmap-archive.md) |
 | [Status](status.md) | **Agent onboarding** — current milestone, next step, constraints |
 | [Progress](progress.md) | Hub — status, todo, archive |
