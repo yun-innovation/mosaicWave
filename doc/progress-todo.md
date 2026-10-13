@@ -9,6 +9,6 @@ Open items only. Roadmap: ordered milestones in [roadmap.md](roadmap.md). The ea
 - [x] **Milestone 1** — AI rules + doc structure: thin `doc/naming.md`; always-on `docs-before-code.mdc`; `index.md` at session start; process/status use milestones — **done**
 - [ ] Install the `v0.1.1` MSI on a test PC; sideload the x86_64 QPKG on a QTS 5 NAS (**milestone 2**)
 - [ ] Linux tarball unpack tested on a real Linux/macOS host (**milestone 2**)
-- [ ] Commit the Next 16 `tsconfig.json` / `next-env.d.ts` changes (or discard them)
+- [x] Commit Next 16 web config: `tsconfig.json` / `next-env.d.ts`; `proxyClientMaxBodySize`; `output: export` only in production so `next dev` rewrites stay clean
 - [ ] Backup / restore / export (library archive of SQLite + FileStore + thumbs; not sync JSON) (**milestone 3**)
 - [ ] ARM64 QPKG sideload on a QTS 5 ARM64 NAS (**milestone 4**)
