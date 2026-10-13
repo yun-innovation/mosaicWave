@@ -52,15 +52,18 @@ flowchart LR
 ## Git and review
 
 - **Never work on `main`.** It is protected and always releasable. `git switch main`, `git pull`, then `git switch -c <type>/<topic>` **before** editing.
-- **Branch names:** `feature/<topic>`, `fix/<topic>`, `docs/<topic>`. Dependabot branches keep their own names.
-- **Merge via PR on GitHub:** push the branch, open a PR against `main`, **Squash and merge**, delete the branch, then `git pull` on `main`. History stays linear.
+- **Branch names:** `feature/<topic>`, `fix/<topic>`, `docs/<topic>`, `build/<topic>`. Dependabot branches keep their own names.
+- **Bulk ship (default):** stay on one topic branch; **commit locally**. Do **not** push or open a PR after every small edit. Owner commands:
+  - **`push`** — upload the branch only.
+  - **`PR`** / **`ship`** / **`bulk ship`** — push (if needed) and open **one** PR for the whole branch (all local commits since `main`). Prefer GitHub CLI `gh pr create` when available and logged in; otherwise use the GitHub web “open a pull request” link.
+- **Merge via PR on GitHub:** **Squash and merge**, delete the branch, then `git pull` on `main`. History stays linear.
 - **No CI yet:** before merging, run `pytest` in `src/server` and `npm run build` in `src/web` by hand. This also applies to Dependabot PRs.
 - **Commit messages:** Conventional Commits (`feat:`, `fix:`, `docs:`, `chore:`, `build:`, `test:`), imperative, summary under 72 characters. Focus on **why** (e.g. `feat: add cursor pagination so the timeline can scroll`).
 - **Identity:** commit with the GitHub no-reply address (`git config user.email`), because GitHub blocks pushes that expose a private email.
 - **Milestones:** only the owner's `milestone N done` message marks a milestone. A commit message never does. Wrap-up (`mosaic done`) is not a gate.
 - **Tags and releases:** `vMAJOR.MINOR.PATCH`, protected. Build installers from a clean checkout of the tag and attach them to a GitHub Release. No binaries in git.
 - Commit when asked or at a coherent checkpoint; do not commit secrets (`.env`, NAS passwords, certificates).
-- Prefer small PRs: API slice, then UI slice, rather than a giant QPKG dump.
+- Prefer small PRs: API slice, then UI slice, rather than a giant QPKG dump. Agent rule: [`.cursor/rules/bulk-ship.mdc`](../.cursor/rules/bulk-ship.mdc).
 
 ## Versioning
 
@@ -130,6 +133,7 @@ When we reverse a decision in these docs, add a one-line note here.
 | 2026-08-28 | Agent onboarding via `doc/index.md` + always-on `mosaicwave-status.mdc`; wrap-up is `mosaic done` |
 | 2026-09-02 | Phase complete only on **`phase N done`**. `mosaic done` is wrap-up, not a phase gate |
 | 2026-10-12 | Gate language switched to **`milestone N done`** (roadmap is ordered milestones). Thin `doc/naming.md` added |
+| 2026-10-13 | Bulk ship: local commits on one topic branch; push/PR only on owner **`push`** / **`ship`** / **`bulk ship`** (prefer `gh pr create`) |
 | 2026-09-02 | Phase 3 is job workflow/audit (`workflow.md`). Gallery is Phase 4. Sync HTTP is Phase 7 |
 | 2026-08-29 | NAS identity is QNAP accounts; FastAPI checks QTS/QNAP then issues `/api/v1` session |
 | 2026-08-29 | Google Takeout import is Phase 2 (sample SQLite); not deferred to Phase 7 |
