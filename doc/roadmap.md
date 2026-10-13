@@ -29,8 +29,6 @@ A multi-platform photo/video library: Python API, static web UI, one `/api/v1`. 
 
 - Packaged macOS: a Save-folder SMB mount can be torn down by macOS ([smb-paths.md](smb-paths.md))
 - Idea, not scheduled: the user's own cloud drive as a FileStore backend ([filestore-later.md](filestore-later.md))
-- Next 16 `tsconfig.json` / `next-env.d.ts` local drift (commit or discard)
-
 ## Intentionally later or never
 
 - Full Next.js Node runtime as the product

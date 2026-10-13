@@ -126,6 +126,7 @@ Dated milestones and decisions. Day-to-day process notes: [process.md](process.m
 | 2026-10-12 | Milestone | GitHub pre-release `v0.1.1` published (MSI, QPKG x86_64, posix tarball, `SHA256SUMS.txt`). Roadmap rebuilt as ordered milestones 1–4 (AI rules/docs → packaging verify → backup/export → ARM64 QPKG). Agent onboarding switched from phases to milestones; session start **must** read `doc/index.md` before code |
 | 2026-10-12 | Docs | Milestone 1 deliverables: thin `doc/naming.md`; always-on `.cursor/rules/docs-before-code.mdc`; deduped `no-personal-info.mdc`; `process.md` gate → `milestone N done`; GitHub as daily remote |
 | 2026-10-13 | Milestone | **Milestone 1 — done** (AI rules + doc structure). Next is milestone 2 — packaging verify |
+| 2026-10-13 | Fix | Next 16 web config: commit `tsconfig` / `next-env.d.ts`; `proxyClientMaxBodySize` (replaces deprecated `middlewareClientMaxBodySize`); `output: export` only when `NODE_ENV=production` so `next dev` rewrites do not warn |
 
 
 ---
