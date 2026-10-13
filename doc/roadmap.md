@@ -23,7 +23,7 @@ A multi-platform photo/video library: Python API, static web UI, one `/api/v1`. 
 | **3** | Backup / restore / export | Library archive of SQLite + FileStore + thumbs (not sync JSON) |
 | **4** | ARM64 QPKG | Sideload on a QTS 5 ARM64 NAS |
 
-**Current:** milestone **1** (deliverables shipped; owner says **`milestone 1 done`** to advance).
+**Current:** milestone **2** (milestone **1** done).
 
 ## Known open items (not a milestone yet)
 

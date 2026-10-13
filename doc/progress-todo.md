@@ -6,7 +6,7 @@ Open items only. Roadmap: ordered milestones in [roadmap.md](roadmap.md). The ea
 - [x] Release `v0.1.1`: `main` checked, tag pushed, MSI / QPKG x86_64 / tarball built from a clean clone of the tag, SHA-256 sums (`v0.1.0` is a tag only)
 - [x] Publish the GitHub pre-release for `v0.1.1` (upload the three packages and `SHA256SUMS.txt`)
 - [x] Write the branch / commit policy into `doc/process.md`
-- [x] **Milestone 1** — AI rules + doc structure: thin `doc/naming.md`; always-on `docs-before-code.mdc`; `index.md` at session start; process/status use milestones (say **`milestone 1 done`** to advance)
+- [x] **Milestone 1** — AI rules + doc structure: thin `doc/naming.md`; always-on `docs-before-code.mdc`; `index.md` at session start; process/status use milestones — **done**
 - [ ] Install the `v0.1.1` MSI on a test PC; sideload the x86_64 QPKG on a QTS 5 NAS (**milestone 2**)
 - [ ] Linux tarball unpack tested on a real Linux/macOS host (**milestone 2**)
 - [ ] Commit the Next 16 `tsconfig.json` / `next-env.d.ts` changes (or discard them)

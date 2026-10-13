@@ -1,6 +1,6 @@
 # Status
 
-**Updated:** 2026-10-12  
+**Updated:** 2026-10-13  
 **Keep in sync with:** [`.cursor/rules/mosaicwave-status.mdc`](../.cursor/rules/mosaicwave-status.mdc) (same date, same next step).
 
 Short onboarding snapshot for agents. **Session start:** always read [index.md](index.md) first (For AI Agents + Planning). Names: [naming.md](naming.md).
@@ -9,11 +9,11 @@ Short onboarding snapshot for agents. **Session start:** always read [index.md](
 
 **v0.1.1 published** (GitHub pre-release with MSI, QPKG x86_64, posix tarball, `SHA256SUMS.txt`). Repo: https://github.com/yun-innovation/mosaicWave. License FSL-1.1-Apache-2.0. Never work on `main`: branch, push, PR, squash-merge ([process.md](process.md)). Roadmap uses **ordered milestones** ([roadmap.md](roadmap.md)); old Phase 0–9 plan: [roadmap-archive.md](roadmap-archive.md).
 
-**Milestone 1 deliverables are in tree** (`naming.md`, `docs-before-code.mdc`, milestone gate language). Not closed until the owner says **`milestone 1 done`**.
+**Milestone 1 — done** (AI rules + doc structure: `naming.md`, `docs-before-code.mdc`, milestone gate language).
 
 ## Next
 
-Say **`milestone 1 done`** to close milestone 1 and move Next to **Milestone 2 — packaging verify** (MSI test PC, QPKG x86_64 sideload, Linux/macOS tarball unpack).
+**Milestone 2 — packaging verify:** install the `v0.1.1` MSI on a test PC; sideload the x86_64 QPKG on a QTS 5 NAS; unpack the Linux/macOS tarball on a real host.
 
 ## Constraints
 
