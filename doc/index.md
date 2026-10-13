@@ -20,6 +20,8 @@ Human summary: [README.md](README.md).
 | **`mosaic index`** | Re-skim **Planning** below (already required at session start) |
 | **`mosaic done`** | Session wrap-up — run [§ mosaic done](#mosaic-done--session-wrap-up); **no cold-read** of roadmap/architecture/archive. **Does not** mark a milestone complete |
 | **`milestone N done`** | Only then write **Milestone N — done** in status + the always-on rule, archive a milestone-complete row, and move **Next** to milestone N+1 |
+| **`push`** | Upload the current topic branch only (`git push -u origin HEAD`). No PR unless also asked |
+| **`PR`** / **`ship`** / **`bulk ship`** | Push if needed; open **one** PR for the whole branch (prefer `gh pr create`). See [process.md](process.md) and `.cursor/rules/bulk-ship.mdc` |
 | **`read index.md`** | Treat as **`mosaic index`** |
 
 > **Mandatory onboarding — run automatically** when the user says **`mosaic`**, **`mosaic status`**, **`mosaic index`**, or work is clearly mosaicWave: read this file, then the status rule.

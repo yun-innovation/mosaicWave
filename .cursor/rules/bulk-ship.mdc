@@ -1,0 +1,29 @@
+---
+description: Local commits on one topic branch; push and open a PR only when the user asks.
+alwaysApply: true
+---
+
+# Bulk ship (git / PR)
+
+Do **not** push or open a PR after every edit. That is noisy.
+
+## Default while working
+
+1. One branch per **topic** (or one session branch): `docs/…`, `fix/…`, `feature/…`, `build/…`. Never commit on `main`.
+2. Edit and **commit locally** as needed.
+3. **No `git push`.** **No PR URL.** **No `gh pr create`.**
+
+## When the user ships
+
+| User says | Agent does |
+| --- | --- |
+| **`push`** | `git push -u origin HEAD` only. Report the remote branch. Do not open a PR unless they also asked. |
+| **`PR`** / **`ship`** / **`bulk ship`** | Push if needed, then open **one** PR for all commits on this branch since `main` (prefer `gh pr create` when `gh` is on PATH and authenticated; otherwise the GitHub “Compare & pull request” / `pull/new/<branch>` link). Return the PR URL. |
+
+`bulk ship` means the same as `ship`: one push + one PR covering the whole branch, not one PR per commit.
+
+## Do not
+
+- Create a new branch for every tiny follow-up on the same topic — keep committing on the open topic branch.
+- Squash-merge or delete remote branches unless the user asks.
+- Treat **`go`** (plan approval) as permission to push or open a PR.
