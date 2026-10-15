@@ -128,6 +128,9 @@ Dated milestones and decisions. Day-to-day process notes: [process.md](process.m
 | 2026-10-13 | Milestone | **Milestone 1 — done** (AI rules + doc structure). Next is milestone 2 — packaging verify |
 | 2026-10-13 | Fix | Next 16 web config: commit `tsconfig` / `next-env.d.ts`; `proxyClientMaxBodySize` (replaces deprecated `middlewareClientMaxBodySize`); `output: export` only when `NODE_ENV=production` so `next dev` rewrites do not warn |
 | 2026-10-13 | Decision | Bulk ship workflow: local commits on one topic branch; agent pushes / opens a PR only on **`push`** / **`ship`** / **`bulk ship`** (`.cursor/rules/bulk-ship.mdc`) |
+| 2026-10-16 | Fix | Posix `mosaicWave.sh`: `ensurepip` before pip (Debian/Ubuntu venvs often lack pip); document `python3-venv` / `python3-pip` |
+| 2026-10-16 | Milestone | Linux posix tarball verified on Ubuntu (`yun-stg01`): unpack, `install.sh`, start after host `python3-venv` / `python3-pip` |
+| 2026-10-16 | Fix | Posix `mosaicWave.sh`: honour `MOSAICWAVE_HOST` for uvicorn bind (default `127.0.0.1`) |
 
 
 ---

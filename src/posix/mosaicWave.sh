@@ -98,6 +98,34 @@ web_port() {
     esac
 }
 
+# uvicorn --host. Default loopback. Set MOSAICWAVE_HOST=0.0.0.0 for all interfaces
+# (prefer a reverse proxy + TLS on a public host — see doc/qpkg.md).
+bind_host() {
+    h=$(printf '%s' "${MOSAICWAVE_HOST:-127.0.0.1}" | tr -d ' \t\r\n')
+    case "${h}" in
+        "")
+            echo "127.0.0.1"
+            ;;
+        *)
+            echo "${h}"
+            ;;
+    esac
+}
+
+# URL shown in start messages (0.0.0.0 is not a browser address).
+listen_url() {
+    h=$(bind_host)
+    p=$(web_port)
+    case "${h}" in
+        0.0.0.0|::|"[::]")
+            echo "http://<this-host>:${p}/ (bound ${h})"
+            ;;
+        *)
+            echo "http://${h}:${p}/"
+            ;;
+    esac
+}
+
 python_ok() {
     [ -x "$1" ] || return 1
     "$1" -c "import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)" 2>/dev/null
@@ -133,6 +161,13 @@ ensure_venv() {
     VPY="${VENV}/bin/python"
     if ! "${VPY}" -c "import uvicorn" 2>/dev/null; then
         mw_log "Installing Python deps (pip)"
+        # Debian/Ubuntu venvs often lack pip until ensurepip runs (same as QPKG start).
+        "${VPY}" -m ensurepip --upgrade >> "${LOG_FILE}" 2>&1 || true
+        if ! "${VPY}" -m pip --version >> "${LOG_FILE}" 2>&1; then
+            mw_log "venv has no pip. On Debian/Ubuntu: sudo apt-get install -y python3-venv python3-pip"
+            mw_log "Then: rm -rf ${VENV} && $0 start. See ${LOG_FILE}"
+            return 1
+        fi
         "${VPY}" -m pip install --upgrade pip >> "${LOG_FILE}" 2>&1 || return 1
         "${VPY}" -m pip install --prefer-binary -r "${ROOT}/requirements.txt" >> "${LOG_FILE}" 2>&1 || {
             mw_log "pip install failed (need HTTPS to PyPI). See ${LOG_FILE}"
@@ -267,7 +302,7 @@ cmd_run() {
     fi
     echo $$ > "${PID_FILE}"
     cd "${ROOT}/server"
-    exec "${VENV}/bin/python" -m uvicorn mosaicwave.main:app --host 127.0.0.1 --port "${MOSAICWAVE_PORT}"
+    exec "${VENV}/bin/python" -m uvicorn mosaicwave.main:app --host "$(bind_host)" --port "${MOSAICWAVE_PORT}"
 }
 
 cmd_start() {
@@ -286,11 +321,11 @@ cmd_start() {
         if ! launchctl bootstrap system "${LAUNCHD_PLIST}" >/dev/null 2>&1; then
             launchctl load -w "${LAUNCHD_PLIST}" >/dev/null 2>&1 || true
         fi
-        echo "${NAME} started (LaunchDaemon) on http://127.0.0.1:${MOSAICWAVE_PORT}/"
+        echo "${NAME} started (LaunchDaemon) on $(listen_url)"
         return 0
     fi
     if is_running; then
-        echo "${NAME} already running on http://127.0.0.1:$(web_port)/  data ${BOOT}"
+        echo "${NAME} already running on $(listen_url)  data ${BOOT}"
         return 0
     fi
     need_boot_write
@@ -299,10 +334,10 @@ cmd_start() {
     mkdir -p "${BOOT}"
     echo "${MOSAICWAVE_PORT}" > "${PORT_FILE}"
     cd "${ROOT}/server"
-    nohup "${VENV}/bin/python" -m uvicorn mosaicwave.main:app --host 127.0.0.1 --port "${MOSAICWAVE_PORT}" \
+    nohup "${VENV}/bin/python" -m uvicorn mosaicwave.main:app --host "$(bind_host)" --port "${MOSAICWAVE_PORT}" \
         >> "${LOG_FILE}" 2>&1 &
     echo $! > "${PID_FILE}"
-    echo "${NAME} started on http://127.0.0.1:${MOSAICWAVE_PORT}/ (pid $(cat "${PID_FILE}"))"
+    echo "${NAME} started on $(listen_url) (pid $(cat "${PID_FILE}"))"
 }
 
 cmd_stop() {
