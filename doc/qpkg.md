@@ -73,7 +73,7 @@ First service start creates a venv in `%PROGRAMDATA%\mosaicWave\runtime` (not Pr
 
 ### Linux and macOS (`publish-posix` / `pack-posix`)
 
-Same one-process app as the MSI: static web + uvicorn, `platform=standalone`. Python **3.10+** is a host dependency (venv under the data dir `runtime/`, not inside the app prefix). Uninstall does **not** delete the library.
+Same one-process app as the MSI: static web + uvicorn, `platform=standalone`. Python **3.10+** is a host dependency (venv under the data dir `runtime/`, not inside the app prefix). On Debian/Ubuntu also install **`python3-venv`** and **`python3-pip`** so the first start can bootstrap pip (`ensurepip`). Uninstall does **not** delete the library.
 
 From the repo root:
 
@@ -84,13 +84,15 @@ From the repo root:
 
 Same as `publish-posix.cmd` / `pack-posix.cmd`. On Linux/macOS: `sh scripts/publish-posix.sh` then `sh scripts/pack-posix.sh`. Output: `dist/posix/mosaicWave_0.1.1_posix.tar.gz`. Node.js is a **build host** dependency (`npm install` in `src/web` when `node_modules` is missing); the install target does not need Node.
 
-On the target (Python 3.10+ on PATH):
+On the target (Python 3.10+ on PATH; Debian/Ubuntu: `python3-venv` + `python3-pip`):
 
 ```sh
 tar xf mosaicWave_0.1.1_posix.tar.gz
 cd mosaicWave
-sudo sh install.sh
+sh install.sh
 ```
+
+First `mosaicWave start` creates the venv and `pip install`s (needs HTTPS to PyPI). Log: `~/.local/share/mosaicWave/mosaicWave.log` (Linux) or `/Library/Application Support/mosaicWave/mosaicWave.log` (macOS packaged). If the log says the venv has no pip, install the host packages above, `rm -rf` that data dir’s `runtime/venv`, and start again.
 
 **macOS** (like the Windows MSI): app in `/Applications/mosaicWave.app`, library in `/Library/Application Support/mosaicWave` (machine-wide, same role as `%PROGRAMDATA%`). Local debug (`sudo sh scripts/start.sh`) uses `/Library/Application Support/mosaicWave-dev` (same parent, `-dev` suffix) with the API as **root** so Save folder can mount `/Volumes`. First debug start creates that data folder (`root:admin` `2775`). `sudo sh install.sh` installs a **LaunchDaemon** (disable with `--no-launchd`). After install, open http://127.0.0.1:8090/ — do not run `mosaicWave.sh start` as a normal user (that folder is root-owned). Manual start: `sudo /Applications/mosaicWave.app/mosaicWave.sh start`. If you already had a library under `~/Library/Application Support/mosaicWave`, that first sudo install copies it into the machine-wide folder. Python **3.10+** on PATH. Uninstall does **not** delete the library: `sudo sh /Applications/mosaicWave.app/uninstall.sh`. Settings and Browse `smb://` / UNC: [smb-paths.md](smb-paths.md). The service mounts its own `/Volumes/mosaicWave-…` (a second SMB session). First Save folder: `//user:pass@HOST/share` (escaped) → nsmb.conf `[HOST]` + System keychain → remount `//HOST/share` → write-probe the library folder. Store `smb://server/share/folder` with no `user@`.
 

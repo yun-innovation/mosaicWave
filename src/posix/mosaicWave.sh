@@ -133,6 +133,13 @@ ensure_venv() {
     VPY="${VENV}/bin/python"
     if ! "${VPY}" -c "import uvicorn" 2>/dev/null; then
         mw_log "Installing Python deps (pip)"
+        # Debian/Ubuntu venvs often lack pip until ensurepip runs (same as QPKG start).
+        "${VPY}" -m ensurepip --upgrade >> "${LOG_FILE}" 2>&1 || true
+        if ! "${VPY}" -m pip --version >> "${LOG_FILE}" 2>&1; then
+            mw_log "venv has no pip. On Debian/Ubuntu: sudo apt-get install -y python3-venv python3-pip"
+            mw_log "Then: rm -rf ${VENV} && $0 start. See ${LOG_FILE}"
+            return 1
+        fi
         "${VPY}" -m pip install --upgrade pip >> "${LOG_FILE}" 2>&1 || return 1
         "${VPY}" -m pip install --prefer-binary -r "${ROOT}/requirements.txt" >> "${LOG_FILE}" 2>&1 || {
             mw_log "pip install failed (need HTTPS to PyPI). See ${LOG_FILE}"
