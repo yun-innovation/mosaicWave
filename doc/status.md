@@ -9,11 +9,11 @@ Short onboarding snapshot for agents. **Session start:** always read [index.md](
 
 **v0.1.1 published** (GitHub pre-release with MSI, QPKG x86_64, posix tarball, `SHA256SUMS.txt`). Repo: https://github.com/yun-innovation/mosaicWave. License FSL-1.1-Apache-2.0. Never work on `main`: branch, push, PR, squash-merge ([process.md](process.md)). Roadmap uses **ordered milestones** ([roadmap.md](roadmap.md)); old Phase 0–9 plan: [roadmap-archive.md](roadmap-archive.md).
 
-**Milestone 1 — done.** **Milestone 2 — done** (packaging verify: MSI, QPKG x86_64, Linux + macOS posix tarballs). ARM64 QPKG remains milestone 4.
+**Milestone 1 — done.** **Milestone 2 — done** (packaging verify: MSI, QPKG x86_64, Linux + macOS posix tarballs).
 
 ## Next
 
-**Milestone 3 — backup import/export** (library archive of SQLite + FileStore + thumbs; not sync JSON). Then milestone 4 ARM64 QPKG, 5 i18n/l10n, 6 advanced UI (top bar and sidebar).
+**Milestone 3 — i18n and l10n.** Then milestone 4 advanced UI (top bar and sidebar), 5 backup / restore / export, 6 ARM64 QPKG.
 
 ## Constraints
 

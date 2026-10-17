@@ -133,7 +133,7 @@ Dated milestones and decisions. Day-to-day process notes: [process.md](process.m
 | 2026-10-16 | Fix | Posix `mosaicWave.sh`: honour `MOSAICWAVE_HOST` for uvicorn bind (default `127.0.0.1`) |
 | 2026-10-17 | Milestone | Milestone 2 packaging verify deliverables complete: MSI, QPKG x86_64, Linux + macOS posix tarballs. ARM64 QPKG remains milestone 4 |
 | 2026-10-17 | Milestone | **Milestone 2 — done** (packaging verify). Next is milestone 3 — backup / restore / export |
-| 2026-10-18 | Decision | Milestone list: 3 backup import/export, 4 ARM64 QPKG, 5 i18n/l10n, 6 advanced UI (top bar and sidebar) |
+| 2026-10-18 | Decision | Milestone order: 3 i18n/l10n, 4 advanced UI (top bar and sidebar), 5 backup / restore / export, 6 ARM64 QPKG |
 
 
 ---
