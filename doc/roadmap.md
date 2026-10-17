@@ -20,8 +20,10 @@ A multi-platform photo/video library: Python API, static web UI, one `/api/v1`. 
 | --- | --- | --- |
 | **1** | AI rules + doc structure | Always-on rules force `index.md` at session start and docs-before-code; thin [naming.md](naming.md); status/index use milestones (not phases); status **Next** is one task |
 | **2** | Packaging verify | MSI installed on a test PC; QPKG x86_64 sideloaded on QTS 5; Linux/macOS tarball unpacked on a real host — **done** |
-| **3** | Backup / restore / export | Library archive of SQLite + FileStore + thumbs (not sync JSON) |
+| **3** | Backup import/export | Library archive import and export (SQLite + FileStore + thumbs; not sync JSON) |
 | **4** | ARM64 QPKG | Sideload on a QTS 5 ARM64 NAS (only packaging test still open) |
+| **5** | i18n and l10n | UI and user-facing strings can be translated; at least one locale besides the default |
+| **6** | Advanced UI | Immich-style chrome: top bar and sidebar (not wrapping Immich) |
 
 **Current:** milestone **3** (milestones **1**–**2** done).
 
@@ -29,6 +31,7 @@ A multi-platform photo/video library: Python API, static web UI, one `/api/v1`. 
 
 - Packaged macOS: a Save-folder SMB mount can be torn down by macOS ([smb-paths.md](smb-paths.md))
 - Idea, not scheduled: the user's own cloud drive as a FileStore backend ([filestore-later.md](filestore-later.md))
+
 ## Intentionally later or never
 
 - Full Next.js Node runtime as the product

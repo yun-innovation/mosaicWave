@@ -1,6 +1,6 @@
 # Status
 
-**Updated:** 2026-10-17  
+**Updated:** 2026-10-18  
 **Keep in sync with:** [`.cursor/rules/mosaicwave-status.mdc`](../.cursor/rules/mosaicwave-status.mdc) (same date, same next step).
 
 Short onboarding snapshot for agents. **Session start:** always read [index.md](index.md) first (For AI Agents + Planning). Names: [naming.md](naming.md).
@@ -13,7 +13,7 @@ Short onboarding snapshot for agents. **Session start:** always read [index.md](
 
 ## Next
 
-**Milestone 3 — backup / restore / export** (library archive of SQLite + FileStore + thumbs; not sync JSON). Milestone 4: ARM64 QPKG when a QTS 5 ARM64 NAS is available.
+**Milestone 3 — backup import/export** (library archive of SQLite + FileStore + thumbs; not sync JSON). Then milestone 4 ARM64 QPKG, 5 i18n/l10n, 6 advanced UI (top bar and sidebar).
 
 ## Constraints
 
