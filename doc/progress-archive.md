@@ -131,6 +131,7 @@ Dated milestones and decisions. Day-to-day process notes: [process.md](process.m
 | 2026-10-16 | Fix | Posix `mosaicWave.sh`: `ensurepip` before pip (Debian/Ubuntu venvs often lack pip); document `python3-venv` / `python3-pip` |
 | 2026-10-16 | Milestone | Linux posix tarball verified on Ubuntu (`yun-stg01`): unpack, `install.sh`, start after host `python3-venv` / `python3-pip` |
 | 2026-10-16 | Fix | Posix `mosaicWave.sh`: honour `MOSAICWAVE_HOST` for uvicorn bind (default `127.0.0.1`) |
+| 2026-10-17 | Milestone | Milestone 2 packaging verify deliverables complete: MSI, QPKG x86_64, Linux + macOS posix tarballs. ARM64 QPKG remains milestone 4 |
 
 
 ---
