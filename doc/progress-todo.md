@@ -7,8 +7,9 @@ Open items only. Roadmap: ordered milestones in [roadmap.md](roadmap.md). The ea
 - [x] Publish the GitHub pre-release for `v0.1.1` (upload the three packages and `SHA256SUMS.txt`)
 - [x] Write the branch / commit policy into `doc/process.md`
 - [x] **Milestone 1** — AI rules + doc structure: thin `doc/naming.md`; always-on `docs-before-code.mdc`; `index.md` at session start; process/status use milestones — **done**
-- [ ] Install the `v0.1.1` MSI on a test PC; sideload the x86_64 QPKG on a QTS 5 NAS (**milestone 2**)
-- [x] Linux tarball unpack tested on Ubuntu (`yun-stg01`): install + start; needed `python3-venv` / `python3-pip` (**milestone 2**; macOS tarball still untested here)
+- [x] **Milestone 2** — packaging verify: MSI, QPKG x86_64, Linux + macOS posix tarballs — **done**
 - [x] Commit Next 16 web config: `tsconfig.json` / `next-env.d.ts`; `proxyClientMaxBodySize`; `output: export` only in production so `next dev` rewrites stay clean
-- [ ] Backup / restore / export (library archive of SQLite + FileStore + thumbs; not sync JSON) (**milestone 3**)
-- [ ] ARM64 QPKG sideload on a QTS 5 ARM64 NAS (**milestone 4**)
+- [ ] i18n and l10n (**milestone 3**)
+- [ ] Advanced UI: top bar and sidebar (**milestone 4**)
+- [ ] Backup / restore / export (library archive of SQLite + FileStore + thumbs; not sync JSON) (**milestone 5**)
+- [ ] ARM64 QPKG sideload on a QTS 5 ARM64 NAS (**milestone 6**)

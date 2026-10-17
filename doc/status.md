@@ -1,6 +1,6 @@
 # Status
 
-**Updated:** 2026-10-16  
+**Updated:** 2026-10-18  
 **Keep in sync with:** [`.cursor/rules/mosaicwave-status.mdc`](../.cursor/rules/mosaicwave-status.mdc) (same date, same next step).
 
 Short onboarding snapshot for agents. **Session start:** always read [index.md](index.md) first (For AI Agents + Planning). Names: [naming.md](naming.md).
@@ -9,11 +9,11 @@ Short onboarding snapshot for agents. **Session start:** always read [index.md](
 
 **v0.1.1 published** (GitHub pre-release with MSI, QPKG x86_64, posix tarball, `SHA256SUMS.txt`). Repo: https://github.com/yun-innovation/mosaicWave. License FSL-1.1-Apache-2.0. Never work on `main`: branch, push, PR, squash-merge ([process.md](process.md)). Roadmap uses **ordered milestones** ([roadmap.md](roadmap.md)); old Phase 0–9 plan: [roadmap-archive.md](roadmap-archive.md).
 
-**Milestone 1 — done.** Milestone 2 in progress: Linux posix tarball OK on Ubuntu (`yun-stg01`).
+**Milestone 1 — done.** **Milestone 2 — done** (packaging verify: MSI, QPKG x86_64, Linux + macOS posix tarballs).
 
 ## Next
 
-**Milestone 2 — packaging verify (remaining):** install the `v0.1.1` MSI on a test PC; sideload the x86_64 QPKG on a QTS 5 NAS. (Linux tarball done; macOS unpack still open.)
+**Milestone 3 — i18n and l10n.** Then milestone 4 advanced UI (top bar and sidebar), 5 backup / restore / export, 6 ARM64 QPKG.
 
 ## Constraints
 
