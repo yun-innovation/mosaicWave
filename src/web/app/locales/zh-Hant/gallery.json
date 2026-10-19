@@ -1,0 +1,46 @@
+{
+  "title": "相片庫",
+  "tab": {
+    "timeline": "時間軸",
+    "albums": "相簿"
+  },
+  "deleteAlbum": "刪除相簿",
+  "generateThumbs": "產生縮圖",
+  "album": {
+    "newPlaceholder": "新相簿名稱",
+    "create": "建立相簿",
+    "loading": "正在載入相簿…",
+    "empty": "尚無相簿。Takeout 的資料夾會成為相簿，你也可以在這裡建立。",
+    "noCover": "沒有封面",
+    "caption": "{{name}} · {{count, number}}",
+    "createFirst": "請先建立相簿。",
+    "fallbackName": "相簿",
+    "alreadyIn": "已在「{{name}}」中",
+    "addedTo": "已加入「{{name}}」"
+  },
+  "upload": {
+    "sourceLabel": "上傳目的地",
+    "yourLibrary": "你的相片庫",
+    "shared": "共享",
+    "sourceOption_other": "{{owner}} · {{count, number}} 個項目",
+    "submit": "上傳"
+  },
+  "loadingLibrary": "正在載入相片庫…",
+  "emptyAlbum": "這本相簿是空的。開啟一張相片，再按「加入相簿」。",
+  "emptyLibrary": "相片庫是空的。匯入 Takeout 資料夾來建立 SQLite 資料庫。",
+  "loadMore": "載入更多",
+  "detail": {
+    "download": "下載原始檔",
+    "albumLabel": "相簿",
+    "addToAlbum": "加入相簿",
+    "removeFromAlbum": "從相簿移除"
+  },
+  "video": {
+    "play": "播放",
+    "pause": "暫停",
+    "back": "倒退 10 秒",
+    "forward": "快轉 10 秒",
+    "position": "播放位置",
+    "cannotPlay": "這個瀏覽器無法播放此影片。"
+  }
+}

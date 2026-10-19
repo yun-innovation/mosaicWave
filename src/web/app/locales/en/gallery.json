@@ -1,0 +1,47 @@
+{
+  "title": "Library",
+  "tab": {
+    "timeline": "Timeline",
+    "albums": "Albums"
+  },
+  "deleteAlbum": "Delete album",
+  "generateThumbs": "Generate thumbs",
+  "album": {
+    "newPlaceholder": "New album name",
+    "create": "Create album",
+    "loading": "Loading albums…",
+    "empty": "No albums yet. Takeout folders become albums; you can also create one here.",
+    "noCover": "No cover",
+    "caption": "{{name}} · {{count, number}}",
+    "createFirst": "Create an album first.",
+    "fallbackName": "album",
+    "alreadyIn": "Already in {{name}}",
+    "addedTo": "Added to {{name}}"
+  },
+  "upload": {
+    "sourceLabel": "Upload source",
+    "yourLibrary": "Your library",
+    "shared": "Shared",
+    "sourceOption_one": "{{owner}} · {{count, number}} asset",
+    "sourceOption_other": "{{owner}} · {{count, number}} assets",
+    "submit": "Upload"
+  },
+  "loadingLibrary": "Loading library…",
+  "emptyAlbum": "This album is empty. Open a photo and use Add to album.",
+  "emptyLibrary": "Empty library. Import a Takeout folder to seed SQLite.",
+  "loadMore": "Load more",
+  "detail": {
+    "download": "Download original",
+    "albumLabel": "Album",
+    "addToAlbum": "Add to album",
+    "removeFromAlbum": "Remove from album"
+  },
+  "video": {
+    "play": "Play",
+    "pause": "Pause",
+    "back": "Back 10 seconds",
+    "forward": "Forward 10 seconds",
+    "position": "Position",
+    "cannotPlay": "This clip cannot play in this browser."
+  }
+}

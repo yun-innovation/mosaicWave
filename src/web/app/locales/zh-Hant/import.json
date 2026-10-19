@@ -1,0 +1,74 @@
+{
+  "title": "Takeout 匯出檔",
+  "intro": "伺服器資料夾：由 API 讀取這台 NAS 或電腦上的路徑。這部裝置：由瀏覽器或手機上傳檔案（包括在「檔案」App 中開啟的雲端資料夾）。mosaicWave 不會登入 Drive 或 iCloud。所有上傳的檔案都會放在相片庫的 tmp 資料夾。",
+  "from": {
+    "server": "在這台伺服器上",
+    "device": "在這部裝置上"
+  },
+  "serverPath": {
+    "label": "這台 NAS 或電腦上的資料夾",
+    "placeholder": "/share/…/Takeout（zip 檔；匯入後可刪除）",
+    "pickerTitle": "選擇伺服器上的 Takeout 匯出檔"
+  },
+  "device": {
+    "label": "這部電腦或手機上的資料夾",
+    "selected_other": "已選擇 {{count, number}} 個檔案",
+    "hint": "請選擇含有 takeout-*.zip 的資料夾（或已解壓縮的 Google 相簿資料夾）。"
+  },
+  "check": "檢查資料夾",
+  "import": "匯入 Takeout",
+  "cancelUpload": "取消上傳",
+  "inspect": {
+    "ready": "可以匯入",
+    "notReady": "尚未就緒",
+    "zips_other": "{{count, number}} 個 zip 檔",
+    "importRoot": "匯入 {{path}}",
+    "albumMetadata_other": "{{count, number}} 個相簿 metadata.json",
+    "sidecars_other": "{{count, number}} 個附屬檔找不到媒體",
+    "missingSample": "缺少的媒體（範例）：{{names}}"
+  },
+  "progress": {
+    "importing": "匯入中 {{processed}} / {{total}}",
+    "thumbs": "縮圖 {{processed}} / {{total}}",
+    "importingShort": "匯入中…",
+    "generatingThumbs": "正在產生縮圖…",
+    "waitingDevice": "正在等候這部裝置的檔案（{{progress}}）。重新整理後資料夾選擇已遺失 — 請取消，或回到原本的 App 繼續。",
+    "uploading": "上傳中 {{index}} / {{total}} · {{path}}",
+    "uploadComplete": "上傳完成 · 匯入中…"
+  },
+  "result": {
+    "thumbsReady_other": "縮圖已完成（{{count, number}} 個檔案）",
+    "imported": "已匯入 {{assets}}、{{albums}}",
+    "importedFrom": "已從 {{path}} 匯入 {{assets}}、{{albums}}",
+    "assets_other": "{{count, number}} 個項目",
+    "albums_other": "{{count, number}} 本相簿",
+    "cancelled": "已取消上傳"
+  },
+  "fail": {
+    "chooseFolder": "請先在這部裝置上選擇 Takeout 資料夾",
+    "noJobId": "上傳沒有回傳工作 ID",
+    "connectionDropped": "上傳到 NAS 時與 API 的連線中斷。這次上傳無法續傳 — 請按「取消上傳」後重新開始。",
+    "check": "檢查失敗",
+    "import": "匯入失敗",
+    "thumbs": "縮圖產生失敗",
+    "upload": "上傳失敗"
+  },
+  "jobs": {
+    "title": "工作",
+    "loading": "正在載入工作…",
+    "empty": "尚無任何工作紀錄。匯入 Takeout 時會在這裡記錄。",
+    "kind": {
+      "takeout_import": "Takeout 匯入",
+      "thumb_batch": "縮圖",
+      "unknown": "工作"
+    },
+    "status": {
+      "idle": "閒置",
+      "queued": "排隊中",
+      "running": "執行中",
+      "done": "完成",
+      "error": "錯誤"
+    },
+    "thumbs_other": "{{count, number}} 張縮圖"
+  }
+}

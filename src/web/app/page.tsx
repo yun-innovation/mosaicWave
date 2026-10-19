@@ -1,13 +1,27 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { BrandLockup } from "./BrandLockup";
 import { FolderPicker } from "./FolderPicker";
 import { AuthScreen } from "./AuthScreen";
 import { SettingsPanel } from "./SettingsPanel";
 import { VideoPlayer } from "./VideoPlayer";
-import { apiFetch, apiMediaUrl, assetFileUrl, AuthStatus, Me, readDetail, Source } from "./api";
+import {
+  apiFetch,
+  apiMediaUrl,
+  assetFileUrl,
+  AuthStatus,
+  DumpWarning,
+  errorText,
+  Me,
+  readDetail,
+  Source,
+  warningText,
+} from "./api";
+import { dayKey, formatBytes, formatDate, formatDateTime, formatDay, formatMonth } from "./format";
+import i18n, { applyLocale, isLocale, rememberLocale, resolveLocale } from "./i18n";
 
 type HealthState =
   | { kind: "loading" }
@@ -21,13 +35,6 @@ type Asset = {
   mime: string | null;
   size: number;
   thumb_rev: number;
-};
-
-type DumpWarning = {
-  code: string;
-  severity: string;
-  message: string;
-  path: string | null;
 };
 
 type TakeoutInspect = {
@@ -95,35 +102,20 @@ function clientDumpPath(file: File): string {
   return parts[0] || file.name;
 }
 
-function parseStamp(value: string | null): Date | null {
-  if (!value) return null;
-  const hasTz = /Z$/i.test(value) || /[+-]\d{2}:\d{2}$/.test(value);
-  const d = new Date(hasTz ? value : `${value}Z`);
-  if (Number.isNaN(d.getTime())) return null;
-  return d;
-}
-
-function formatDate(value: string | null): string {
-  const d = parseStamp(value);
-  if (!d) return value || "unknown date";
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
-function formatJobWhen(value: string | null): string {
-  if (!value) return "";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return value;
-  return d.toISOString().slice(0, 16).replace("T", " ");
-}
-
 function jobKindLabel(kind: string | null): string {
-  if (kind === "takeout_import") return "Takeout import";
-  if (kind === "thumb_batch") return "Thumbs";
-  return kind || "job";
+  if (kind === "takeout_import") return i18n.t("import:jobs.kind.takeout_import");
+  if (kind === "thumb_batch") return i18n.t("import:jobs.kind.thumb_batch");
+  return kind || i18n.t("import:jobs.kind.unknown");
 }
+
+const JOB_STATUSES = ["idle", "queued", "running", "done", "error"] as const;
+
+function jobStatusLabel(status: string): string {
+  const known = JOB_STATUSES.find((s) => s === status);
+  return known ? i18n.t(`import:jobs.status.${known}`) : status;
+}
+
+type AlbumMessage = { text: string; ok: boolean };
 
 function isVideo(asset: Asset): boolean {
   if (asset.mime?.startsWith("video/")) return true;
@@ -143,24 +135,7 @@ function stillSrc(asset: Asset): string {
   return `/api/v1/assets/${asset.id}/file`;
 }
 
-function formatBytes(size: number): string {
-  if (size < 1024) return `${size} B`;
-  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
-  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function dayKey(value: string | null): string {
-  if (!value) return "Unknown date";
-  const formatted = formatDate(value);
-  return formatted === "unknown date" ? "Unknown date" : formatted;
-}
-
-function monthLabel(day: string): string {
-  if (day === "Unknown date" || day === "unknown date") return "Unknown date";
-  const d = new Date(`${day}T12:00:00`);
-  if (Number.isNaN(d.getTime())) return day;
-  return d.toLocaleString(undefined, { month: "long", year: "numeric" });
-}
+const UNKNOWN_DAY = "unknown";
 
 type DayGroup = { day: string; items: Asset[] };
 
@@ -168,7 +143,7 @@ function groupByDay(assets: Asset[]): DayGroup[] {
   const map = new Map<string, Asset[]>();
   const order: string[] = [];
   for (const asset of assets) {
-    const key = dayKey(asset.taken_at);
+    const key = dayKey(asset.taken_at) ?? UNKNOWN_DAY;
     if (!map.has(key)) {
       map.set(key, []);
       order.push(key);
@@ -178,21 +153,35 @@ function groupByDay(assets: Asset[]): DayGroup[] {
   return order.map((day) => ({ day, items: map.get(day)! }));
 }
 
-type TimelineBlock = { month: string | null; day: string; items: Asset[] };
+type TimelineBlock = { key: string; month: string | null; day: string; items: Asset[] };
 
 function timelineBlocks(assets: Asset[]): TimelineBlock[] {
+  const unknown = i18n.t("common:unknownDate");
   let lastMonth = "";
   return groupByDay(assets).map((group) => {
-    const month = monthLabel(group.day);
+    const known = group.day !== UNKNOWN_DAY;
+    const month = known ? formatMonth(group.day) : unknown;
     const heading = month !== lastMonth ? month : null;
     lastMonth = month;
-    return { month: heading, day: group.day, items: group.items };
+    return {
+      key: group.day,
+      month: heading,
+      day: known ? formatDay(group.day) : unknown,
+      items: group.items,
+    };
   });
 }
 
 export default function Home() {
+  const { t } = useTranslation(["gallery", "import", "common"]);
   const [health, setHealth] = useState<HealthState>({ kind: "loading" });
   const [me, setMe] = useState<Me | null>(null);
+  const savedLocale = me?.locale ?? null;
+
+  useEffect(() => {
+    if (isLocale(savedLocale)) rememberLocale(savedLocale);
+    void applyLocale(resolveLocale(savedLocale));
+  }, [savedLocale]);
   const [authReady, setAuthReady] = useState(false);
   const [needsSetup, setNeedsSetup] = useState(false);
   const [platform, setPlatform] = useState("standalone");
@@ -217,7 +206,7 @@ export default function Home() {
   const [albums, setAlbums] = useState<LibraryAlbum[] | null>(null);
   const [newAlbumName, setNewAlbumName] = useState("");
   const [addAlbumId, setAddAlbumId] = useState("");
-  const [albumMessage, setAlbumMessage] = useState<string | null>(null);
+  const [albumMessage, setAlbumMessage] = useState<AlbumMessage | null>(null);
 
   const albumId = openAlbum?.id ?? null;
 
@@ -230,7 +219,7 @@ export default function Home() {
       const res = await apiFetch(`/api/v1/assets?${qs}`, { signal });
       if (!res.ok) {
         if (!cursor) setAssets(null);
-        setListError(`HTTP ${res.status}`);
+        setListError(await readDetail(res));
         return;
       }
       const body = (await res.json()) as AssetList;
@@ -239,7 +228,7 @@ export default function Home() {
     } catch (err: unknown) {
       if (isAbortError(err)) return;
       if (!cursor) setAssets(null);
-      setListError(err instanceof Error ? err.message : "network error");
+      setListError(err instanceof Error ? err.message : i18n.t("common:networkError"));
     }
   }, [albumId]);
 
@@ -269,17 +258,22 @@ export default function Home() {
   const applyJobResult = useCallback(
     async (job: ImportJob) => {
       if (job.status === "error") {
-        setImportMessage(job.error || "import failed");
+        setImportMessage(job.error || i18n.t("import:fail.import"));
         await loadJobs();
         return;
       }
       if (job.status !== "done") return;
       if (job.kind === "thumb_batch") {
-        setImportMessage(`Thumbs ready (${job.processed} files)`);
+        setImportMessage(i18n.t("import:result.thumbsReady", { count: job.processed }));
       } else {
+        const counts = {
+          assets: i18n.t("import:result.assets", { count: job.assets }),
+          albums: i18n.t("import:result.albums", { count: job.albums }),
+        };
         setImportMessage(
-          `Imported ${job.assets} assets, ${job.albums} albums` +
-            (job.import_root ? ` from ${job.import_root}` : ""),
+          job.import_root
+            ? i18n.t("import:result.importedFrom", { ...counts, path: job.import_root })
+            : i18n.t("import:result.imported", counts),
         );
       }
       if (job.warnings.length > 0) {
@@ -315,15 +309,17 @@ export default function Home() {
           const url = jobId ? `/api/v1/jobs/${jobId}` : "/api/v1/import/takeout/status";
           const res = await apiFetch(url, { signal });
           if (!res.ok) {
-            setImportMessage(`HTTP ${res.status}`);
+            setImportMessage(await readDetail(res));
             return;
           }
           const job = (await res.json()) as ImportJob;
           if (job.status === "running") {
-            const total = job.total || "?";
-            const current = job.current ? ` · ${job.current}` : "";
-            const label = job.kind === "thumb_batch" ? "Thumbs" : "Importing";
-            setImportMessage(`${label} ${job.processed} / ${total}${current}`);
+            const values = { processed: job.processed, total: job.total || "?" };
+            const label =
+              job.kind === "thumb_batch"
+                ? i18n.t("import:progress.thumbs", values)
+                : i18n.t("import:progress.importing", values);
+            setImportMessage(job.current ? `${label} · ${job.current}` : label);
             await new Promise((r) => setTimeout(r, 500));
             continue;
           }
@@ -343,7 +339,7 @@ export default function Home() {
     fetch(apiMediaUrl("/api/v1/health"), { signal: ctrl.signal, credentials: "include" })
       .then(async (res) => {
         if (!res.ok) {
-          setHealth({ kind: "fail", message: `HTTP ${res.status}` });
+          setHealth({ kind: "fail", message: i18n.t("common:httpStatus", { status: res.status }) });
           return;
         }
         const body: unknown = await res.json();
@@ -356,11 +352,14 @@ export default function Home() {
           setHealth({ kind: "ok" });
           return;
         }
-        setHealth({ kind: "fail", message: "unexpected response" });
+        setHealth({ kind: "fail", message: i18n.t("common:health.unexpected") });
       })
       .catch((err: unknown) => {
         if (isAbortError(err)) return;
-        setHealth({ kind: "fail", message: err instanceof Error ? err.message : "network error" });
+        setHealth({
+          kind: "fail",
+          message: err instanceof Error ? err.message : i18n.t("common:networkError"),
+        });
       });
     return () => ctrl.abort("unmount");
   }, []);
@@ -439,7 +438,9 @@ export default function Home() {
         if (job.mode === "push" && job.phase === "receiving") {
           setPushJobId(job.id);
           setImportMessage(
-            `Waiting for files from this device (${job.processed}${job.total ? ` / ${job.total}` : ""}). Refresh lost the folder picker — Cancel, or continue from the same app.`,
+            i18n.t("import:progress.waitingDevice", {
+              progress: job.total ? `${job.processed} / ${job.total}` : String(job.processed),
+            }),
           );
           return;
         }
@@ -484,18 +485,14 @@ export default function Home() {
     try {
       const { res, body } = await postTakeout(importPath, true);
       if (!res.ok) {
-        const detail =
-          typeof body === "object" && body && "detail" in body
-            ? String((body as { detail: unknown }).detail)
-            : `HTTP ${res.status}`;
         setInspect(null);
-        setImportMessage(detail);
+        setImportMessage(errorText(body, res.status));
         return;
       }
       setInspect(body as TakeoutInspect);
     } catch (err: unknown) {
       setInspect(null);
-      setImportMessage(err instanceof Error ? err.message : "check failed");
+      setImportMessage(err instanceof Error ? err.message : t("import:fail.check"));
     } finally {
       setBusy(false);
     }
@@ -521,7 +518,7 @@ export default function Home() {
         return;
       }
       setPushJobId(null);
-      setImportMessage("Upload cancelled");
+      setImportMessage(t("import:result.cancelled"));
       await loadJobs();
     } finally {
       setBusy(false);
@@ -530,7 +527,7 @@ export default function Home() {
 
   async function onDeviceImport() {
     if (clientFiles.length === 0) {
-      setImportMessage("Choose a Takeout folder on this device first");
+      setImportMessage(t("import:fail.chooseFolder"));
       return;
     }
     setBusy(true);
@@ -550,14 +547,16 @@ export default function Home() {
       }
       const started = (await startRes.json()) as ImportJob;
       if (!started.id) {
-        setImportMessage("push did not return a job id");
+        setImportMessage(t("import:fail.noJobId"));
         return;
       }
       setPushJobId(started.id);
       for (let i = 0; i < clientFiles.length; i += 1) {
         const file = clientFiles[i];
         const rel = clientDumpPath(file);
-        setImportMessage(`Uploading ${i + 1} / ${clientFiles.length} · ${rel}`);
+        setImportMessage(
+          t("import:progress.uploading", { index: i + 1, total: clientFiles.length, path: rel }),
+        );
         const put = await apiFetch(
           `/api/v1/import/takeout/push/${started.id}/file?relative_path=${encodeURIComponent(rel)}`,
           {
@@ -571,7 +570,7 @@ export default function Home() {
           return;
         }
       }
-      setImportMessage("Upload complete · importing…");
+      setImportMessage(t("import:progress.uploadComplete"));
       const fin = await apiFetch(`/api/v1/import/takeout/push/${started.id}/finish`, {
         method: "POST",
       });
@@ -586,12 +585,8 @@ export default function Home() {
       }
       await applyJobResult(job);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "import failed";
-      setImportMessage(
-        msg === "Failed to fetch"
-          ? "Connection to the API dropped while uploading to the NAS. This upload can't resume — click Cancel upload, then start again."
-          : msg,
-      );
+      const msg = err instanceof Error ? err.message : t("import:fail.import");
+      setImportMessage(msg === "Failed to fetch" ? t("import:fail.connectionDropped") : msg);
     } finally {
       setBusy(false);
     }
@@ -608,22 +603,18 @@ export default function Home() {
     try {
       const { res, body } = await postTakeout(importPath, false);
       if (!res.ok) {
-        const detail =
-          typeof body === "object" && body && "detail" in body
-            ? String((body as { detail: unknown }).detail)
-            : `HTTP ${res.status}`;
-        setImportMessage(detail);
+        setImportMessage(errorText(body, res.status));
         return;
       }
       const job = body as ImportJob;
       if (job.status === "running") {
-        setImportMessage("Importing…");
+        setImportMessage(t("import:progress.importingShort"));
         await pollImport(undefined, job.id);
         return;
       }
       await applyJobResult(job);
     } catch (err: unknown) {
-      setImportMessage(err instanceof Error ? err.message : "import failed");
+      setImportMessage(err instanceof Error ? err.message : t("import:fail.import"));
     } finally {
       setBusy(false);
     }
@@ -636,22 +627,18 @@ export default function Home() {
       const res = await apiFetch("/api/v1/thumbs/generate", { method: "POST" });
       const body: unknown = await res.json().catch(() => null);
       if (!res.ok) {
-        const detail =
-          typeof body === "object" && body && "detail" in body
-            ? String((body as { detail: unknown }).detail)
-            : `HTTP ${res.status}`;
-        setImportMessage(detail);
+        setImportMessage(errorText(body, res.status));
         return;
       }
       const job = body as ImportJob;
       if (job.status === "running") {
-        setImportMessage("Generating thumbs…");
+        setImportMessage(t("import:progress.generatingThumbs"));
         await pollImport(undefined, job.id);
         return;
       }
       await applyJobResult(job);
     } catch (err: unknown) {
-      setImportMessage(err instanceof Error ? err.message : "thumbs failed");
+      setImportMessage(err instanceof Error ? err.message : t("import:fail.thumbs"));
     } finally {
       setBusy(false);
     }
@@ -689,7 +676,7 @@ export default function Home() {
       await loadAssets();
       await loadAlbums();
     } catch (err: unknown) {
-      setImportMessage(err instanceof Error ? err.message : "upload failed");
+      setImportMessage(err instanceof Error ? err.message : t("import:fail.upload"));
     } finally {
       setBusy(false);
     }
@@ -704,7 +691,7 @@ export default function Home() {
       body: JSON.stringify({ name: newAlbumName }),
     });
     if (!res.ok) {
-      setAlbumMessage(await readDetail(res));
+      setAlbumMessage({ text: await readDetail(res), ok: false });
       return;
     }
     const created = (await res.json()) as LibraryAlbum;
@@ -718,7 +705,7 @@ export default function Home() {
     setAlbumMessage(null);
     const res = await apiFetch(`/api/v1/albums/${openAlbum.id}`, { method: "DELETE" });
     if (!res.ok) {
-      setAlbumMessage(await readDetail(res));
+      setAlbumMessage({ text: await readDetail(res), ok: false });
       return;
     }
     setOpenAlbum(null);
@@ -733,10 +720,11 @@ export default function Home() {
       albums?.[0]?.id ||
       "";
     if (!targetId) {
-      setAlbumMessage("Create an album first.");
+      setAlbumMessage({ text: t("gallery:album.createFirst"), ok: false });
       return;
     }
-    const albumName = albums?.find((row) => row.id === targetId)?.name || "album";
+    const albumName =
+      albums?.find((row) => row.id === targetId)?.name || t("gallery:album.fallbackName");
     const before = albums?.find((row) => row.id === targetId)?.asset_count ?? 0;
     setAlbumMessage(null);
     const res = await apiFetch(`/api/v1/albums/${targetId}/assets`, {
@@ -745,14 +733,18 @@ export default function Home() {
       body: JSON.stringify({ asset_ids: [selected.id] }),
     });
     if (!res.ok) {
-      setAlbumMessage(await readDetail(res));
+      setAlbumMessage({ text: await readDetail(res), ok: false });
       return;
     }
     const body = (await res.json()) as LibraryAlbum;
     setAddAlbumId(targetId);
-    setAlbumMessage(
-      body.asset_count === before ? `Already in ${albumName}` : `Added to ${albumName}`,
-    );
+    setAlbumMessage({
+      text:
+        body.asset_count === before
+          ? t("gallery:album.alreadyIn", { name: albumName })
+          : t("gallery:album.addedTo", { name: albumName }),
+      ok: true,
+    });
     await loadAlbums();
     if (albumId === targetId) await loadAssets();
   }
@@ -764,7 +756,7 @@ export default function Home() {
       method: "DELETE",
     });
     if (!res.ok) {
-      setAlbumMessage(await readDetail(res));
+      setAlbumMessage({ text: await readDetail(res), ok: false });
       return;
     }
     setSelected(null);
@@ -775,9 +767,9 @@ export default function Home() {
   if (!authReady) {
     return (
       <main>
-        <BrandLockup lede="Library" />
+        <BrandLockup lede={t("common:lede")} />
         <div className="card">
-          <p className="status loading">Checking session…</p>
+          <p className="status loading">{t("common:session.checking")}</p>
         </div>
       </main>
     );
@@ -812,42 +804,46 @@ export default function Home() {
   return (
     <main>
       <div className="title-row">
-        <BrandLockup lede="Library" />
+        <BrandLockup lede={t("common:lede")} />
         <div className="session-row">
           <span className="detail">
-            {me.display_name || me.username} · {me.role}
+            {t("common:session.who", {
+              name: me.display_name || me.username,
+              role: me.role === "admin" ? t("common:role.admin") : t("common:role.member"),
+            })}
           </span>
           <button type="button" onClick={() => setSettingsOpen((v) => !v)}>
-            Settings
+            {t("common:session.settings")}
           </button>
           <button type="button" onClick={() => void onLogout()}>
-            Sign out
+            {t("common:session.signOut")}
           </button>
         </div>
       </div>
 
       <div className="card">
-        {health.kind === "loading" && <p className="status loading">Checking API…</p>}
-        {health.kind === "ok" && <p className="status ok">API OK</p>}
+        {health.kind === "loading" && <p className="status loading">{t("common:health.checking")}</p>}
+        {health.kind === "ok" && <p className="status ok">{t("common:health.ok")}</p>}
         {health.kind === "fail" && (
           <>
-            <p className="status fail">API fail</p>
+            <p className="status fail">{t("common:health.fail")}</p>
             <p className="detail">{health.message}</p>
           </>
         )}
       </div>
 
       {settingsOpen && (
-        <SettingsPanel me={me} platform={platform} onClose={() => setSettingsOpen(false)} />
+        <SettingsPanel
+          me={me}
+          platform={platform}
+          onClose={() => setSettingsOpen(false)}
+          onMe={setMe}
+        />
       )}
 
       <form className="card import" onSubmit={onImport}>
-        <label>Takeout dump</label>
-        <p className="detail">
-          Server folder: the API reads a path on this NAS or PC. This device: the browser or
-          phone uploads files (including a cloud folder opened in Files). mosaicWave does not
-          sign in to Drive/iCloud. The library tmp folder contains all uploaded files.
-        </p>
+        <label>{t("import:title")}</label>
+        <p className="detail">{t("import:intro")}</p>
         <div className="choice-col">
           <label>
             <input
@@ -857,7 +853,7 @@ export default function Home() {
               onChange={() => setTakeoutFrom("server")}
               disabled={busy}
             />
-            On this server
+            {t("import:from.server")}
           </label>
           <label>
             <input
@@ -867,28 +863,28 @@ export default function Home() {
               onChange={() => setTakeoutFrom("device")}
               disabled={busy}
             />
-            On this device
+            {t("import:from.device")}
           </label>
         </div>
         {takeoutFrom === "server" ? (
           <>
-            <label htmlFor="takeout-path">Folder on this NAS or PC</label>
+            <label htmlFor="takeout-path">{t("import:serverPath.label")}</label>
             <div className="path-row">
               <input
                 id="takeout-path"
                 value={importPath}
                 onChange={(e) => setImportPath(e.target.value)}
-                placeholder="/share/…/Takeout (zips; you can delete after import)"
+                placeholder={t("import:serverPath.placeholder")}
                 autoComplete="off"
               />
               <button type="button" disabled={busy} onClick={() => setPickerOpen(true)}>
-                Browse…
+                {t("common:browse")}
               </button>
             </div>
           </>
         ) : (
           <>
-            <label htmlFor="takeout-device">Folder on this computer or phone</label>
+            <label htmlFor="takeout-device">{t("import:device.label")}</label>
             <input
               id="takeout-device"
               type="file"
@@ -899,23 +895,23 @@ export default function Home() {
             />
             <p className="detail">
               {clientFiles.length > 0
-                ? `${clientFiles.length} file(s) selected`
-                : "Pick the folder that contains takeout-*.zip (or an extracted Google Photos tree)."}
+                ? t("import:device.selected", { count: clientFiles.length })
+                : t("import:device.hint")}
             </p>
           </>
         )}
         <div className="button-row">
           {takeoutFrom === "server" && (
             <button type="button" disabled={busy} onClick={() => void onCheck()}>
-              {busy ? "Working…" : "Check folder"}
+              {busy ? t("common:working") : t("import:check")}
             </button>
           )}
           <button type="submit" disabled={busy}>
-            {busy ? "Working…" : "Import Takeout"}
+            {busy ? t("common:working") : t("import:import")}
           </button>
           {pushJobId && (
             <button type="button" disabled={busy} onClick={() => void onCancelPush()}>
-              Cancel upload
+              {t("import:cancelUpload")}
             </button>
           )}
         </div>
@@ -923,30 +919,34 @@ export default function Home() {
         {inspect && (
           <div className="inspect">
             <p className={inspect.ready ? "status ok" : "status fail"}>
-              {inspect.ready ? "Ready to import" : "Not ready"}
+              {inspect.ready ? t("import:inspect.ready") : t("import:inspect.notReady")}
             </p>
             <p className="detail">
-              {inspect.zip_count} zip(s)
-              {inspect.import_root ? ` · import ${inspect.import_root}` : ""}
-              {inspect.album_metadata_count
-                ? ` · ${inspect.album_metadata_count} album metadata.json`
-                : ""}
-              {inspect.sidecar_without_media_count
-                ? ` · ${inspect.sidecar_without_media_count} sidecar(s) without media`
-                : ""}
+              {[
+                t("import:inspect.zips", { count: inspect.zip_count }),
+                inspect.import_root ? t("import:inspect.importRoot", { path: inspect.import_root }) : null,
+                inspect.album_metadata_count
+                  ? t("import:inspect.albumMetadata", { count: inspect.album_metadata_count })
+                  : null,
+                inspect.sidecar_without_media_count
+                  ? t("import:inspect.sidecars", { count: inspect.sidecar_without_media_count })
+                  : null,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
             </p>
             {inspect.warnings.length > 0 && (
               <ul className="warn-list">
                 {inspect.warnings.map((w, i) => (
                   <li key={`${w.code}-${i}`} className={w.severity}>
-                    {w.message}
+                    {warningText(w)}
                   </li>
                 ))}
               </ul>
             )}
             {inspect.sidecar_without_media.length > 0 && (
               <p className="detail missing-sample">
-                Missing media (sample): {inspect.sidecar_without_media.join(", ")}
+                {t("import:inspect.missingSample", { names: inspect.sidecar_without_media.join(", ") })}
               </p>
             )}
           </div>
@@ -955,7 +955,7 @@ export default function Home() {
       {pickerOpen && (
         <FolderPicker
           startPath={importPath}
-          title="Select Takeout dump on the server"
+          title={t("import:serverPath.pickerTitle")}
           onSelect={(path) => {
             setImportPath(path);
             setPickerOpen(false);
@@ -965,26 +965,24 @@ export default function Home() {
       )}
 
       <section className="card">
-        <h2>Jobs</h2>
-        {jobs === null && <p className="detail">Loading jobs…</p>}
-        {jobs && jobs.length === 0 && (
-          <p className="detail">No task runs yet. Import Takeout records a job here.</p>
-        )}
+        <h2>{t("import:jobs.title")}</h2>
+        {jobs === null && <p className="detail">{t("import:jobs.loading")}</p>}
+        {jobs && jobs.length === 0 && <p className="detail">{t("import:jobs.empty")}</p>}
         {jobs && jobs.length > 0 && (
           <ul className="asset-list">
             {jobs.map((job) => (
               <li key={job.id ?? `${job.created_at}-${job.status}`}>
                 <span className="name">
-                  {jobKindLabel(job.kind)} · {job.status}
+                  {jobKindLabel(job.kind)} · {jobStatusLabel(job.status)}
                   {job.status === "done" && job.kind === "thumb_batch" && job.processed
-                    ? ` · ${job.processed} thumbs`
+                    ? ` · ${t("import:jobs.thumbs", { count: job.processed })}`
                     : ""}
                   {job.status === "done" && job.kind !== "thumb_batch" && job.assets
-                    ? ` · ${job.assets} assets`
+                    ? ` · ${t("import:result.assets", { count: job.assets })}`
                     : ""}
                   {job.error ? ` · ${job.error}` : ""}
                 </span>
-                <span className="date">{formatJobWhen(job.started_at || job.created_at)}</span>
+                <span className="date">{formatDateTime(job.started_at || job.created_at)}</span>
               </li>
             ))}
           </ul>
@@ -993,7 +991,7 @@ export default function Home() {
 
       <section className="card gallery">
         <div className="gallery-head">
-          <h2>{openAlbum ? openAlbum.name : "Library"}</h2>
+          <h2>{openAlbum ? openAlbum.name : t("gallery:title")}</h2>
           <div className="button-row">
             <button
               type="button"
@@ -1003,7 +1001,7 @@ export default function Home() {
                 setOpenAlbum(null);
               }}
             >
-              Timeline
+              {t("gallery:tab.timeline")}
             </button>
             <button
               type="button"
@@ -1013,23 +1011,21 @@ export default function Home() {
                 setOpenAlbum(null);
               }}
             >
-              Albums
+              {t("gallery:tab.albums")}
             </button>
             {openAlbum ? (
               <button type="button" disabled={busy} onClick={() => void onDeleteAlbum()}>
-                Delete album
+                {t("gallery:deleteAlbum")}
               </button>
             ) : (
               <button type="button" disabled={busy} onClick={() => void onGenerateThumbs()}>
-                Generate thumbs
+                {t("gallery:generateThumbs")}
               </button>
             )}
           </div>
         </div>
         {albumMessage && (
-          <p className={albumMessage.startsWith("Added") || albumMessage.startsWith("Already") ? "status ok" : "status fail"}>
-            {albumMessage}
-          </p>
+          <p className={albumMessage.ok ? "status ok" : "status fail"}>{albumMessage.text}</p>
         )}
         {!openAlbum && galleryTab === "albums" ? (
           <>
@@ -1037,17 +1033,15 @@ export default function Home() {
               <input
                 value={newAlbumName}
                 onChange={(e) => setNewAlbumName(e.target.value)}
-                placeholder="New album name"
+                placeholder={t("gallery:album.newPlaceholder")}
                 maxLength={255}
               />
               <button type="submit" disabled={busy || !newAlbumName.trim()}>
-                Create album
+                {t("gallery:album.create")}
               </button>
             </form>
-            {albums === null && <p className="detail">Loading albums…</p>}
-            {albums && albums.length === 0 && (
-              <p className="detail">No albums yet. Takeout folders become albums; you can also create one here.</p>
-            )}
+            {albums === null && <p className="detail">{t("gallery:album.loading")}</p>}
+            {albums && albums.length === 0 && <p className="detail">{t("gallery:album.empty")}</p>}
             {albums && albums.length > 0 && (
               <div className="thumb-grid">
                 {albums.map((album) => (
@@ -1064,10 +1058,10 @@ export default function Home() {
                     {album.cover_asset_id ? (
                       <img src={`/api/v1/assets/${album.cover_asset_id}/thumb`} alt="" />
                     ) : (
-                      <span className="album-empty">No cover</span>
+                      <span className="album-empty">{t("gallery:album.noCover")}</span>
                     )}
                     <span className="album-caption">
-                      {album.name} · {album.asset_count}
+                      {t("gallery:album.caption", { name: album.name, count: album.asset_count })}
                     </span>
                   </button>
                 ))}
@@ -1081,33 +1075,34 @@ export default function Home() {
             <select
               value={uploadSource}
               onChange={(e) => setUploadSource(e.target.value)}
-              aria-label="Upload source"
+              aria-label={t("gallery:upload.sourceLabel")}
             >
               {writeSources.map((source) => (
                 <option key={source.id} value={source.id}>
-                  {source.owned ? "Your library" : "Shared"} · {source.asset_count} assets
+                  {t("gallery:upload.sourceOption", {
+                    owner: source.owned ? t("gallery:upload.yourLibrary") : t("gallery:upload.shared"),
+                    count: source.asset_count,
+                  })}
                 </option>
               ))}
             </select>
             <input name="upload" type="file" accept="image/*,video/*" />
             <button type="submit" disabled={busy}>
-              Upload
+              {t("gallery:upload.submit")}
             </button>
           </form>
         )}
         {listError && <p className="status fail">{listError}</p>}
-        {!listError && assets === null && <p className="detail">Loading library…</p>}
+        {!listError && assets === null && <p className="detail">{t("gallery:loadingLibrary")}</p>}
         {!listError && assets && assets.length === 0 && (
           <p className="detail">
-            {openAlbum
-              ? "This album is empty. Open a photo and use Add to album."
-              : "Empty library. Import a Takeout folder to seed SQLite."}
+            {openAlbum ? t("gallery:emptyAlbum") : t("gallery:emptyLibrary")}
           </p>
         )}
         {!listError && assets && assets.length > 0 && (
           <>
             {timelineBlocks(assets).map((group) => (
-              <div key={group.day} className="day-block">
+              <div key={group.key} className="day-block">
                 {group.month && <h3 className="timeline-month">{group.month}</h3>}
                 <h4 className="timeline-day">{group.day}</h4>
                 <div className="thumb-grid">
@@ -1135,7 +1130,7 @@ export default function Home() {
                 disabled={busy}
                 onClick={() => void loadAssets(undefined, nextCursor)}
               >
-                Load more
+                {t("gallery:loadMore")}
               </button>
             )}
           </>
@@ -1170,27 +1165,22 @@ export default function Home() {
             <div className="detail-meta">
               <p className="name">{selected.filename}</p>
               <p className="detail">
-                {isVideo(selected)
-                  ? formatDate(selected.taken_at)
-                  : `${formatDate(selected.taken_at)} · ${formatBytes(selected.size)}`}
+                {[
+                  formatDate(selected.taken_at) ?? t("common:unknownDate"),
+                  isVideo(selected) ? null : formatBytes(selected.size),
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
               </p>
               {albumMessage && (
-                <p
-                  className={
-                    albumMessage.startsWith("Added") || albumMessage.startsWith("Already")
-                      ? "status ok"
-                      : "status fail"
-                  }
-                >
-                  {albumMessage}
-                </p>
+                <p className={albumMessage.ok ? "status ok" : "status fail"}>{albumMessage.text}</p>
               )}
               <div className="button-row">
-                <a href={assetFileUrl(selected.id, true)}>Download original</a>
+                <a href={assetFileUrl(selected.id, true)}>{t("gallery:detail.download")}</a>
                 {albums && albums.length > 0 && (
                   <>
                     <select
-                      aria-label="Album"
+                      aria-label={t("gallery:detail.albumLabel")}
                       value={
                         albums.some((album) => album.id === addAlbumId)
                           ? addAlbumId
@@ -1205,17 +1195,17 @@ export default function Home() {
                       ))}
                     </select>
                     <button type="button" onClick={() => void onAddSelectedToAlbum()}>
-                      Add to album
+                      {t("gallery:detail.addToAlbum")}
                     </button>
                   </>
                 )}
                 {openAlbum && (
                   <button type="button" onClick={() => void onRemoveSelectedFromAlbum()}>
-                    Remove from album
+                    {t("gallery:detail.removeFromAlbum")}
                   </button>
                 )}
                 <button type="button" onClick={() => setSelected(null)}>
-                  Close
+                  {t("common:close")}
                 </button>
               </div>
             </div>

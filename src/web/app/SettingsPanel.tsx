@@ -1,9 +1,11 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 
-import { apiFetch, AppUser, Grant, HostSettings, Me, readDetail, Source } from "./api";
+import { apiFetch, AppUser, Grant, HostSettings, Me, readDetail, saveLocale, Source } from "./api";
 import { FolderPicker } from "./FolderPicker";
+import i18n, { applyLocale, isLocale, LOCALE_NAMES, LOCALES, rememberLocale, resolveLocale, storedLocale } from "./i18n";
 
 type SmbParts = { host: string; share: string; folder: string; user: string };
 
@@ -100,9 +102,7 @@ async function waitForApiAfterRestart() {
     }
   }
   throw new Error(
-    isDebugWeb()
-      ? "API did not come back after Save folder. Run sudo sh scripts/start.sh."
-      : "API did not come back after Save folder. It should restart on its own — wait and retry.",
+    isDebugWeb() ? i18n.t("settings:save.noRestartDebug") : i18n.t("settings:save.noRestart"),
   );
 }
 
@@ -110,9 +110,12 @@ type Props = {
   me: Me;
   platform: string;
   onClose: () => void;
+  onMe: (me: Me) => void;
 };
 
-export function SettingsPanel({ me, platform, onClose }: Props) {
+export function SettingsPanel({ me, platform, onClose, onMe }: Props) {
+  const { t } = useTranslation(["settings", "common"]);
+  const [localeError, setLocaleError] = useState<string | null>(null);
   const [sources, setSources] = useState<Source[] | null>(null);
   const [users, setUsers] = useState<AppUser[] | null>(null);
   const [host, setHost] = useState<HostSettings | null>(null);
@@ -156,11 +159,7 @@ export function SettingsPanel({ me, platform, onClose }: Props) {
           applyHost((await hostRes.json()) as HostSettings);
         } else {
           const detail = await readDetail(hostRes);
-          setError(
-            hostRes.status === 401
-              ? `${detail}. Reload and sign in. If a NAS move just failed, copy library.db back to the default folder before Create admin.`
-              : detail,
-          );
+          setError(hostRes.status === 401 ? i18n.t("settings:signInAgain", { detail }) : detail);
         }
       }
       const srcRes = await apiFetch("/api/v1/sources");
@@ -192,7 +191,7 @@ export function SettingsPanel({ me, platform, onClose }: Props) {
       setUsers((await userRes.json()) as AppUser[]);
     } catch (err: unknown) {
       setSources((prev) => prev ?? []);
-      setError(err instanceof Error ? err.message : "failed to load settings");
+      setError(err instanceof Error ? err.message : i18n.t("settings:loadFailed"));
     }
   }, [applyHost, me.role]);
 
@@ -229,7 +228,7 @@ export function SettingsPanel({ me, platform, onClose }: Props) {
       : dataDirDraft.trim();
     const mount = joinMountPoint(mountPointDraft);
     if (!next) {
-      setError(nas ? "Enter host and share" : "Choose a folder");
+      setError(nas ? t("settings:save.enterHostShare") : t("settings:save.chooseFolder"));
       return;
     }
     const sameSource =
@@ -241,9 +240,7 @@ export function SettingsPanel({ me, platform, onClose }: Props) {
     if (!sameSource || !sameMount) {
       const home = next === host.app_dir || next === host.default_data_dir;
       const ok = window.confirm(
-        home
-          ? "Move the library back to the app folder? Leftover library files there are replaced. Config and login stay. Browse and typing do not move anything until you confirm here."
-          : "Move the library database, photos, and thumbnails to this destination? Browse and typing do not move anything until you confirm here.",
+        home ? t("settings:save.confirmHome") : t("settings:save.confirmMove"),
       );
       if (!ok) return;
     }
@@ -273,19 +270,19 @@ export function SettingsPanel({ me, platform, onClose }: Props) {
       applyHost(saved);
       setSmbPasswordDraft("");
       if (saved.restarting) {
-        setNotice("Restarting the API to open the new library folder…");
+        setNotice(t("settings:save.restarting"));
         await waitForApiAfterRestart();
         await load();
       }
       setNotice(saved.notice || null);
     } catch (err: unknown) {
       setNotice(null);
-      const msg = err instanceof Error ? err.message : "failed to save folder";
+      const msg = err instanceof Error ? err.message : t("settings:save.failed");
       setError(
         msg === "Failed to fetch"
           ? isDebugWeb()
-            ? "Could not reach the API (Save folder may still be mounting). Wait and retry, or restart with sudo sh scripts/start.sh."
-            : "Could not reach the API (Save folder may still be mounting). Wait and retry — it should restart on its own."
+            ? t("settings:save.unreachableDebug")
+            : t("settings:save.unreachable")
           : msg,
       );
     } finally {
@@ -317,12 +314,26 @@ export function SettingsPanel({ me, platform, onClose }: Props) {
   async function addShare(event: FormEvent) {
     event.preventDefault();
     if (!shareUserId) {
-      setError("Choose a person to share with");
+      setError(t("settings:share.chooseFirst"));
       return;
     }
     const next = (grants ?? []).filter((row) => row.user_id !== shareUserId);
     next.push({ user_id: shareUserId, perm: sharePerm, username: "", display_name: "" });
     await putGrants(next.map((row) => ({ user_id: row.user_id, perm: row.perm })));
+  }
+
+  async function changeLocale(value: string) {
+    const choice = isLocale(value) ? value : null;
+    setLocaleError(null);
+    rememberLocale(choice);
+    onMe({ ...me, locale: choice });
+    await applyLocale(resolveLocale(choice));
+    try {
+      onMe(await saveLocale(choice));
+    } catch (err: unknown) {
+      const detail = err instanceof Error ? err.message : t("common:requestFailed");
+      setLocaleError(t("settings:language.saveFailed", { detail }));
+    }
   }
 
   const library = sources?.find((row) => row.owned) ?? sources?.[0];
@@ -335,31 +346,48 @@ export function SettingsPanel({ me, platform, onClose }: Props) {
   return (
     <section className="card settings">
       <div className="gallery-head">
-        <h2>Settings</h2>
+        <h2>{t("settings:title")}</h2>
         <button type="button" onClick={onClose}>
-          Close
+          {t("common:close")}
         </button>
+      </div>
+      <div className="import">
+        <label htmlFor="ui_locale">{t("settings:language.label")}</label>
+        <p className="detail">{t("settings:language.help")}</p>
+        <select
+          id="ui_locale"
+          value={(isLocale(me.locale) ? me.locale : storedLocale()) ?? "auto"}
+          onChange={(e) => void changeLocale(e.target.value)}
+        >
+          <option value="auto">{t("settings:language.auto")}</option>
+          {LOCALES.map((code) => (
+            <option key={code} value={code} lang={code}>
+              {LOCALE_NAMES[code]}
+            </option>
+          ))}
+        </select>
+        {localeError && <p className="status fail">{localeError}</p>}
       </div>
       {error && <p className="status fail">{error}</p>}
       {notice && !error && <p className="detail">{notice}</p>}
-      {sources === null && !error && <p className="detail">Loading…</p>}
+      {sources === null && !error && <p className="detail">{t("common:loading")}</p>}
       {library && (
         <p className="detail">
-          Your library · {library.asset_count} assets
+          {t("settings:library.summary", { count: library.asset_count })}
           {library.error ? ` · ${library.error}` : ""}
         </p>
       )}
       {library && (
         <form className="import" onSubmit={addShare}>
-          <label htmlFor="share_user">Share this library</label>
-          <p className="detail">
-            Read: timeline, thumbs, originals, albums, sync. Write: also upload and edit albums. They
-            keep their own library. Admin still cannot see yours unless you share.
-          </p>
+          <label htmlFor="share_user">{t("settings:share.label")}</label>
+          <p className="detail">{t("settings:share.help")}</p>
           {(grants ?? []).map((row) => (
             <div className="grant-row" key={row.user_id}>
               <span>
-                {row.display_name || row.username} · {row.perm}
+                {t("settings:share.grant", {
+                  name: row.display_name || row.username,
+                  perm: row.perm === "write" ? t("settings:perm.write") : t("settings:perm.read"),
+                })}
               </span>
               <button
                 type="button"
@@ -372,15 +400,13 @@ export function SettingsPanel({ me, platform, onClose }: Props) {
                   )
                 }
               >
-                Remove
+                {t("common:remove")}
               </button>
             </div>
           ))}
           {users && users.filter((u) => u.id !== me.id).length === 0 && (
             <p className="detail">
-              {platform === "qnap"
-                ? "The other person must sign in with their QNAP account once before you can share."
-                : "Create a member below, then share with them here."}
+              {platform === "qnap" ? t("settings:share.qnapHint") : t("settings:share.localHint")}
             </p>
           )}
           {shareCandidates.length > 0 && (
@@ -391,7 +417,7 @@ export function SettingsPanel({ me, platform, onClose }: Props) {
                 onChange={(e) => setShareUserId(e.target.value)}
                 disabled={busy}
               >
-                <option value="">Choose a person…</option>
+                <option value="">{t("settings:share.choose")}</option>
                 {shareCandidates.map((row) => (
                   <option key={row.id} value={row.id}>
                     {row.display_name || row.username}
@@ -399,16 +425,16 @@ export function SettingsPanel({ me, platform, onClose }: Props) {
                 ))}
               </select>
               <select
-                aria-label="Share permission"
+                aria-label={t("settings:share.permLabel")}
                 value={sharePerm}
                 onChange={(e) => setSharePerm(e.target.value as "read" | "write")}
                 disabled={busy}
               >
-                <option value="read">Read</option>
-                <option value="write">Write</option>
+                <option value="read">{t("settings:perm.read")}</option>
+                <option value="write">{t("settings:perm.write")}</option>
               </select>
               <button type="submit" disabled={busy || !shareUserId}>
-                Share
+                {t("settings:share.submit")}
               </button>
             </div>
           )}
@@ -418,12 +444,8 @@ export function SettingsPanel({ me, platform, onClose }: Props) {
         <>
           {host && (
             <div className="import">
-              <label htmlFor="app_dir">App folder</label>
-              <p className="detail">
-                Config, session key, SQLite, and packaged Python stay here. This is not the photo
-                library. On a packaged Mac install it is /Library/Application Support/mosaicWave.
-                Local debug uses /Library/Application Support/mosaicWave-dev.
-              </p>
+              <label htmlFor="app_dir">{t("settings:appDir.label")}</label>
+              <p className="detail">{t("settings:appDir.help")}</p>
               <div className="path-row">
                 <input
                   id="app_dir"
@@ -434,10 +456,8 @@ export function SettingsPanel({ me, platform, onClose }: Props) {
                   autoComplete="off"
                 />
               </div>
-              <label htmlFor="library_dir">Current library</label>
-              <p className="detail">
-                Photos and thumbnails in use now. SQLite stays in the App folder above.
-              </p>
+              <label htmlFor="library_dir">{t("settings:current.label")}</label>
+              <p className="detail">{t("settings:current.help")}</p>
               <div className="path-row">
                 <input
                   id="library_dir"
@@ -448,14 +468,9 @@ export function SettingsPanel({ me, platform, onClose }: Props) {
                   autoComplete="off"
                 />
               </div>
-              <label>Move library</label>
-              <p className="detail">
-                One destination: a local folder, or an SMB share. Photos and thumbnails move only
-                when you click Save folder. SQLite stays in the App folder. Returning to the app
-                folder replaces leftover library files there; config and login stay. If the move
-                fails, mosaicWave keeps the original folder.
-              </p>
-              <div className="dest-tabs" role="tablist" aria-label="Move library">
+              <label>{t("settings:move.label")}</label>
+              <p className="detail">{t("settings:move.help")}</p>
+              <div className="dest-tabs" role="tablist" aria-label={t("settings:move.label")}>
                 <button
                   type="button"
                   role="tab"
@@ -468,7 +483,7 @@ export function SettingsPanel({ me, platform, onClose }: Props) {
                     }
                   }}
                 >
-                  Folder
+                  {t("settings:move.folder")}
                 </button>
                 <button
                   type="button"
@@ -487,27 +502,26 @@ export function SettingsPanel({ me, platform, onClose }: Props) {
                     setMountPointDraft("");
                   }}
                 >
-                  SMB
+                  {t("settings:move.smb")}
                 </button>
               </div>
               {destKind === "nas" && host.data_dir_smb && (
                 <p className="detail">
-                  Remounts at startup as {host.data_dir_smb}
-                  {host.data_dir_mount ? ` at ${host.data_dir_mount}` : ""}
+                  {host.data_dir_mount
+                    ? t("settings:move.remountsAt", { url: host.data_dir_smb, mount: host.data_dir_mount })
+                    : t("settings:move.remounts", { url: host.data_dir_smb })}
                 </p>
               )}
               {storageLocked && (
                 <p className="detail">
-                  {platform === "qnap"
-                    ? "This QPKG keeps the library in a hidden .mosaicWave folder on the volume (not inside the app folder). Remove and reinstall does not delete it."
-                    : "MOSAICWAVE_DATA_DIR is set on this process, so the folder is read-only here."}
+                  {platform === "qnap" ? t("settings:move.lockedQnap") : t("settings:move.lockedEnv")}
                 </p>
               )}
               <div className="path-row">
                 {destKind === "nas" ? (
                   <div className="smb-grid">
                     <label htmlFor="smb_host">
-                      Host
+                      {t("settings:smb.host")}
                       <input
                         id="smb_host"
                         name="smb_host"
@@ -522,7 +536,7 @@ export function SettingsPanel({ me, platform, onClose }: Props) {
                       />
                     </label>
                     <label htmlFor="smb_share">
-                      Share
+                      {t("settings:smb.share")}
                       <input
                         id="smb_share"
                         name="smb_share"
@@ -537,7 +551,7 @@ export function SettingsPanel({ me, platform, onClose }: Props) {
                       />
                     </label>
                     <label htmlFor="smb_folder">
-                      Folder
+                      {t("settings:smb.folder")}
                       <input
                         id="smb_folder"
                         name="smb_folder"
@@ -586,27 +600,22 @@ export function SettingsPanel({ me, platform, onClose }: Props) {
                       disabled={storageLocked || busy}
                       onClick={() => setPickerKind("library")}
                     >
-                      Browse…
+                      {t("common:browse")}
                     </button>
                   </>
                 )}
               </div>
               {destKind === "nas" && (
                 <>
-                  <label>Destination</label>
-                  <p className="detail">
-                    Always under /Volumes. Mount point is the volume name only. Folder is the
-                    same library path as SMB (rest after the share). Leave mount point blank for
-                    mosaicWave-…. Last dest is shown above, not typed back in. Do not pick Finder
-                    Public.
-                  </p>
+                  <label>{t("settings:dest.label")}</label>
+                  <p className="detail">{t("settings:dest.help")}</p>
                   <div className="path-row dest-split-row">
                     <div className="dest-split">
                       <span className="dest-prefix" aria-hidden="true">
                         /Volumes
                       </span>
                       <label htmlFor="smb_mount">
-                        Mount point
+                        {t("settings:dest.mountPoint")}
                         <input
                           id="smb_mount"
                           name="smb_mount"
@@ -621,7 +630,7 @@ export function SettingsPanel({ me, platform, onClose }: Props) {
                         />
                       </label>
                       <label htmlFor="dest_folder">
-                        Folder
+                        {t("settings:dest.folder")}
                         <input
                           id="dest_folder"
                           name="dest_folder"
@@ -641,15 +650,11 @@ export function SettingsPanel({ me, platform, onClose }: Props) {
                       disabled={storageLocked || busy}
                       onClick={() => setPickerKind("mount")}
                     >
-                      Browse…
+                      {t("common:browse")}
                     </button>
                   </div>
-                  <label htmlFor="smb_user">NAS username</label>
-                  <p className="detail">
-                    QNAP account for this share, not the mosaicWave login. Do not put user@ in the
-                    host box. Password is required on first Save folder. Names starting with a dot
-                    are reserved on QNAP shares.
-                  </p>
+                  <label htmlFor="smb_user">{t("settings:nas.userLabel")}</label>
+                  <p className="detail">{t("settings:nas.userHelp")}</p>
                   <div className="path-row">
                     <input
                       id="smb_user"
@@ -658,10 +663,10 @@ export function SettingsPanel({ me, platform, onClose }: Props) {
                       onChange={(e) => setSmbUserDraft(e.target.value)}
                       disabled={storageLocked || busy}
                       autoComplete="off"
-                      placeholder="username"
+                      placeholder={t("settings:nas.userPlaceholder")}
                     />
                   </div>
-                  <label htmlFor="smb_password">NAS password</label>
+                  <label htmlFor="smb_password">{t("settings:nas.passwordLabel")}</label>
                   <div className="path-row">
                     <input
                       id="smb_password"
@@ -671,7 +676,7 @@ export function SettingsPanel({ me, platform, onClose }: Props) {
                       onChange={(e) => setSmbPasswordDraft(e.target.value)}
                       disabled={storageLocked || busy}
                       autoComplete="new-password"
-                      placeholder="required on first Save folder"
+                      placeholder={t("settings:nas.passwordPlaceholder")}
                     />
                   </div>
                 </>
@@ -682,7 +687,7 @@ export function SettingsPanel({ me, platform, onClose }: Props) {
                   disabled={storageLocked || busy}
                   onClick={() => void saveDataDir()}
                 >
-                  Save folder
+                  {t("settings:move.save")}
                 </button>
                 <button
                   type="button"
@@ -693,15 +698,13 @@ export function SettingsPanel({ me, platform, onClose }: Props) {
                     setMountPointDraft("");
                   }}
                 >
-                  Use app folder
+                  {t("settings:move.useAppFolder")}
                 </button>
               </div>
             </div>
           )}
           {platform === "qnap" ? (
-            <p className="detail">
-              People sign in with their QNAP account. mosaicWave does not add NAS users here.
-            </p>
+            <p className="detail">{t("settings:users.qnap")}</p>
           ) : (
             <>
               <form aria-hidden="true" autoComplete="on" className="autofill-decoy">
@@ -709,19 +712,19 @@ export function SettingsPanel({ me, platform, onClose }: Props) {
                 <input type="password" name="password" autoComplete="current-password" tabIndex={-1} />
               </form>
               <form className="import" autoComplete="off" onSubmit={createUser}>
-                <label htmlFor="add_username">Add member</label>
+                <label htmlFor="add_username">{t("settings:users.addMember")}</label>
                 {users && users.length > 0 && (
                   <p className="detail">
                     {users
                       .filter((u) => u.id !== me.id)
                       .map((u) => u.username)
-                      .join(", ") || "No other users yet."}
+                      .join(", ") || t("settings:users.noOthers")}
                   </p>
                 )}
                 <input
                   id="add_username"
                   name="add_username"
-                  placeholder="Username"
+                  placeholder={t("settings:users.username")}
                   value={newUser.username}
                   onChange={(e) => setNewUser({ ...newUser, username: e.target.value })}
                   autoComplete="off"
@@ -734,7 +737,7 @@ export function SettingsPanel({ me, platform, onClose }: Props) {
                 <input
                   id="add_display_name"
                   name="add_display_name"
-                  placeholder="Display name"
+                  placeholder={t("settings:users.displayName")}
                   value={newUser.display_name}
                   onChange={(e) => setNewUser({ ...newUser, display_name: e.target.value })}
                   autoComplete="off"
@@ -747,7 +750,7 @@ export function SettingsPanel({ me, platform, onClose }: Props) {
                   id="add_password"
                   name="add_password"
                   type="password"
-                  placeholder="Password (8+)"
+                  placeholder={t("settings:users.password")}
                   value={newUser.password}
                   onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
                   autoComplete="new-password"
@@ -760,7 +763,7 @@ export function SettingsPanel({ me, platform, onClose }: Props) {
                 />
                 <div className="button-row">
                   <button type="submit" disabled={busy}>
-                    Create member
+                    {t("settings:users.create")}
                   </button>
                 </div>
               </form>
@@ -776,7 +779,7 @@ export function SettingsPanel({ me, platform, onClose }: Props) {
               : dataDirDraft || host?.default_data_dir || ""
           }
           title={
-            pickerKind === "mount" ? "Select SMB mount point" : "Select library storage folder"
+            pickerKind === "mount" ? t("settings:move.pickerMount") : t("settings:move.pickerLibrary")
           }
           onSelect={(path) => {
             if (pickerKind === "mount") {

@@ -1,0 +1,41 @@
+{
+  "lede": "Library",
+  "loading": "Loading…",
+  "working": "Working…",
+  "close": "Close",
+  "cancel": "Cancel",
+  "browse": "Browse…",
+  "remove": "Remove",
+  "requestFailed": "request failed",
+  "networkError": "network error",
+  "httpStatus": "HTTP {{status}}",
+  "unknownDate": "Unknown date",
+  "role": {
+    "admin": "admin",
+    "member": "member"
+  },
+  "session": {
+    "checking": "Checking session…",
+    "who": "{{name}} · {{role}}",
+    "settings": "Settings",
+    "signOut": "Sign out"
+  },
+  "health": {
+    "checking": "Checking API…",
+    "ok": "API OK",
+    "fail": "API fail",
+    "unexpected": "unexpected response"
+  },
+  "picker": {
+    "title": "Select folder on the server",
+    "intro": "Folders on the mosaicWave host (this NAS or PC), not the browser computer. Choosing a folder only fills the path box — Save folder in Settings is what moves the library.",
+    "places": "Places",
+    "notSignedIn": "Not signed in. Close Settings, reload, and sign in. Do not Create admin if a NAS move just failed.",
+    "openedParent": "{{detail}} — opened parent of {{path}}",
+    "browseFailed": "browse failed",
+    "noSubfolders": "No subfolders in this directory.",
+    "zipCount_one": "{{count}} takeout zip in this folder",
+    "zipCount_other": "{{count}} takeout zips in this folder",
+    "use": "Use this folder"
+  }
+}

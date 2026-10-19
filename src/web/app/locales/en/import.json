@@ -1,0 +1,82 @@
+{
+  "title": "Takeout dump",
+  "intro": "Server folder: the API reads a path on this NAS or PC. This device: the browser or phone uploads files (including a cloud folder opened in Files). mosaicWave does not sign in to Drive/iCloud. The library tmp folder contains all uploaded files.",
+  "from": {
+    "server": "On this server",
+    "device": "On this device"
+  },
+  "serverPath": {
+    "label": "Folder on this NAS or PC",
+    "placeholder": "/share/…/Takeout (zips; you can delete after import)",
+    "pickerTitle": "Select Takeout dump on the server"
+  },
+  "device": {
+    "label": "Folder on this computer or phone",
+    "selected_one": "{{count, number}} file selected",
+    "selected_other": "{{count, number}} files selected",
+    "hint": "Pick the folder that contains takeout-*.zip (or an extracted Google Photos tree)."
+  },
+  "check": "Check folder",
+  "import": "Import Takeout",
+  "cancelUpload": "Cancel upload",
+  "inspect": {
+    "ready": "Ready to import",
+    "notReady": "Not ready",
+    "zips_one": "{{count, number}} zip",
+    "zips_other": "{{count, number}} zips",
+    "importRoot": "import {{path}}",
+    "albumMetadata_one": "{{count, number}} album metadata.json",
+    "albumMetadata_other": "{{count, number}} album metadata.json files",
+    "sidecars_one": "{{count, number}} sidecar without media",
+    "sidecars_other": "{{count, number}} sidecars without media",
+    "missingSample": "Missing media (sample): {{names}}"
+  },
+  "progress": {
+    "importing": "Importing {{processed}} / {{total}}",
+    "thumbs": "Thumbs {{processed}} / {{total}}",
+    "importingShort": "Importing…",
+    "generatingThumbs": "Generating thumbs…",
+    "waitingDevice": "Waiting for files from this device ({{progress}}). Refresh lost the folder picker — Cancel, or continue from the same app.",
+    "uploading": "Uploading {{index}} / {{total}} · {{path}}",
+    "uploadComplete": "Upload complete · importing…"
+  },
+  "result": {
+    "thumbsReady_one": "Thumbs ready ({{count, number}} file)",
+    "thumbsReady_other": "Thumbs ready ({{count, number}} files)",
+    "imported": "Imported {{assets}}, {{albums}}",
+    "importedFrom": "Imported {{assets}}, {{albums}} from {{path}}",
+    "assets_one": "{{count, number}} asset",
+    "assets_other": "{{count, number}} assets",
+    "albums_one": "{{count, number}} album",
+    "albums_other": "{{count, number}} albums",
+    "cancelled": "Upload cancelled"
+  },
+  "fail": {
+    "chooseFolder": "Choose a Takeout folder on this device first",
+    "noJobId": "push did not return a job id",
+    "connectionDropped": "Connection to the API dropped while uploading to the NAS. This upload can't resume — click Cancel upload, then start again.",
+    "check": "check failed",
+    "import": "import failed",
+    "thumbs": "thumbs failed",
+    "upload": "upload failed"
+  },
+  "jobs": {
+    "title": "Jobs",
+    "loading": "Loading jobs…",
+    "empty": "No task runs yet. Import Takeout records a job here.",
+    "kind": {
+      "takeout_import": "Takeout import",
+      "thumb_batch": "Thumbs",
+      "unknown": "job"
+    },
+    "status": {
+      "idle": "idle",
+      "queued": "queued",
+      "running": "running",
+      "done": "done",
+      "error": "error"
+    },
+    "thumbs_one": "{{count, number}} thumb",
+    "thumbs_other": "{{count, number}} thumbs"
+  }
+}

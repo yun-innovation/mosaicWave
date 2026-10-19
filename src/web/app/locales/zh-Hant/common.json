@@ -1,0 +1,40 @@
+{
+  "lede": "相片庫",
+  "loading": "載入中…",
+  "working": "處理中…",
+  "close": "關閉",
+  "cancel": "取消",
+  "browse": "瀏覽…",
+  "remove": "移除",
+  "requestFailed": "請求失敗",
+  "networkError": "網路錯誤",
+  "httpStatus": "HTTP {{status}}",
+  "unknownDate": "日期不明",
+  "role": {
+    "admin": "管理員",
+    "member": "成員"
+  },
+  "session": {
+    "checking": "正在檢查登入狀態…",
+    "who": "{{name}} · {{role}}",
+    "settings": "設定",
+    "signOut": "登出"
+  },
+  "health": {
+    "checking": "正在檢查 API…",
+    "ok": "API 正常",
+    "fail": "API 無法使用",
+    "unexpected": "回應格式不符"
+  },
+  "picker": {
+    "title": "選擇伺服器上的資料夾",
+    "intro": "這裡列出的是 mosaicWave 主機（這台 NAS 或電腦）上的資料夾，不是瀏覽器所在的電腦。選擇資料夾只會填入路徑欄位；要搬移相片庫，請在「設定」按「儲存資料夾」。",
+    "places": "位置",
+    "notSignedIn": "尚未登入。請關閉「設定」、重新整理並登入。如果剛才搬移到 NAS 失敗，請勿按「建立管理員」。",
+    "openedParent": "{{detail}} — 已改為開啟 {{path}} 的上層資料夾",
+    "browseFailed": "瀏覽失敗",
+    "noSubfolders": "這個資料夾沒有子資料夾。",
+    "zipCount_other": "此資料夾有 {{count}} 個 Takeout zip 檔",
+    "use": "使用這個資料夾"
+  }
+}

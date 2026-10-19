@@ -1,0 +1,74 @@
+{
+  "title": "Takeout 导出包",
+  "intro": "服务器文件夹：由 API 读取这台 NAS 或电脑上的路径。本设备：由浏览器或手机上传文件（包括在“文件”App 中打开的云端文件夹）。mosaicWave 不会登录 Drive 或 iCloud。所有上传的文件都会放在照片库的 tmp 文件夹中。",
+  "from": {
+    "server": "在这台服务器上",
+    "device": "在本设备上"
+  },
+  "serverPath": {
+    "label": "这台 NAS 或电脑上的文件夹",
+    "placeholder": "/share/…/Takeout（zip 文件；导入后可删除）",
+    "pickerTitle": "选择服务器上的 Takeout 导出包"
+  },
+  "device": {
+    "label": "这台电脑或手机上的文件夹",
+    "selected_other": "已选择 {{count, number}} 个文件",
+    "hint": "请选择包含 takeout-*.zip 的文件夹（或已解压的 Google 相册文件夹）。"
+  },
+  "check": "检查文件夹",
+  "import": "导入 Takeout",
+  "cancelUpload": "取消上传",
+  "inspect": {
+    "ready": "可以导入",
+    "notReady": "尚未就绪",
+    "zips_other": "{{count, number}} 个 zip 文件",
+    "importRoot": "导入 {{path}}",
+    "albumMetadata_other": "{{count, number}} 个相册 metadata.json",
+    "sidecars_other": "{{count, number}} 个附属文件找不到媒体",
+    "missingSample": "缺失的媒体（示例）：{{names}}"
+  },
+  "progress": {
+    "importing": "正在导入 {{processed}} / {{total}}",
+    "thumbs": "缩略图 {{processed}} / {{total}}",
+    "importingShort": "正在导入…",
+    "generatingThumbs": "正在生成缩略图…",
+    "waitingDevice": "正在等待本设备的文件（{{progress}}）。刷新后文件夹选择已丢失 — 请取消，或回到原来的 App 继续。",
+    "uploading": "正在上传 {{index}} / {{total}} · {{path}}",
+    "uploadComplete": "上传完成 · 正在导入…"
+  },
+  "result": {
+    "thumbsReady_other": "缩略图已生成（{{count, number}} 个文件）",
+    "imported": "已导入 {{assets}}、{{albums}}",
+    "importedFrom": "已从 {{path}} 导入 {{assets}}、{{albums}}",
+    "assets_other": "{{count, number}} 个项目",
+    "albums_other": "{{count, number}} 个相册",
+    "cancelled": "已取消上传"
+  },
+  "fail": {
+    "chooseFolder": "请先在本设备上选择 Takeout 文件夹",
+    "noJobId": "上传未返回任务 ID",
+    "connectionDropped": "上传到 NAS 时与 API 的连接中断。此次上传无法续传 — 请点击“取消上传”，然后重新开始。",
+    "check": "检查失败",
+    "import": "导入失败",
+    "thumbs": "缩略图生成失败",
+    "upload": "上传失败"
+  },
+  "jobs": {
+    "title": "任务",
+    "loading": "正在加载任务…",
+    "empty": "还没有任务记录。导入 Takeout 时会在这里记录。",
+    "kind": {
+      "takeout_import": "Takeout 导入",
+      "thumb_batch": "缩略图",
+      "unknown": "任务"
+    },
+    "status": {
+      "idle": "空闲",
+      "queued": "排队中",
+      "running": "运行中",
+      "done": "完成",
+      "error": "错误"
+    },
+    "thumbs_other": "{{count, number}} 张缩略图"
+  }
+}

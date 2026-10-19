@@ -1,8 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 
-import { apiFetch } from "./api";
+import { apiFetch, errorText } from "./api";
+import i18n from "./i18n";
 
 type FsEntry = {
   name: string;
@@ -34,7 +36,8 @@ function parentPath(path: string): string {
   return unix.slice(0, idx);
 }
 
-export function FolderPicker({ startPath, onSelect, onClose, title = "Select folder on the server" }: Props) {
+export function FolderPicker({ startPath, onSelect, onClose, title }: Props) {
+  const { t } = useTranslation("common");
   const [current, setCurrent] = useState(startPath);
   const [listing, setListing] = useState<FsList | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -50,15 +53,10 @@ export function FolderPicker({ startPath, onSelect, onClose, title = "Select fol
         const qs = next ? `?path=${encodeURIComponent(next)}` : "";
         const res = await apiFetch(`/api/v1/fs/list${qs}`);
         const body: unknown = await res.json().catch(() => null);
-        const detail =
-          typeof body === "object" && body && "detail" in body
-            ? String((body as { detail: unknown }).detail)
-            : `HTTP ${res.status}`;
+        const detail = errorText(body, res.status);
         if (res.status === 401) {
           setListing(null);
-          setError(
-            "Not signed in. Close Settings, reload, and sign in. Do not Create admin if a NAS move just failed.",
-          );
+          setError(i18n.t("common:picker.notSignedIn"));
           return;
         }
         if (res.ok && body && typeof body === "object") {
@@ -73,12 +71,12 @@ export function FolderPicker({ startPath, onSelect, onClose, title = "Select fol
           setError(detail);
           return;
         }
-        note = `${detail} — opened parent of ${next}`;
+        note = i18n.t("common:picker.openedParent", { detail, path: next });
         next = parentPath(next);
       }
     } catch (err: unknown) {
       setListing(null);
-      setError(err instanceof Error ? err.message : "browse failed");
+      setError(err instanceof Error ? err.message : i18n.t("common:picker.browseFailed"));
     } finally {
       setLoading(false);
     }
@@ -100,20 +98,17 @@ export function FolderPicker({ startPath, onSelect, onClose, title = "Select fol
         aria-labelledby="picker-title"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 id="picker-title">{title}</h2>
-        <p className="detail">
-          Folders on the mosaicWave host (this NAS or PC), not the browser computer. Choosing a
-          folder only fills the path box — Save folder in Settings is what moves the library.
-        </p>
-        <p className="picker-path">{listing ? listing.path || "Places" : current || ""}</p>
+        <h2 id="picker-title">{title ?? t("picker.title")}</h2>
+        <p className="detail">{t("picker.intro")}</p>
+        <p className="picker-path">{listing ? listing.path || t("picker.places") : current || ""}</p>
         {error && <p className="status fail">{error}</p>}
-        {loading && <p className="detail">Loading…</p>}
+        {loading && <p className="detail">{t("loading")}</p>}
         {!loading && listing && (
           <ul className="picker-list">
             {listing.path !== "" && (
               <li>
                 <button type="button" className="picker-item" onClick={() => void load("")}>
-                  Places
+                  {t("picker.places")}
                 </button>
               </li>
             )}
@@ -137,19 +132,19 @@ export function FolderPicker({ startPath, onSelect, onClose, title = "Select fol
               </li>
             ))}
             {!dirs.length && !zips.length && (
-              <li className="detail">No subfolders in this directory.</li>
+              <li className="detail">{t("picker.noSubfolders")}</li>
             )}
           </ul>
         )}
         {listing && listing.takeout_zip_count > 0 && (
-          <p className="detail">{listing.takeout_zip_count} takeout zip(s) in this folder</p>
+          <p className="detail">{t("picker.zipCount", { count: listing.takeout_zip_count })}</p>
         )}
         <div className="button-row">
           <button type="button" disabled={!usable} onClick={() => usable && onSelect(usable)}>
-            Use this folder
+            {t("picker.use")}
           </button>
           <button type="button" onClick={onClose}>
-            Cancel
+            {t("cancel")}
           </button>
         </div>
       </div>

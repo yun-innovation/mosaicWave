@@ -1,0 +1,40 @@
+{
+  "lede": "照片库",
+  "loading": "正在加载…",
+  "working": "正在处理…",
+  "close": "关闭",
+  "cancel": "取消",
+  "browse": "浏览…",
+  "remove": "移除",
+  "requestFailed": "请求失败",
+  "networkError": "网络错误",
+  "httpStatus": "HTTP {{status}}",
+  "unknownDate": "日期未知",
+  "role": {
+    "admin": "管理员",
+    "member": "成员"
+  },
+  "session": {
+    "checking": "正在检查登录状态…",
+    "who": "{{name}} · {{role}}",
+    "settings": "设置",
+    "signOut": "退出登录"
+  },
+  "health": {
+    "checking": "正在检查 API…",
+    "ok": "API 正常",
+    "fail": "API 不可用",
+    "unexpected": "响应格式不符"
+  },
+  "picker": {
+    "title": "选择服务器上的文件夹",
+    "intro": "这里列出的是 mosaicWave 主机（这台 NAS 或电脑）上的文件夹，而不是浏览器所在的电脑。选择文件夹只会填入路径框；要移动照片库，请在“设置”中点击“保存文件夹”。",
+    "places": "位置",
+    "notSignedIn": "尚未登录。请关闭“设置”，刷新页面后登录。如果刚才移动到 NAS 失败，请不要点击“创建管理员”。",
+    "openedParent": "{{detail}} — 已改为打开 {{path}} 的上级文件夹",
+    "browseFailed": "浏览失败",
+    "noSubfolders": "此文件夹没有子文件夹。",
+    "zipCount_other": "此文件夹中有 {{count}} 个 Takeout zip 文件",
+    "use": "使用此文件夹"
+  }
+}
