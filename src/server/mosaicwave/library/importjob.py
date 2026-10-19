@@ -98,7 +98,13 @@ def _parse_json(raw: str | None) -> dict:
 
 def _warnings_from_report(report: TakeoutInspect) -> list[dict]:
     return [
-        {"code": w.code, "severity": w.severity, "message": w.message, "path": w.path}
+        {
+            "code": w.code,
+            "severity": w.severity,
+            "message": w.message,
+            "path": w.path,
+            "params": dict(w.params),
+        }
         for w in report.warnings
     ]
 
@@ -117,6 +123,7 @@ def _warnings_from_result(data: dict) -> list[DumpWarning]:
                 severity=str(item.get("severity") or "warning"),
                 message=str(item.get("message") or ""),
                 path=item.get("path") if isinstance(item.get("path"), str) else None,
+                params=item.get("params") if isinstance(item.get("params"), dict) else {},
             )
         )
     return out

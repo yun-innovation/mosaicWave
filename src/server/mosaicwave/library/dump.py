@@ -25,6 +25,11 @@ class DumpWarning:
     severity: str
     message: str
     path: str | None = None
+    params: dict[str, str | int] = field(default_factory=dict)
+
+
+def _zip_unreadable(err: str) -> DumpWarning:
+    return DumpWarning(code="zip_unreadable", severity="error", message=err, params={"message": err})
 
 
 @dataclass
@@ -192,12 +197,15 @@ def inspect_takeout_path(path: Path) -> TakeoutInspect:
         )
         nested = _child_zip_dumps(root)
         hint = ""
+        params: dict[str, str | int] = {}
         if nested:
+            params["nested"] = ", ".join(nested)
             hint = (
                 f" This folder has no takeout-*.zip files."
                 f" Subfolder(s) that do: {', '.join(nested)}. Select that folder."
             )
         elif other_zips:
+            params["other_names"] = ", ".join(other_zips[:8])
             hint = (
                 f" Found zip file(s) with other names: {', '.join(other_zips[:8])}."
                 " mosaicWave looks for takeout-<timestamp>-<part>.zip."
@@ -212,6 +220,7 @@ def inspect_takeout_path(path: Path) -> TakeoutInspect:
                     + " An extracted tree needs a Google Photos folder inside this path (or date folders / photos here)."
                 ),
                 path=str(root),
+                params=params,
             )
         )
 
@@ -229,6 +238,7 @@ def inspect_takeout_path(path: Path) -> TakeoutInspect:
                         f"Archive part {part:03d} of {label} is not on disk and no oversized "
                         f"file named *-{part:03d}.* was found. Re-download that zip."
                     ),
+                    params={"part": f"{part:03d}", "label": label},
                 )
             )
 
@@ -248,9 +258,7 @@ def inspect_takeout_path(path: Path) -> TakeoutInspect:
         if zip_count <= 8:
             store = TakeoutZipStore(root)
             for err in store.zip_errors:
-                warnings.append(
-                    DumpWarning(code="zip_unreadable", severity="error", message=err)
-                )
+                warnings.append(_zip_unreadable(err))
             gaps = store.sidecar_gaps()
             sidecar_count = len(gaps)
             sidecar_samples = gaps[:SIDECAR_SAMPLES]
@@ -270,12 +278,13 @@ def inspect_takeout_path(path: Path) -> TakeoutInspect:
                                 "in the archives, so it will not be imported."
                             ),
                             path=item.name,
+                            params={"name": item.name},
                         )
                     )
         else:
             found_media, zip_errs = zip_dump_has_media(root)
             for err in zip_errs:
-                warnings.append(DumpWarning(code="zip_unreadable", severity="error", message=err))
+                warnings.append(_zip_unreadable(err))
             warnings.append(
                 DumpWarning(
                     code="check_partial",
@@ -296,6 +305,7 @@ def inspect_takeout_path(path: Path) -> TakeoutInspect:
                         f"Import reads {zip_count} zip archive(s) in place. You do not need to unzip. "
                         "Oversized videos next to the zips are attached using their sidecars."
                     ),
+                    params={"count": zip_count},
                 )
             )
         else:
@@ -315,6 +325,7 @@ def inspect_takeout_path(path: Path) -> TakeoutInspect:
                         f"{sidecar_count} photo/video sidecar(s) have no matching media file "
                         "in the zips or among oversized files next to them."
                     ),
+                    params={"count": sidecar_count},
                 )
             )
         return TakeoutInspect(
@@ -350,6 +361,7 @@ def inspect_takeout_path(path: Path) -> TakeoutInspect:
                         f"{sidecar_count} photo/video sidecar(s) have no matching media file."
                     ),
                     path=str(photos),
+                    params={"count": sidecar_count},
                 )
             )
 

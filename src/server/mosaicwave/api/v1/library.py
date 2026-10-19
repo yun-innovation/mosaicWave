@@ -88,6 +88,7 @@ class DumpWarningOut(BaseModel):
     severity: str
     message: str
     path: str | None = None
+    params: dict[str, str | int] = Field(default_factory=dict)
 
 
 class ZipSeriesOut(BaseModel):
@@ -315,7 +316,7 @@ def _inspect_out(report: TakeoutInspect) -> TakeoutInspectOut:
         ready=report.ready,
         warnings=[
             DumpWarningOut(
-                code=w.code, severity=w.severity, message=w.message, path=w.path
+                code=w.code, severity=w.severity, message=w.message, path=w.path, params=w.params
             )
             for w in report.warnings
         ],
@@ -327,17 +328,21 @@ def _warning_outs(raw: list) -> list[DumpWarningOut]:
     for w in raw:
         if isinstance(w, dict):
             path = w.get("path")
+            params = w.get("params")
             out.append(
                 DumpWarningOut(
                     code=str(w.get("code") or ""),
                     severity=str(w.get("severity") or "warning"),
                     message=str(w.get("message") or ""),
                     path=path if isinstance(path, str) else None,
+                    params=params if isinstance(params, dict) else {},
                 )
             )
             continue
         out.append(
-            DumpWarningOut(code=w.code, severity=w.severity, message=w.message, path=w.path)
+            DumpWarningOut(
+                code=w.code, severity=w.severity, message=w.message, path=w.path, params=w.params
+            )
         )
     return out
 
