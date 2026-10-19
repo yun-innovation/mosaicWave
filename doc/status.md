@@ -13,7 +13,7 @@ Short onboarding snapshot for agents. **Session start:** always read [index.md](
 
 ## Next
 
-**Milestone 3 — i18n and l10n:** design in [i18n.md](i18n.md); next is the implementation plan (react-i18next, `zh-Hant` + `zh-Hans`, `user.locale`). Then milestone 4 advanced UI (top bar and sidebar), 5 backup / restore / export, 6 ARM64 QPKG.
+**Milestone 3 — i18n and l10n:** implemented on `feature/i18n` ([i18n.md](i18n.md)): react-i18next with `en`, `zh-Hant`, `zh-Hans`; `user.locale` + `PATCH /api/v1/me`; error `code` + `params`; `npm run i18n-check`. Next: the user reviews the first-pass Chinese strings, then ship. Then milestone 4 advanced UI (top bar and sidebar), 5 backup / restore / export, 6 ARM64 QPKG.
 
 ## Constraints
 

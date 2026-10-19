@@ -135,7 +135,8 @@ Illustrative v1 surface (names can change; behavior should not):
 | POST | `/api/v1/auth/setup` | First standalone admin (`local_credential`) |
 | GET | `/api/v1/auth/status` | `platform`, `needs_setup`, current `me` if cookied |
 | POST | `/api/v1/auth/logout` | Clear session cookie |
-| GET | `/api/v1/me` | Current user, role, private library id |
+| GET | `/api/v1/me` | Current user, role, private library id, `locale` |
+| PATCH | `/api/v1/me` | Set `locale` (`en`, `zh-Hant`, `zh-Hans`, or `null` for automatic); [i18n.md](i18n.md) |
 | GET | `/api/v1/users` | List app users (any signed-in user; for share picker). Create members is still **admin** `PUT` |
 | PUT | `/api/v1/users` | Create/update local user or role (**admin**) |
 | GET | `/api/v1/settings` | Host **App folder** (`app_dir`) and **Library folder** (`data_dir`) (**admin**). `data_dir_smb` is the durable `smb://` URL when the library is on a NAS. `data_dir_mount` is the macOS share-root dest. `env_override` is true when `MOSAICWAVE_DATA_DIR` is set |
@@ -173,6 +174,8 @@ Illustrative v1 surface (names can change; behavior should not):
 | GET | `/api/v1/jobs/{id}/events` | Job audit log (own jobs only) |
 | GET | `/api/v1/sync/changes` | Metadata pull (`since_rev`, tombstones). Push is `/albums` + `base_rev`, not this URL. Covered vs later: [schema.md](schema.md) Sync protocol |
 | GET | `/api/v1/health` | Process / load balancer health |
+
+Errors are `{ "detail": "…", "code": "…", "params": {…} }`: `detail` is English, `code` is stable `snake_case` that the UI translates ([i18n.md](i18n.md)).
 
 FastAPI generates **OpenAPI** (`/docs`, `/openapi.json`) as the living spec. The web app uses **hand-written** `fetch` + types. Do **not** generate an SDK. Manual API tests use the Postman collection: import [`postman/mosaicwave.postman_collection.json`](../postman/mosaicwave.postman_collection.json) plus a `postman/*.postman_environment.json`. Login stores cookie `mw_session`. A Postman **workspace** is created in the Postman app (not a file). Regenerate the JSON with `python postman/build_collection.py` if routes change.
 

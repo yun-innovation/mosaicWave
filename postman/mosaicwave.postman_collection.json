@@ -239,7 +239,30 @@
             "method": "GET",
             "header": [],
             "url": "{{baseUrl}}/api/v1/me",
-            "description": "Current user, role, private library ids."
+            "description": "Current user, role, private library ids, locale."
+          }
+        },
+        {
+          "name": "Set language",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/me",
+            "description": "locale: en, zh-Hant, zh-Hans, or null for automatic (follow the browser).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"locale\": \"zh-Hant\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
           }
         },
         {
@@ -391,7 +414,7 @@
               }
             ],
             "url": "{{baseUrl}}/api/v1/settings",
-            "description": "Admin. Moves libraries/ and blobs/. library.db stays in the app folder. session.key stays in the app folder. Stores data_dir_smb and optional data_dir_mount; remounts that URL at that dest after reboot. Optional smb_user / smb_password: nsmb.conf username= if missing; System keychain -A -U only when a password is typed; macOS mount_smbfs gets //user:pass@host (percent-encoded). First Save folder should include the NAS password. Returning to app_dir replaces leftover libraries/blobs there. 409 if env is set, a job is running, or dest already has photos/thumbs (not when dest is the app folder).",
+            "description": "Admin. Moves libraries/ and blobs/. library.db stays in the app folder. session.key stays in the app folder. Stores data_dir_smb and optional data_dir_mount; remounts that URL at that dest after reboot. Optional smb_user / smb_password: nsmb.conf username= if missing; System keychain -A -U only when a password is typed. Returning to app_dir replaces leftover libraries/blobs there. 409 if env is set, a job is running, or dest already has photos/thumbs (not when dest is the app folder).",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"data_dir\": \"{{dataDir}}\"\n}",
