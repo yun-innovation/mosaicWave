@@ -20,12 +20,13 @@ A multi-platform photo/video library: Python API, static web UI, one `/api/v1`. 
 | --- | --- | --- |
 | **1** | AI rules + doc structure | Always-on rules force `index.md` at session start and docs-before-code; thin [naming.md](naming.md); status/index use milestones (not phases); status **Next** is one task |
 | **2** | Packaging verify | MSI installed on a test PC; QPKG x86_64 sideloaded on QTS 5; Linux/macOS tarball unpacked on a real host — **done** |
-| **3** | i18n and l10n | UI and user-facing strings can be translated; at least one locale besides the default |
+| **3** | i18n and l10n | UI and user-facing strings can be translated; at least one locale besides the default — **done** |
 | **4** | Advanced UI | Immich-style chrome: top bar and sidebar (not wrapping Immich) |
-| **5** | Backup / restore / export | Library archive of SQLite + FileStore + thumbs (not sync JSON) |
-| **6** | ARM64 QPKG | Sideload on a QTS 5 ARM64 NAS |
+| **5** | Schema maintenance | `library.db` records its schema version. At startup the server detects the version (older databases without one are identified from their tables and columns), applies each upgrade step in order until it matches the current schema, and refuses a database newer than the app |
+| **6** | Backup / restore / export | Library archive of SQLite + FileStore + thumbs (not sync JSON); restoring an older archive upgrades it through milestone 5 |
+| **7** | ARM64 QPKG | Sideload on a QTS 5 ARM64 NAS |
 
-**Current:** milestone **3** (milestones **1**–**2** done).
+**Current:** milestone **4** (milestones **1**–**3** done).
 
 ## Known open items (not a milestone yet)
 

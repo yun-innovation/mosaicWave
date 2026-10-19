@@ -11,5 +11,6 @@ Open items only. Roadmap: ordered milestones in [roadmap.md](roadmap.md). The ea
 - [x] Commit Next 16 web config: `tsconfig.json` / `next-env.d.ts`; `proxyClientMaxBodySize`; `output: export` only in production so `next dev` rewrites stay clean
 - [x] **Milestone 3** — i18n and l10n: `en`, `zh-Hant`, `zh-Hans`; `user.locale` + `PATCH /api/v1/me`; error `code` + `params`; `i18n-check` before build — **done**
 - [ ] Advanced UI: top bar and sidebar (**milestone 4**)
-- [ ] Backup / restore / export (library archive of SQLite + FileStore + thumbs; not sync JSON) (**milestone 5**)
-- [ ] ARM64 QPKG sideload on a QTS 5 ARM64 NAS (**milestone 6**)
+- [ ] Schema maintenance: detect the `library.db` schema version, apply upgrade steps in order to the current schema (**milestone 5**)
+- [ ] Backup / restore / export (library archive of SQLite + FileStore + thumbs; not sync JSON) (**milestone 6**)
+- [ ] ARM64 QPKG sideload on a QTS 5 ARM64 NAS (**milestone 7**)
