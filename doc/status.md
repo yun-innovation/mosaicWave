@@ -9,11 +9,11 @@ Short onboarding snapshot for agents. **Session start:** always read [index.md](
 
 **v0.1.1 published** (GitHub pre-release with MSI, QPKG x86_64, posix tarball, `SHA256SUMS.txt`). Repo: https://github.com/yun-innovation/mosaicWave. License FSL-1.1-Apache-2.0. Never work on `main`: branch, push, PR, squash-merge ([process.md](process.md)). Roadmap uses **ordered milestones** ([roadmap.md](roadmap.md)); old Phase 0–9 plan: [roadmap-archive.md](roadmap-archive.md).
 
-**Milestone 1 — done.** **Milestone 2 — done** (packaging verify: MSI, QPKG x86_64, Linux + macOS posix tarballs).
+**Milestone 1 — done.** **Milestone 2 — done** (packaging verify: MSI, QPKG x86_64, Linux + macOS posix tarballs). **Milestone 3 — done** (i18n and l10n: `en`, `zh-Hant`, `zh-Hans`; [i18n.md](i18n.md)). New UI strings must follow `.cursor/rules/i18n.mdc`.
 
 ## Next
 
-**Milestone 3 — i18n and l10n:** implemented on `feature/i18n` ([i18n.md](i18n.md)): react-i18next with `en`, `zh-Hant`, `zh-Hans`; `user.locale` + `PATCH /api/v1/me`; error `code` + `params`; `npm run i18n-check`. Next: the user reviews the first-pass Chinese strings, then ship. Then milestone 4 advanced UI (top bar and sidebar), 5 backup / restore / export, 6 ARM64 QPKG.
+**Milestone 4 — advanced UI** (top bar and sidebar). Then 5 schema maintenance (versioned upgrades of `library.db`), 6 backup / restore / export, 7 ARM64 QPKG.
 
 ## Constraints
 
