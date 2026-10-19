@@ -1,6 +1,6 @@
 # Status
 
-**Updated:** 2026-10-18  
+**Updated:** 2026-10-19  
 **Keep in sync with:** [`.cursor/rules/mosaicwave-status.mdc`](../.cursor/rules/mosaicwave-status.mdc) (same date, same next step).
 
 Short onboarding snapshot for agents. **Session start:** always read [index.md](index.md) first (For AI Agents + Planning). Names: [naming.md](naming.md).
@@ -13,7 +13,7 @@ Short onboarding snapshot for agents. **Session start:** always read [index.md](
 
 ## Next
 
-**Milestone 3 — i18n and l10n.** Then milestone 4 advanced UI (top bar and sidebar), 5 backup / restore / export, 6 ARM64 QPKG.
+**Milestone 3 — i18n and l10n:** design in [i18n.md](i18n.md); next is the implementation plan (react-i18next, `zh-Hant` + `zh-Hans`, `user.locale`). Then milestone 4 advanced UI (top bar and sidebar), 5 backup / restore / export, 6 ARM64 QPKG.
 
 ## Constraints
 

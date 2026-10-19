@@ -36,6 +36,11 @@ Env override: `MOSAICWAVE_DATA_DIR` wins over Settings / `config.json`.
 - Env: `MOSAICWAVE_DATA_DIR`, `MOSAICWAVE_PROFILE` (`dev` / `prod`), `MOSAICWAVE_PORT`, `MOSAICWAVE_HOST` (posix bind; default `127.0.0.1`), `MOSAICWAVE_WEB_ROOT`
 - `config.json` (examples): `data_dir_smb`, `data_dir_mount`, `web.port` — see Settings / [smb-paths.md](smb-paths.md)
 
+## Locales and translation keys
+
+- Locales: `en`, `zh-Hant`, `zh-Hans` (BCP 47 script subtags, not `zh-TW` / `zh-CN`)
+- Keys: `namespace:area.item` in camelCase; error codes `snake_case` under `errors:` — see [i18n.md](i18n.md)
+
 ## Scripts and packages
 
 - Dispatch: `scripts\publish.cmd` / `pack.cmd` with `msi` \| `qpkg` \| `posix`
