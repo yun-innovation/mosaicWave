@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { assetFileUrl } from "./api";
 
@@ -23,6 +24,7 @@ function formatClock(seconds: number): string {
 }
 
 export function VideoPlayer({ assetId, poster, title }: Props) {
+  const { t } = useTranslation("gallery");
   const videoRef = useRef<HTMLVideoElement>(null);
   const [src, setSrc] = useState(`/api/v1/assets/${assetId}/file`);
   const [playing, setPlaying] = useState(false);
@@ -62,7 +64,7 @@ export function VideoPlayer({ assetId, poster, title }: Props) {
         el.pause();
       }
     } catch {
-      setError("This clip cannot play in this browser.");
+      setError(t("video.cannotPlay"));
     }
   }
 
@@ -102,13 +104,13 @@ export function VideoPlayer({ assetId, poster, title }: Props) {
         }}
         onLoadedMetadata={syncDuration}
         onDurationChange={syncDuration}
-        onError={() => setError("This clip cannot play in this browser.")}
+        onError={() => setError(t("video.cannotPlay"))}
       />
       <div className="video-transport">
-        <button type="button" onClick={() => void togglePlay()} aria-label={playing ? "Pause" : "Play"}>
-          {playing ? "Pause" : "Play"}
+        <button type="button" onClick={() => void togglePlay()} aria-label={playing ? t("video.pause") : t("video.play")}>
+          {playing ? t("video.pause") : t("video.play")}
         </button>
-        <button type="button" onClick={() => skip(-10)} disabled={!known} aria-label="Back 10 seconds">
+        <button type="button" onClick={() => skip(-10)} disabled={!known} aria-label={t("video.back")}>
           −10s
         </button>
         <input
@@ -118,14 +120,14 @@ export function VideoPlayer({ assetId, poster, title }: Props) {
           step={0.1}
           value={known ? Math.min(current, duration) : 0}
           disabled={!known}
-          aria-label="Position"
+          aria-label={t("video.position")}
           aria-valuetext={formatClock(current)}
           onPointerDown={() => setScrubbing(true)}
           onPointerUp={() => setScrubbing(false)}
           onPointerCancel={() => setScrubbing(false)}
           onChange={(event) => onScrub(Number(event.target.value))}
         />
-        <button type="button" onClick={() => skip(10)} disabled={!known} aria-label="Forward 10 seconds">
+        <button type="button" onClick={() => skip(10)} disabled={!known} aria-label={t("video.forward")}>
           +10s
         </button>
         <span className="video-clock">

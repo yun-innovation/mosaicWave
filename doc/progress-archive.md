@@ -129,12 +129,13 @@ Dated milestones and decisions. Day-to-day process notes: [process.md](process.m
 | 2026-10-13 | Fix | Next 16 web config: commit `tsconfig` / `next-env.d.ts`; `proxyClientMaxBodySize` (replaces deprecated `middlewareClientMaxBodySize`); `output: export` only when `NODE_ENV=production` so `next dev` rewrites do not warn |
 | 2026-10-13 | Decision | Bulk ship workflow: local commits on one topic branch; agent pushes / opens a PR only on **`push`** / **`ship`** / **`bulk ship`** (`.cursor/rules/bulk-ship.mdc`) |
 | 2026-10-16 | Fix | Posix `mosaicWave.sh`: `ensurepip` before pip (Debian/Ubuntu venvs often lack pip); document `python3-venv` / `python3-pip` |
-| 2026-10-16 | Milestone | Linux posix tarball verified on Ubuntu (`yun-stg01`): unpack, `install.sh`, start after host `python3-venv` / `python3-pip` |
+| 2026-10-16 | Milestone | Linux posix tarball verified on an Ubuntu test host: unpack, `install.sh`, start after host `python3-venv` / `python3-pip` |
 | 2026-10-16 | Fix | Posix `mosaicWave.sh`: honour `MOSAICWAVE_HOST` for uvicorn bind (default `127.0.0.1`) |
 | 2026-10-17 | Milestone | Milestone 2 packaging verify deliverables complete: MSI, QPKG x86_64, Linux + macOS posix tarballs. ARM64 QPKG remains milestone 4 |
 | 2026-10-17 | Milestone | **Milestone 2 — done** (packaging verify). Next is milestone 3 — backup / restore / export |
 | 2026-10-18 | Decision | Milestone order: 3 i18n/l10n, 4 advanced UI (top bar and sidebar), 5 backup / restore / export, 6 ARM64 QPKG |
 | 2026-10-19 | Decision | i18n design (`doc/i18n.md`): react-i18next, `en` + `zh-Hant` + `zh-Hans`, `user.locale` on the server, error `code` next to `detail`. Rule `.cursor/rules/i18n.mdc` for `src/` edits |
+| 2026-10-19 | Feature | i18n implemented: react-i18next with bundled `en` / `zh-Hant` / `zh-Hans`; Settings language menu saved as `user.locale` (`PATCH /api/v1/me`); API errors carry `code` + `params`; Takeout warnings carry `params`; `npm run i18n-check` before build also checks server codes. Chinese strings are first-pass |
 
 
 ---

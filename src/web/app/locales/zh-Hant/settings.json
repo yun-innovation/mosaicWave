@@ -1,0 +1,90 @@
+{
+  "title": "設定",
+  "loadFailed": "無法載入設定",
+  "signInAgain": "{{detail}}。請重新整理並登入。如果剛才搬移到 NAS 失敗，請先把 library.db 複製回預設資料夾，再按「建立管理員」。",
+  "language": {
+    "label": "語言",
+    "help": "儲存在你的帳號中，換到其他裝置也會沿用。",
+    "auto": "自動（依瀏覽器）",
+    "saveFailed": "無法儲存語言：{{detail}}"
+  },
+  "library": {
+    "summary_other": "你的相片庫 · {{count, number}} 個項目"
+  },
+  "share": {
+    "label": "共享這個相片庫",
+    "help": "讀取：時間軸、縮圖、原始檔、相簿、同步。寫入：另可上傳及編輯相簿。對方仍保有自己的相片庫。除非你共享，否則管理員也看不到你的相片庫。",
+    "grant": "{{name}} · {{perm}}",
+    "qnapHint": "對方必須先用自己的 QNAP 帳號登入一次，你才能與他共享。",
+    "localHint": "請先在下方建立成員，再回到這裡與對方共享。",
+    "choose": "選擇對象…",
+    "chooseFirst": "請選擇要共享的對象",
+    "permLabel": "共享權限",
+    "submit": "共享"
+  },
+  "perm": {
+    "read": "讀取",
+    "write": "寫入"
+  },
+  "appDir": {
+    "label": "應用程式資料夾",
+    "help": "設定、工作階段金鑰、SQLite 和內建的 Python 都放在這裡，這裡不是相片庫。Mac 安裝版的位置是 /Library/Application Support/mosaicWave，本機除錯版使用 /Library/Application Support/mosaicWave-dev。"
+  },
+  "current": {
+    "label": "目前的相片庫",
+    "help": "目前使用中的相片與縮圖。SQLite 仍留在上方的應用程式資料夾。"
+  },
+  "move": {
+    "label": "搬移相片庫",
+    "help": "目的地只有一個：本機資料夾或 SMB 共享資料夾。只有按下「儲存資料夾」時才會搬移相片與縮圖，SQLite 仍留在應用程式資料夾。搬回應用程式資料夾時，會取代該處殘留的相片庫檔案；設定與登入資料會保留。搬移失敗時，mosaicWave 會繼續使用原本的資料夾。",
+    "folder": "資料夾",
+    "smb": "SMB",
+    "remounts": "啟動時會重新掛載 {{url}}",
+    "remountsAt": "啟動時會將 {{url}} 重新掛載到 {{mount}}",
+    "lockedQnap": "此 QPKG 會把相片庫放在磁碟區上隱藏的 .mosaicWave 資料夾（不在應用程式資料夾內）。移除並重新安裝不會刪除它。",
+    "lockedEnv": "此程序已設定 MOSAICWAVE_DATA_DIR，因此這裡無法變更資料夾。",
+    "save": "儲存資料夾",
+    "useAppFolder": "使用應用程式資料夾",
+    "pickerLibrary": "選擇相片庫的存放資料夾",
+    "pickerMount": "選擇 SMB 掛載點"
+  },
+  "smb": {
+    "host": "主機",
+    "share": "共享資料夾",
+    "folder": "資料夾"
+  },
+  "dest": {
+    "label": "目的地",
+    "help": "一律位於 /Volumes 之下。掛載點只填磁碟區名稱。資料夾與 SMB 的相片庫路徑相同（共享名稱之後的部分）。掛載點留空會使用 mosaicWave-…。上方顯示的是上次的目的地，不會自動填回。請勿選擇 Finder 的 Public。",
+    "mountPoint": "掛載點",
+    "folder": "資料夾"
+  },
+  "nas": {
+    "userLabel": "NAS 使用者名稱",
+    "userHelp": "這是此共享資料夾的 QNAP 帳號，不是 mosaicWave 的登入帳號。主機欄位請勿填入 user@。第一次儲存資料夾時必須輸入密碼。在 QNAP 共享資料夾中，以點開頭的名稱為保留名稱。",
+    "userPlaceholder": "使用者名稱",
+    "passwordLabel": "NAS 密碼",
+    "passwordPlaceholder": "第一次儲存資料夾時必填"
+  },
+  "save": {
+    "enterHostShare": "請輸入主機與共享資料夾",
+    "chooseFolder": "請選擇資料夾",
+    "confirmHome": "要把相片庫搬回應用程式資料夾嗎？該處殘留的相片庫檔案會被取代，設定與登入資料會保留。在這裡確認之前，瀏覽與輸入都不會搬移任何東西。",
+    "confirmMove": "要把相片庫資料庫、相片與縮圖搬到這個目的地嗎？在這裡確認之前，瀏覽與輸入都不會搬移任何東西。",
+    "restarting": "正在重新啟動 API 以開啟新的相片庫資料夾…",
+    "failed": "無法儲存資料夾",
+    "unreachableDebug": "無法連線到 API（儲存資料夾可能仍在掛載中）。請稍候再試，或執行 sudo sh scripts/start.sh 重新啟動。",
+    "unreachable": "無法連線到 API（儲存資料夾可能仍在掛載中）。請稍候再試 — 它應該會自行重新啟動。",
+    "noRestartDebug": "儲存資料夾後 API 沒有恢復。請執行 sudo sh scripts/start.sh。",
+    "noRestart": "儲存資料夾後 API 沒有恢復。它應該會自行重新啟動 — 請稍候再試。"
+  },
+  "users": {
+    "qnap": "使用者以自己的 QNAP 帳號登入。mosaicWave 不會在這裡新增 NAS 使用者。",
+    "addMember": "新增成員",
+    "noOthers": "尚無其他使用者。",
+    "username": "使用者名稱",
+    "displayName": "顯示名稱",
+    "password": "密碼（至少 8 個字元）",
+    "create": "建立成員"
+  }
+}

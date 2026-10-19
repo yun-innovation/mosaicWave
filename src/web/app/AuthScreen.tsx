@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { BrandLockup } from "./BrandLockup";
 import { apiFetch, Me, readDetail } from "./api";
@@ -12,6 +13,7 @@ type Props = {
 };
 
 export function AuthScreen({ mode, platform, onAuthed }: Props) {
+  const { t } = useTranslation(["auth", "common"]);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -39,21 +41,22 @@ export function AuthScreen({ mode, platform, onAuthed }: Props) {
       }
       onAuthed((await res.json()) as Me);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "request failed");
+      setError(err instanceof Error ? err.message : t("common:requestFailed"));
     } finally {
       setBusy(false);
     }
   }
 
+  const account = platform === "qnap" ? t("auth:account.qnap") : t("auth:account.local");
+
   return (
     <main>
-      <BrandLockup lede={mode === "setup" ? "Create the first admin account" : "Sign in"} />
+      <BrandLockup lede={mode === "setup" ? t("auth:lede.setup") : t("auth:lede.login")} />
       <form className="card import" onSubmit={onSubmit}>
         <p className="detail">
-          {platform === "qnap" ? "QNAP account" : "Local account"}
-          {mode === "setup" ? " · first user is admin" : ""}
+          {mode === "setup" ? t("auth:account.firstAdmin", { account }) : account}
         </p>
-        <label htmlFor="auth-user">Username</label>
+        <label htmlFor="auth-user">{t("auth:username")}</label>
         <input
           id="auth-user"
           value={username}
@@ -63,7 +66,7 @@ export function AuthScreen({ mode, platform, onAuthed }: Props) {
         />
         {mode === "setup" && (
           <>
-            <label htmlFor="auth-name">Display name</label>
+            <label htmlFor="auth-name">{t("auth:displayName")}</label>
             <input
               id="auth-name"
               value={displayName}
@@ -72,7 +75,7 @@ export function AuthScreen({ mode, platform, onAuthed }: Props) {
             />
           </>
         )}
-        <label htmlFor="auth-pass">Password</label>
+        <label htmlFor="auth-pass">{t("auth:password")}</label>
         <input
           id="auth-pass"
           type="password"
@@ -84,7 +87,11 @@ export function AuthScreen({ mode, platform, onAuthed }: Props) {
         />
         <div className="button-row">
           <button type="submit" disabled={busy}>
-            {busy ? "Working…" : mode === "setup" ? "Create admin" : "Sign in"}
+            {busy
+              ? t("common:working")
+              : mode === "setup"
+                ? t("auth:submit.setup")
+                : t("auth:submit.login")}
           </button>
         </div>
         {error && <p className="status fail">{error}</p>}

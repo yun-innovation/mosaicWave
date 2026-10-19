@@ -1,0 +1,91 @@
+{
+  "title": "Settings",
+  "loadFailed": "failed to load settings",
+  "signInAgain": "{{detail}}. Reload and sign in. If a NAS move just failed, copy library.db back to the default folder before Create admin.",
+  "language": {
+    "label": "Language",
+    "help": "Saved to your account, so it follows you to other devices.",
+    "auto": "Automatic (browser)",
+    "saveFailed": "Could not save the language: {{detail}}"
+  },
+  "library": {
+    "summary_one": "Your library · {{count, number}} asset",
+    "summary_other": "Your library · {{count, number}} assets"
+  },
+  "share": {
+    "label": "Share this library",
+    "help": "Read: timeline, thumbs, originals, albums, sync. Write: also upload and edit albums. They keep their own library. Admin still cannot see yours unless you share.",
+    "grant": "{{name}} · {{perm}}",
+    "qnapHint": "The other person must sign in with their QNAP account once before you can share.",
+    "localHint": "Create a member below, then share with them here.",
+    "choose": "Choose a person…",
+    "chooseFirst": "Choose a person to share with",
+    "permLabel": "Share permission",
+    "submit": "Share"
+  },
+  "perm": {
+    "read": "Read",
+    "write": "Write"
+  },
+  "appDir": {
+    "label": "App folder",
+    "help": "Config, session key, SQLite, and packaged Python stay here. This is not the photo library. On a packaged Mac install it is /Library/Application Support/mosaicWave. Local debug uses /Library/Application Support/mosaicWave-dev."
+  },
+  "current": {
+    "label": "Current library",
+    "help": "Photos and thumbnails in use now. SQLite stays in the App folder above."
+  },
+  "move": {
+    "label": "Move library",
+    "help": "One destination: a local folder, or an SMB share. Photos and thumbnails move only when you click Save folder. SQLite stays in the App folder. Returning to the app folder replaces leftover library files there; config and login stay. If the move fails, mosaicWave keeps the original folder.",
+    "folder": "Folder",
+    "smb": "SMB",
+    "remounts": "Remounts at startup as {{url}}",
+    "remountsAt": "Remounts at startup as {{url}} at {{mount}}",
+    "lockedQnap": "This QPKG keeps the library in a hidden .mosaicWave folder on the volume (not inside the app folder). Remove and reinstall does not delete it.",
+    "lockedEnv": "MOSAICWAVE_DATA_DIR is set on this process, so the folder is read-only here.",
+    "save": "Save folder",
+    "useAppFolder": "Use app folder",
+    "pickerLibrary": "Select library storage folder",
+    "pickerMount": "Select SMB mount point"
+  },
+  "smb": {
+    "host": "Host",
+    "share": "Share",
+    "folder": "Folder"
+  },
+  "dest": {
+    "label": "Destination",
+    "help": "Always under /Volumes. Mount point is the volume name only. Folder is the same library path as SMB (rest after the share). Leave mount point blank for mosaicWave-…. Last dest is shown above, not typed back in. Do not pick Finder Public.",
+    "mountPoint": "Mount point",
+    "folder": "Folder"
+  },
+  "nas": {
+    "userLabel": "NAS username",
+    "userHelp": "QNAP account for this share, not the mosaicWave login. Do not put user@ in the host box. Password is required on first Save folder. Names starting with a dot are reserved on QNAP shares.",
+    "userPlaceholder": "username",
+    "passwordLabel": "NAS password",
+    "passwordPlaceholder": "required on first Save folder"
+  },
+  "save": {
+    "enterHostShare": "Enter host and share",
+    "chooseFolder": "Choose a folder",
+    "confirmHome": "Move the library back to the app folder? Leftover library files there are replaced. Config and login stay. Browse and typing do not move anything until you confirm here.",
+    "confirmMove": "Move the library database, photos, and thumbnails to this destination? Browse and typing do not move anything until you confirm here.",
+    "restarting": "Restarting the API to open the new library folder…",
+    "failed": "failed to save folder",
+    "unreachableDebug": "Could not reach the API (Save folder may still be mounting). Wait and retry, or restart with sudo sh scripts/start.sh.",
+    "unreachable": "Could not reach the API (Save folder may still be mounting). Wait and retry — it should restart on its own.",
+    "noRestartDebug": "API did not come back after Save folder. Run sudo sh scripts/start.sh.",
+    "noRestart": "API did not come back after Save folder. It should restart on its own — wait and retry."
+  },
+  "users": {
+    "qnap": "People sign in with their QNAP account. mosaicWave does not add NAS users here.",
+    "addMember": "Add member",
+    "noOthers": "No other users yet.",
+    "username": "Username",
+    "displayName": "Display name",
+    "password": "Password (8+)",
+    "create": "Create member"
+  }
+}

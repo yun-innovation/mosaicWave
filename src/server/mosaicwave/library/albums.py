@@ -13,7 +13,11 @@ from mosaicwave.models import Album, AlbumAsset, Asset, new_id, utcnow
 
 
 class AlbumConflict(Exception):
-    """Live album name already used in this library."""
+    """Live album name already used in this library. ``code`` is the API error code."""
+
+    def __init__(self, message: str, code: str = "album_name_taken") -> None:
+        super().__init__(message)
+        self.code = code
 
 
 class AlbumStale(Exception):
@@ -112,7 +116,7 @@ def create_album(
             if existing.deleted_at is None:
                 if existing.name == name:
                     return existing
-                raise AlbumConflict("album id already exists")
+                raise AlbumConflict("album id already exists", "album_id_taken")
             other = session.scalar(
                 select(Album).where(
                     Album.source_id == source_id,

@@ -1,0 +1,90 @@
+{
+  "title": "设置",
+  "loadFailed": "无法加载设置",
+  "signInAgain": "{{detail}}。请刷新页面并登录。如果刚才移动到 NAS 失败，请先把 library.db 复制回默认文件夹，再点击“创建管理员”。",
+  "language": {
+    "label": "语言",
+    "help": "保存在你的账号中，换到其他设备也会沿用。",
+    "auto": "自动（跟随浏览器）",
+    "saveFailed": "无法保存语言：{{detail}}"
+  },
+  "library": {
+    "summary_other": "你的照片库 · {{count, number}} 个项目"
+  },
+  "share": {
+    "label": "共享此照片库",
+    "help": "读取：时间线、缩略图、原始文件、相册、同步。写入：还可以上传和编辑相册。对方仍保留自己的照片库。除非你共享，否则管理员也看不到你的照片库。",
+    "grant": "{{name}} · {{perm}}",
+    "qnapHint": "对方必须先用自己的 QNAP 账号登录一次，你才能与其共享。",
+    "localHint": "请先在下方创建成员，再回到这里与其共享。",
+    "choose": "选择对象…",
+    "chooseFirst": "请选择要共享的对象",
+    "permLabel": "共享权限",
+    "submit": "共享"
+  },
+  "perm": {
+    "read": "读取",
+    "write": "写入"
+  },
+  "appDir": {
+    "label": "应用程序文件夹",
+    "help": "配置、会话密钥、SQLite 和内置的 Python 都放在这里，这里不是照片库。Mac 安装版的位置是 /Library/Application Support/mosaicWave，本地调试版使用 /Library/Application Support/mosaicWave-dev。"
+  },
+  "current": {
+    "label": "当前照片库",
+    "help": "当前正在使用的照片和缩略图。SQLite 仍保留在上方的应用程序文件夹中。"
+  },
+  "move": {
+    "label": "移动照片库",
+    "help": "只有一个目标：本地文件夹或 SMB 共享文件夹。只有点击“保存文件夹”时才会移动照片和缩略图，SQLite 仍保留在应用程序文件夹中。移回应用程序文件夹时，会替换该处残留的照片库文件；配置和登录信息会保留。移动失败时，mosaicWave 会继续使用原来的文件夹。",
+    "folder": "文件夹",
+    "smb": "SMB",
+    "remounts": "启动时会重新挂载 {{url}}",
+    "remountsAt": "启动时会将 {{url}} 重新挂载到 {{mount}}",
+    "lockedQnap": "此 QPKG 会把照片库放在存储卷上隐藏的 .mosaicWave 文件夹中（不在应用程序文件夹内）。删除并重新安装不会删除它。",
+    "lockedEnv": "此进程已设置 MOSAICWAVE_DATA_DIR，因此无法在这里更改文件夹。",
+    "save": "保存文件夹",
+    "useAppFolder": "使用应用程序文件夹",
+    "pickerLibrary": "选择照片库的存储文件夹",
+    "pickerMount": "选择 SMB 挂载点"
+  },
+  "smb": {
+    "host": "主机",
+    "share": "共享文件夹",
+    "folder": "文件夹"
+  },
+  "dest": {
+    "label": "目标",
+    "help": "始终位于 /Volumes 之下。挂载点只填卷名。文件夹与 SMB 的照片库路径相同（共享名之后的部分）。挂载点留空会使用 mosaicWave-…。上方显示的是上次的目标，不会自动填回。请不要选择 Finder 的 Public。",
+    "mountPoint": "挂载点",
+    "folder": "文件夹"
+  },
+  "nas": {
+    "userLabel": "NAS 用户名",
+    "userHelp": "这是此共享文件夹的 QNAP 账号，不是 mosaicWave 的登录账号。主机框中不要填写 user@。第一次保存文件夹时必须输入密码。在 QNAP 共享文件夹中，以点开头的名称为保留名称。",
+    "userPlaceholder": "用户名",
+    "passwordLabel": "NAS 密码",
+    "passwordPlaceholder": "第一次保存文件夹时必填"
+  },
+  "save": {
+    "enterHostShare": "请输入主机和共享文件夹",
+    "chooseFolder": "请选择文件夹",
+    "confirmHome": "要把照片库移回应用程序文件夹吗？该处残留的照片库文件会被替换，配置和登录信息会保留。在这里确认之前，浏览和输入都不会移动任何内容。",
+    "confirmMove": "要把照片库数据库、照片和缩略图移动到这个目标吗？在这里确认之前，浏览和输入都不会移动任何内容。",
+    "restarting": "正在重启 API 以打开新的照片库文件夹…",
+    "failed": "无法保存文件夹",
+    "unreachableDebug": "无法连接到 API（保存文件夹可能仍在挂载中）。请稍后重试，或运行 sudo sh scripts/start.sh 重启。",
+    "unreachable": "无法连接到 API（保存文件夹可能仍在挂载中）。请稍后重试 — 它应该会自动重启。",
+    "noRestartDebug": "保存文件夹后 API 没有恢复。请运行 sudo sh scripts/start.sh。",
+    "noRestart": "保存文件夹后 API 没有恢复。它应该会自动重启 — 请稍后重试。"
+  },
+  "users": {
+    "qnap": "用户使用自己的 QNAP 账号登录。mosaicWave 不会在这里添加 NAS 用户。",
+    "addMember": "添加成员",
+    "noOthers": "还没有其他用户。",
+    "username": "用户名",
+    "displayName": "显示名称",
+    "password": "密码（至少 8 个字符）",
+    "create": "创建成员"
+  }
+}

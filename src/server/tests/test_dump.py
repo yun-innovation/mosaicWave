@@ -117,3 +117,13 @@ def test_inspect_api(tmp_path: Path) -> None:
     assert blocked.status_code == 400
     as_source = client.post("/api/v1/sources", json={"path": str(dump), "kind": "takeout"})
     assert as_source.status_code == 409
+
+
+def test_warnings_carry_params_for_translation(tmp_path: Path) -> None:
+    dump = tmp_path / "download"
+    dump.mkdir()
+    _empty_zip(dump / "photos-export.zip")
+    report = inspect_takeout_path(dump)
+    warning = next(w for w in report.warnings if w.code == "no_takeout_zips")
+    assert warning.params == {"other_names": "photos-export.zip"}
+    assert "photos-export.zip" in warning.message

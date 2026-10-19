@@ -280,7 +280,14 @@ OpenAPI at `{{baseUrl}}/docs` stays the living spec; this collection is a snapsh
                     body="{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\"\n}",
                     tests=SAVE_COOKIE,
                 ),
-                req("Me", "GET", "/api/v1/me", description="Current user, role, private library ids."),
+                req("Me", "GET", "/api/v1/me", description="Current user, role, private library ids, locale."),
+                req(
+                    "Set language",
+                    "PATCH",
+                    "/api/v1/me",
+                    description="locale: en, zh-Hant, zh-Hans, or null for automatic (follow the browser).",
+                    body="{\n  \"locale\": \"zh-Hant\"\n}",
+                ),
                 req(
                     "Logout",
                     "POST",

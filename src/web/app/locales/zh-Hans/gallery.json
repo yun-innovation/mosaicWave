@@ -1,0 +1,46 @@
+{
+  "title": "照片库",
+  "tab": {
+    "timeline": "时间线",
+    "albums": "相册"
+  },
+  "deleteAlbum": "删除相册",
+  "generateThumbs": "生成缩略图",
+  "album": {
+    "newPlaceholder": "新相册名称",
+    "create": "创建相册",
+    "loading": "正在加载相册…",
+    "empty": "还没有相册。Takeout 中的文件夹会成为相册，你也可以在这里创建。",
+    "noCover": "无封面",
+    "caption": "{{name}} · {{count, number}}",
+    "createFirst": "请先创建相册。",
+    "fallbackName": "相册",
+    "alreadyIn": "已在“{{name}}”中",
+    "addedTo": "已添加到“{{name}}”"
+  },
+  "upload": {
+    "sourceLabel": "上传目标",
+    "yourLibrary": "你的照片库",
+    "shared": "共享",
+    "sourceOption_other": "{{owner}} · {{count, number}} 个项目",
+    "submit": "上传"
+  },
+  "loadingLibrary": "正在加载照片库…",
+  "emptyAlbum": "这个相册是空的。打开一张照片，然后点击“添加到相册”。",
+  "emptyLibrary": "照片库是空的。导入 Takeout 文件夹来建立 SQLite 数据库。",
+  "loadMore": "加载更多",
+  "detail": {
+    "download": "下载原始文件",
+    "albumLabel": "相册",
+    "addToAlbum": "添加到相册",
+    "removeFromAlbum": "从相册中移除"
+  },
+  "video": {
+    "play": "播放",
+    "pause": "暂停",
+    "back": "后退 10 秒",
+    "forward": "快进 10 秒",
+    "position": "播放位置",
+    "cannotPlay": "此浏览器无法播放该视频。"
+  }
+}

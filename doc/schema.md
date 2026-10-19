@@ -103,6 +103,7 @@ erDiagram
 | `provider_subject` | TEXT | Identity from the auth provider |
 | `display_name` | TEXT | |
 | `role` | TEXT | `admin` \| `member` (default `member`) |
+| `locale` | VARCHAR(16) NULL | `en` \| `zh-Hant` \| `zh-Hans`; NULL = follow the browser ([i18n.md](i18n.md)) |
 | `rev`, `updated_at`, `deleted_at` | | Sync fields |
 
 Auth is enforced from Phase 5. DDL exists since Phase 2.
@@ -292,7 +293,7 @@ This is **replica sync**, not a backup. Pull/push copy **metadata** (ids, names,
 - **Pull:** `GET /api/v1/sync/changes?since_rev=&cursor=&limit=`. `since_rev` is exclusive (default `0`). Response `assets`, `albums`, `album_assets` (including rows with `deleted_at` set), `server_rev`, `next_cursor`. Client upserts by `id`. If `deleted_at` is set, hide/remove locally. `cursor` continues a truncated page (`rev|kind|id`). `limit` default 200, max 500.
 - **Delete does not DROP the row.** Tombstone + new `rev` so other replicas still see the change. Gallery list APIs omit tombstones; only sync returns them.
 - **Push albums:** there is no `POST /sync/changes`. Use `/api/v1/albums`. Send `base_rev` equal to the album’s `rev` from the last pull. **409** if the server `rev` differs (outdated JSON) — pull and retry. Omit `base_rev` only for the live web UI (last write wins).
-- Uploads: `POST /api/v1/assets` (bytes in FileStore), then pull the new row. Errors: FastAPI `{ "detail": "…" }` (400 invalid cursor, 401 no session, 409 stale or name clash).
+- Uploads: `POST /api/v1/assets` (bytes in FileStore), then pull the new row. Errors: `{ "detail": "…", "code": "…", "params": {} }` (400 invalid cursor, 401 no session, 409 stale or name clash).
 
 ### v1 covered (API in; simple Postman done)
 

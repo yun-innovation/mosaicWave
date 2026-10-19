@@ -2,10 +2,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, Query, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from mosaicwave.api.errors import ApiError, wrapped
 from mosaicwave.auth.deps import require_user
 from mosaicwave.db import get_session
 from mosaicwave.library.fsbrowse import list_host_dir
@@ -52,17 +53,17 @@ def fs_list(
     try:
         listing = list_host_dir(path)
     except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+        raise wrapped(404, "folder_not_found", exc) from exc
     except PermissionError as exc:
-        raise HTTPException(status_code=403, detail=str(exc)) from exc
+        raise wrapped(403, "folder_forbidden", exc) from exc
     except OSError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise wrapped(400, "folder_unreadable", exc) from exc
     current = Path(listing.path).resolve() if listing.path else None
     if current is not None and mine is not None:
         under_libs = _is_under(current, libraries)
         own = current == mine or _is_under(current, mine)
         if under_libs and current != libraries and not own:
-            raise HTTPException(status_code=403, detail="not allowed")
+            raise ApiError(403, "folder_not_allowed", "not allowed")
     entries = listing.entries
     if current is not None and mine is not None and current == libraries:
         entries = [e for e in entries if Path(e.path).resolve() == mine]
