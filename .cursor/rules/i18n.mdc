@@ -1,0 +1,16 @@
+---
+description: Every user-facing string and format goes through i18n (en, zh-Hant, zh-Hans).
+globs: src/web/**,src/server/mosaicwave/**
+alwaysApply: false
+---
+
+# i18n and l10n when coding
+
+Design: `doc/i18n.md`. Locales: `en` (source), `zh-Hant`, `zh-Hans`.
+
+1. **No hard-coded UI text.** In `src/web`, every user-facing string goes through `t()` from `react-i18next`: labels, buttons, placeholders, `alt` / `title` / `aria-label`, empty and error states, confirm dialogs.
+2. **All three locales in the same change.** A new key goes into `en`, `zh-Hant`, and `zh-Hans`. If a translation is unknown, copy the English text and list the key in the PR. `scripts/i18n-check` must pass.
+3. **Format with `Intl` and the active locale.** Dates, numbers, byte sizes, relative times. No `toLocaleString(undefined, …)`, no hand-built date strings.
+4. **Server errors get a code.** A new or changed `HTTPException` the UI may show carries a stable `snake_case` `code` (plus `params`) next to the English `detail`. Add `errors:{code}` to all three locales.
+5. **Never translate** user data (album names, filenames, paths), log lines, command-line output, or API field names.
+6. **Before the i18n code exists** (`src/web/app/locales/` missing): do not invent a stopgap. Write English and list the new strings in the PR so they are migrated.
