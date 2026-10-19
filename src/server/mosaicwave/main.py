@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
+from mosaicwave.api.errors import install_error_handlers
 from mosaicwave.api.v1.auth import router as auth_router
 from mosaicwave.api.v1.health import router as health_router
 from mosaicwave.api.v1.fs import router as fs_router
@@ -45,6 +46,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app = FastAPI(title="mosaicWave", version="0.1.1")
     attach_runtime(app, settings, recover=True)
+    install_error_handlers(app)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=list(DEV_ORIGINS),

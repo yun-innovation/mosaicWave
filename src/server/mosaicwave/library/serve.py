@@ -4,9 +4,9 @@ from collections.abc import Iterator
 from pathlib import PurePosixPath
 from urllib.parse import quote
 
-from fastapi import HTTPException
 from fastapi.responses import Response, StreamingResponse
 
+from mosaicwave.api.errors import ApiError, wrapped
 from mosaicwave.storage.errors import NotFound, PermissionDenied
 from mosaicwave.storage.filestore import FileStore
 
@@ -92,9 +92,9 @@ def original_file_response(
     try:
         size = store.stat(rel).size
     except NotFound as exc:
-        raise HTTPException(status_code=404, detail="file not found") from exc
+        raise ApiError(404, "file_not_found", "file not found") from exc
     except PermissionDenied as exc:
-        raise HTTPException(status_code=403, detail=str(exc)) from exc
+        raise wrapped(403, "file_forbidden", exc) from exc
 
     headers = {
         "Accept-Ranges": "bytes",

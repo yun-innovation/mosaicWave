@@ -3,10 +3,11 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from mosaicwave.api.errors import ApiError, wrapped
 from mosaicwave.auth.deps import require_admin
 from mosaicwave.config import (
     data_dir_env_override,
@@ -53,9 +54,9 @@ class HostSettingsIn(BaseModel):
     mount_point: str | None = None
 
 
-def _bad_request(exc: BaseException) -> HTTPException:
+def _bad_request(exc: BaseException) -> ApiError:
     _log.warning("PUT /settings: %s", exc)
-    return HTTPException(status_code=400, detail=str(exc))
+    return wrapped(400, "data_dir_rejected", exc)
 
 
 def _smb_user_from_settings(smb_url: str | None) -> str | None:
@@ -101,9 +102,10 @@ def put_settings(
     _admin: User = Depends(require_admin),
 ) -> HostSettingsOut:
     if data_dir_env_override():
-        raise HTTPException(
-            status_code=409,
-            detail="MOSAICWAVE_DATA_DIR is set; the data folder cannot be changed in Settings",
+        raise ApiError(
+            409,
+            "data_dir_env_locked",
+            "MOSAICWAVE_DATA_DIR is set; the data folder cannot be changed in Settings",
         )
     typed = (body.data_dir or "").strip()
     smb_user = (body.smb_user or "").strip()
@@ -134,10 +136,7 @@ def put_settings(
     elif smb:
         stored_mount = share_mount_dest() or mount_point or None
     if dest != src and dest != boot and data_dir_occupied(dest):
-        raise HTTPException(
-            status_code=409,
-            detail="destination already has a mosaicWave library",
-        )
+        raise ApiError(409, "data_dir_occupied", "destination already has a mosaicWave library")
     if dest != src:
         try:
             ensure_writable_dir(dest)
@@ -149,9 +148,8 @@ def put_settings(
             session.close()
             switch_data_dir(request.app, dest, smb_url=smb, mount_point=stored_mount)
     except ImportBusy:
-        raise HTTPException(
-            status_code=409,
-            detail="cannot move the data folder while a job is running",
+        raise ApiError(
+            409, "data_dir_job_running", "cannot move the data folder while a job is running"
         ) from None
     except ValueError as exc:
         raise _bad_request(exc) from exc

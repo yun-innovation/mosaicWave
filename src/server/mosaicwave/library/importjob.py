@@ -24,7 +24,18 @@ INTERRUPTED = "interrupted (process stopped)"
 
 
 class ImportBusy(Exception):
-    """Another job is already running."""
+    """Another job is already running. ``code`` is the API error code."""
+
+    def __init__(self, message: str, code: str = "job_running") -> None:
+        super().__init__(message)
+        self.code = code
+
+
+class NoPhotosFound(ValueError):
+    def __init__(self) -> None:
+        super().__init__(
+            "no photos found (need takeout-*.zip archives or an extracted Google Photos folder)"
+        )
 
 
 def _job_failure_message(current: str | None, exc: BaseException) -> str:
@@ -34,11 +45,14 @@ def _job_failure_message(current: str | None, exc: BaseException) -> str:
     return text
 
 
-def _busy_detail(row: Job) -> str:
+def _busy(row: Job) -> ImportBusy:
     inp = _parse_json(row.input_json)
     if row.kind == KIND_TAKEOUT and inp.get("mode") == "push" and inp.get("phase") == "receiving":
-        return "A device upload is still running. Click Cancel upload, then Import again."
-    return "Another job is already running"
+        return ImportBusy(
+            "A device upload is still running. Click Cancel upload, then Import again.",
+            "upload_still_running",
+        )
+    return ImportBusy("Another job is already running")
 
 
 def _counts(session: Session, source_id: str) -> tuple[int, int, int]:
@@ -215,10 +229,10 @@ class ImportJobRunner:
         if self._running_id is not None:
             current = session.get(Job, self._running_id)
             if current is not None and current.status == "running":
-                raise ImportBusy(_busy_detail(current))
+                raise _busy(current)
         busy = session.scalar(select(Job).where(Job.status == "running").limit(1))
         if busy is not None:
-            raise ImportBusy(_busy_detail(busy))
+            raise _busy(busy)
 
     @contextmanager
     def idle_exclusive(self, session: Session):
@@ -252,10 +266,10 @@ class ImportJobRunner:
                         inp = _parse_json(current.input_json)
                         if inp.get("path") == path:
                             return job_view(current)
-                        raise ImportBusy(_busy_detail(current))
+                        raise _busy(current)
                 busy = session.scalar(select(Job).where(Job.status == "running").limit(1))
                 if busy is not None:
-                    raise ImportBusy(_busy_detail(busy))
+                    raise _busy(busy)
                 now = utcnow()
                 warnings = _warnings_from_report(report)
                 row = Job(
@@ -357,7 +371,7 @@ class ImportJobRunner:
     ) -> tuple[Path, bool]:
         with self._lock:
             if self._running_id != job_id:
-                raise ImportBusy("that import is not the active job")
+                raise ImportBusy("that import is not the active job", "job_not_active")
         session = self._factory()
         try:
             row = self._push_job(session, job_id, user_id)
@@ -380,7 +394,7 @@ class ImportJobRunner:
     ) -> dict:
         with self._lock:
             if self._running_id != job_id:
-                raise ImportBusy("that import is not the active job")
+                raise ImportBusy("that import is not the active job", "job_not_active")
         session = self._factory()
         try:
             row = self._push_job(session, job_id, user_id)
@@ -413,7 +427,7 @@ class ImportJobRunner:
         dest_root = dest_root.expanduser().resolve()
         with self._lock:
             if self._running_id != job_id:
-                raise ImportBusy("that import is not the active job")
+                raise ImportBusy("that import is not the active job", "job_not_active")
             session = self._factory()
             try:
                 row = self._push_job(session, job_id, user_id)
@@ -425,9 +439,7 @@ class ImportJobRunner:
                     raise ValueError("missing staging folder")
                 report = inspect_takeout_path(staging)
                 if not report.import_root:
-                    raise ValueError(
-                        "no photos found (need takeout-*.zip archives or an extracted Google Photos folder)"
-                    )
+                    raise NoPhotosFound()
                 inp["phase"] = "importing"
                 inp["path"] = str(staging)
                 inp["import_root"] = report.import_root

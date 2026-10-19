@@ -22,9 +22,12 @@ def _column_names(conn, table: str) -> set[str]:
 
 def _migrate_schema(engine: Engine) -> None:
     with engine.begin() as conn:
-        if "source" in {
+        tables = {
             row[0] for row in conn.execute(text("SELECT name FROM sqlite_master WHERE type='table'"))
-        }:
+        }
+        if "user" in tables and "locale" not in _column_names(conn, '"user"'):
+            conn.execute(text('ALTER TABLE "user" ADD COLUMN locale VARCHAR(16)'))
+        if "source" in tables:
             if "owner_user_id" not in _column_names(conn, "source"):
                 conn.execute(text("ALTER TABLE source ADD COLUMN owner_user_id VARCHAR(36)"))
             if "source_id" not in _column_names(conn, "album"):

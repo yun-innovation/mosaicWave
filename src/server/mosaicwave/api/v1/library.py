@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from mosaicwave.api.errors import ApiError, wrapped
 from mosaicwave.auth.access import (
     can_read_source,
     can_write_source,
@@ -25,6 +26,7 @@ from mosaicwave.library.dump import TakeoutInspect, inspect_takeout_path
 from mosaicwave.library.importjob import (
     ImportBusy,
     ImportJobRunner,
+    NoPhotosFound,
     job_view,
     list_job_events,
     list_jobs,
@@ -240,7 +242,7 @@ def _writable_ids(session: Session, user: User) -> set[str]:
 def _owned_source(session: Session, user: User, source_id: str) -> Source:
     source = _live_source(session, source_id)
     if source.owner_user_id != user.id:
-        raise HTTPException(status_code=404, detail="source not found")
+        raise ApiError(404, "source_not_found", "source not found")
     return source
 
 
@@ -264,9 +266,8 @@ def _takeout_raw_path(request: Request, body: TakeoutImportIn | None) -> str:
         str(settings.takeout_dir) if settings.takeout_dir else None
     )
     if not raw:
-        raise HTTPException(
-            status_code=400,
-            detail="path is required (or set MOSAICWAVE_TAKEOUT_DIR)",
+        raise ApiError(
+            400, "takeout_path_required", "path is required (or set MOSAICWAVE_TAKEOUT_DIR)"
         )
     return raw
 
@@ -274,8 +275,12 @@ def _takeout_raw_path(request: Request, body: TakeoutImportIn | None) -> str:
 def _inspect_dir(raw: str) -> TakeoutInspect:
     root = Path(raw).expanduser()
     if not root.is_dir():
-        raise HTTPException(status_code=400, detail="path is not a directory")
+        raise ApiError(400, "takeout_not_a_directory", "path is not a directory")
     return inspect_takeout_path(root)
+
+
+def _busy_error(exc: ImportBusy) -> ApiError:
+    return ApiError(409, exc.code, str(exc))
 
 
 def _inspect_out(report: TakeoutInspect) -> TakeoutInspectOut:
@@ -377,19 +382,19 @@ def _source_out(session: Session, row: Source, *, perm: str | None = None, owned
 def _live_source(session: Session, source_id: str) -> Source:
     source = session.get(Source, source_id)
     if source is None or source.deleted_at is not None:
-        raise HTTPException(status_code=404, detail="source not found")
+        raise ApiError(404, "source_not_found", "source not found")
     return source
 
 
 def _live_asset(session: Session, asset_id: str, user: User) -> tuple[Asset, Source]:
     asset = session.get(Asset, asset_id)
     if asset is None or asset.deleted_at is not None:
-        raise HTTPException(status_code=404, detail="asset not found")
+        raise ApiError(404, "asset_not_found", "asset not found")
     source = session.get(Source, asset.source_id)
     if source is None or source.deleted_at is not None:
-        raise HTTPException(status_code=404, detail="asset not found")
+        raise ApiError(404, "asset_not_found", "asset not found")
     if not can_read_source(session, user, source.id):
-        raise HTTPException(status_code=404, detail="asset not found")
+        raise ApiError(404, "asset_not_found", "asset not found")
     return asset, source
 
 
@@ -419,7 +424,7 @@ def get_assets(
         try:
             get_visible_album(session, album_id=album_id, source_ids=ids)
         except FileNotFoundError as exc:
-            raise HTTPException(status_code=404, detail=str(exc)) from exc
+            raise _not_found(exc) from exc
     try:
         return list_assets(
             session,
@@ -429,22 +434,47 @@ def get_assets(
             album_id=album_id,
         )
     except (ValueError, OSError) as exc:
-        raise HTTPException(status_code=400, detail=f"invalid cursor: {exc}") from exc
+        raise ApiError(400, "invalid_cursor", f"invalid cursor: {exc}", {"message": str(exc)}) from exc
 
 
 def _album_out(session: Session, row) -> AlbumOut:
     return AlbumOut(**album_view(session, row))
 
 
+_NOT_FOUND_CODES = {
+    "album not found": "album_not_found",
+    "asset not found": "asset_not_found",
+    "asset is not in that album": "asset_not_in_album",
+    "user not found": "user_not_found",
+}
+
+_ALBUM_INPUT_CODES = {
+    "name is required": "album_name_required",
+    "name too long": "album_name_too_long",
+    "id must be a UUID": "album_id_invalid",
+    "name or cover_asset_id is required": "album_patch_empty",
+}
+
+
+def _not_found(exc: FileNotFoundError) -> ApiError:
+    code = _NOT_FOUND_CODES.get(str(exc))
+    if code is None:
+        return wrapped(404, "not_found", exc)
+    return ApiError(404, code, str(exc))
+
+
 def _album_http_error(exc: Exception) -> None:
     if isinstance(exc, AlbumStale):
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
+        raise ApiError(409, "album_stale", str(exc)) from exc
     if isinstance(exc, AlbumConflict):
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
+        raise ApiError(409, exc.code, str(exc)) from exc
     if isinstance(exc, FileNotFoundError):
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+        raise _not_found(exc) from exc
     if isinstance(exc, ValueError):
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        code = _ALBUM_INPUT_CODES.get(str(exc))
+        if code is None:
+            raise wrapped(400, "album_rejected", exc) from exc
+        raise ApiError(400, code, str(exc)) from exc
     raise
 
 
@@ -487,7 +517,7 @@ def get_album_one(
     try:
         row = get_visible_album(session, album_id=album_id, source_ids=_readable_ids(session, user))
     except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+        raise _not_found(exc) from exc
     return _album_out(session, row)
 
 
@@ -599,7 +629,7 @@ def get_sync_changes(
             source_ids=granted_source_ids(session, user),
         )
     except (ValueError, OSError) as exc:
-        raise HTTPException(status_code=400, detail=f"invalid cursor: {exc}") from exc
+        raise ApiError(400, "invalid_cursor", f"invalid cursor: {exc}", {"message": str(exc)}) from exc
 
 
 @router.get("/assets/{asset_id}", response_model=AssetOut)
@@ -651,7 +681,7 @@ def get_asset_thumb(
         with blobs.get(key) as handle:
             data = handle.read()
     except StoreNotFound as exc:
-        raise HTTPException(status_code=404, detail="thumb not found") from exc
+        raise ApiError(404, "thumb_not_found", "thumb not found") from exc
     return Response(
         content=data,
         media_type="image/jpeg",
@@ -674,7 +704,7 @@ def get_asset_preview(
         with blobs.get(key) as handle:
             data = handle.read()
     except StoreNotFound as exc:
-        raise HTTPException(status_code=404, detail="preview not found") from exc
+        raise ApiError(404, "preview_not_found", "preview not found") from exc
     return Response(
         content=data,
         media_type="image/jpeg",
@@ -713,14 +743,16 @@ def post_asset(
 ) -> AssetOut:
     source = _live_source(session, source_id)
     if not can_write_source(session, user, source.id):
-        raise HTTPException(status_code=404, detail="source not found")
+        raise ApiError(404, "source_not_found", "source not found")
     if source.kind != "folder":
-        raise HTTPException(status_code=400, detail="uploads are only supported for folder sources")
+        raise ApiError(
+            400, "upload_folder_only", "uploads are only supported for folder sources"
+        )
     name = Path(file.filename or "upload").name
     if not name or name in (".", ".."):
-        raise HTTPException(status_code=400, detail="invalid filename")
+        raise ApiError(400, "invalid_filename", "invalid filename")
     if not is_media(name):
-        raise HTTPException(status_code=400, detail="unsupported media type")
+        raise ApiError(400, "unsupported_media_type", "unsupported media type")
     store = filestore_for_source(source)
     rel = unused_relative(store, name)
     written = 0
@@ -732,10 +764,12 @@ def post_asset(
                     break
                 written += len(chunk)
                 if written > MAX_UPLOAD_BYTES:
-                    raise HTTPException(status_code=413, detail="file too large")
+                    raise ApiError(
+                        413, "file_too_large", "file too large", {"max": MAX_UPLOAD_BYTES}
+                    )
                 dest.write(chunk)
     except NotSupported as exc:
-        raise HTTPException(status_code=400, detail="source is read-only") from exc
+        raise ApiError(400, "source_read_only", "source is read-only") from exc
     except HTTPException:
         try:
             store.delete(rel)
@@ -757,7 +791,7 @@ def post_thumbs_generate(
     try:
         job = runner.start_thumbs(user_id=user.id, source_id=lib.id)
     except ImportBusy as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
+        raise _busy_error(exc) from exc
     return _job_out(job)
 
 
@@ -790,9 +824,10 @@ def get_sources(
 def create_source(
     _user: User = Depends(require_user),
 ) -> SourceOut:
-    raise HTTPException(
-        status_code=409,
-        detail="each user already has one private library",
+    raise ApiError(
+        409,
+        "library_exists",
+        "each user already has one private library",
     )
 
 
@@ -802,7 +837,7 @@ def delete_source(
     _user: User = Depends(require_user),
 ) -> dict[str, str]:
     del source_id
-    raise HTTPException(status_code=400, detail="cannot delete your library")
+    raise ApiError(400, "library_delete_forbidden", "cannot delete your library")
 
 
 @router.get("/sources/{source_id}/grants", response_model=list[GrantOut])
@@ -830,9 +865,9 @@ def put_source_grants(
             [(item.user_id, item.perm) for item in body.grants],
         )
     except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+        raise _not_found(exc) from exc
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise wrapped(400, "share_rejected", exc) from exc
     session.commit()
     return [_grant_out(session, row) for row in rows]
 
@@ -846,7 +881,7 @@ def scan_source(
 ) -> SourceOut:
     lib = _own_library(request, session, user)
     if source_id != lib.id:
-        raise HTTPException(status_code=404, detail="source not found")
+        raise ApiError(404, "source_not_found", "source not found")
     source = scan_folder(session, Path(lib.root_uri), owner_user_id=user.id)
     session.flush()
     return _source_out(session, source, perm="write", owned=True)
@@ -890,7 +925,7 @@ def get_job(
 ) -> ImportOut:
     row = session.get(Job, job_id)
     if row is None or not _job_owned(row, user):
-        raise HTTPException(status_code=404, detail="job not found")
+        raise ApiError(404, "job_not_found", "job not found")
     return _job_out(job_view(row))
 
 
@@ -902,7 +937,7 @@ def get_job_events(
 ) -> list[JobEventOut]:
     row = session.get(Job, job_id)
     if row is None or not _job_owned(row, user):
-        raise HTTPException(status_code=404, detail="job not found")
+        raise ApiError(404, "job_not_found", "job not found")
     return [
         JobEventOut(
             id=ev.id,
@@ -924,10 +959,7 @@ def post_takeout(
     raw = _takeout_raw_path(request, body)
     report = _inspect_dir(raw)
     if not report.import_root:
-        raise HTTPException(
-            status_code=400,
-            detail="no photos found (need takeout-*.zip archives or an extracted Google Photos folder)",
-        )
+        raise ApiError(400, "takeout_no_photos", str(NoPhotosFound()))
     lib = _own_library(request, session, user)
     dest = Path(lib.root_uri)
     dest.mkdir(parents=True, exist_ok=True)
@@ -935,7 +967,7 @@ def post_takeout(
     try:
         job = runner.start(Path(raw).expanduser(), report, dest, user_id=user.id)
     except ImportBusy as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
+        raise _busy_error(exc) from exc
     return _job_out(job)
 
 
@@ -944,16 +976,18 @@ _log = logging.getLogger("mosaicwave")
 
 def _push_http_error(exc: Exception) -> None:
     if isinstance(exc, ClientDisconnect):
-        raise HTTPException(status_code=400, detail="upload interrupted") from exc
+        raise ApiError(400, "upload_interrupted", "upload interrupted") from exc
     if isinstance(exc, ImportBusy):
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
+        raise _busy_error(exc) from exc
     if isinstance(exc, FileNotFoundError):
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+        raise ApiError(404, "job_not_found", str(exc)) from exc
+    if isinstance(exc, NoPhotosFound):
+        raise ApiError(400, "takeout_no_photos", str(exc)) from exc
     if isinstance(exc, (ValueError, InvalidPath, OSError)):
         _log.warning("takeout push rejected: %s", exc)
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise wrapped(400, "upload_rejected", exc) from exc
     _log.exception("takeout push failed")
-    raise HTTPException(status_code=500, detail=str(exc) or exc.__class__.__name__) from exc
+    raise wrapped(500, "upload_failed", exc) from exc
 
 
 def _declared_size(request: Request) -> int | None:
@@ -981,7 +1015,7 @@ def start_takeout_push(
             user_id=user.id, data_dir=_settings(request).data_dir, file_count=count
         )
     except ImportBusy as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
+        raise _busy_error(exc) from exc
     return _job_out(job)
 
 

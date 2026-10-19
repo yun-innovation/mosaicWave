@@ -3,11 +3,12 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, Request, Response
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from mosaicwave.api.errors import ApiError, wrapped
 from mosaicwave.auth.deps import optional_user, require_admin, require_user
 from mosaicwave.auth.access import granted_source_ids
 from mosaicwave.auth.passwords import hash_password
@@ -28,11 +29,13 @@ from mosaicwave.auth.session import COOKIE_NAME, DEFAULT_TTL_SEC, sign_session
 from mosaicwave.config import Settings
 from mosaicwave.db import get_session
 from mosaicwave.library.ownership import ensure_user_library
-from mosaicwave.models import LocalCredential, User
+from mosaicwave.models import LocalCredential, User, utcnow
 
 router = APIRouter()
 
 _USERNAME = re.compile(r"^[A-Za-z0-9._-]{1,64}$")
+LOCALES = ("en", "zh-Hant", "zh-Hans")
+MIN_PASSWORD = 8
 
 
 class MeOut(BaseModel):
@@ -41,8 +44,13 @@ class MeOut(BaseModel):
     display_name: str
     role: str
     provider: str
+    locale: str | None = None
     granted_source_ids: list[str] | None = None
     write_source_ids: list[str] | None = None
+
+
+class MePatchIn(BaseModel):
+    locale: str | None = None
 
 
 class AuthStatusOut(BaseModel):
@@ -85,8 +93,17 @@ def _settings(request: Request) -> Settings:
 def _normalize_local_username(raw: str) -> str:
     name = raw.strip().lower()
     if not _USERNAME.match(name):
-        raise HTTPException(status_code=400, detail="invalid username")
+        raise ApiError(400, "invalid_username", "invalid username")
     return name
+
+
+def _password_too_short() -> ApiError:
+    return ApiError(
+        400,
+        "password_too_short",
+        f"password must be at least {MIN_PASSWORD} characters",
+        {"min": MIN_PASSWORD},
+    )
 
 
 def _me_out(session: Session, user: User, data_dir: Path | None = None) -> MeOut:
@@ -100,6 +117,7 @@ def _me_out(session: Session, user: User, data_dir: Path | None = None) -> MeOut
         display_name=user.display_name,
         role=user.role,
         provider=user.provider,
+        locale=user.locale,
         granted_source_ids=sorted(granted),
         write_source_ids=sorted(write),
     )
@@ -113,6 +131,14 @@ def _user_out(user: User) -> UserOut:
         role=user.role,
         provider=user.provider,
     )
+
+
+def _credentials_required() -> ApiError:
+    return ApiError(400, "credentials_required", "username and password required")
+
+
+def _invalid_credentials() -> ApiError:
+    return ApiError(401, "invalid_credentials", "invalid credentials")
 
 
 def _set_session_cookie(request: Request, response: Response, user: User) -> None:
@@ -157,11 +183,11 @@ def auth_setup(
 ) -> MeOut:
     settings = _settings(request)
     if settings.platform != "standalone":
-        raise HTTPException(status_code=400, detail="local setup is not available on QNAP")
+        raise ApiError(400, "setup_not_available", "local setup is not available on QNAP")
     if user_count(session) != 0:
-        raise HTTPException(status_code=409, detail="already set up")
-    if len(body.password) < 8:
-        raise HTTPException(status_code=400, detail="password must be at least 8 characters")
+        raise ApiError(409, "already_set_up", "already set up")
+    if len(body.password) < MIN_PASSWORD:
+        raise _password_too_short()
     username = _normalize_local_username(body.username)
     try:
         user = create_local_user(
@@ -172,7 +198,7 @@ def auth_setup(
             role="admin",
         )
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise wrapped(400, "user_rejected", exc) from exc
     _set_session_cookie(request, response, user)
     return _me_out(session, user, settings.data_dir)
 
@@ -188,11 +214,11 @@ def auth_login(
     user: User | None = None
     if settings.platform == "standalone":
         if not body.username or not body.password:
-            raise HTTPException(status_code=400, detail="username and password required")
+            raise _credentials_required()
         username = _normalize_local_username(body.username)
         user = verify_local(session, username, body.password)
         if user is None:
-            raise HTTPException(status_code=401, detail="invalid credentials")
+            raise _invalid_credentials()
     else:
         try:
             subject: str | None = None
@@ -201,12 +227,12 @@ def auth_login(
             else:
                 sid = qts_sid_from_cookies(request.cookies)
                 if not sid:
-                    raise HTTPException(status_code=400, detail="username and password required")
+                    raise _credentials_required()
                 subject = verify_qnap_sid(sid)
         except AuthUnavailable as exc:
-            raise HTTPException(status_code=503, detail=str(exc)) from exc
+            raise wrapped(503, "qnap_auth_unavailable", exc) from exc
         if not subject:
-            raise HTTPException(status_code=401, detail="invalid credentials")
+            raise _invalid_credentials()
         user = get_or_create_user(
             session,
             provider=PROVIDER_QNAP,
@@ -232,6 +258,27 @@ def get_me(
     return _me_out(session, user, _settings(request).data_dir)
 
 
+@router.patch("/me", response_model=MeOut)
+def patch_me(
+    body: MePatchIn,
+    request: Request,
+    session: Session = Depends(get_session),
+    user: User = Depends(require_user),
+) -> MeOut:
+    if "locale" in body.model_fields_set:
+        if body.locale is not None and body.locale not in LOCALES:
+            raise ApiError(
+                400,
+                "invalid_locale",
+                f"locale must be one of {', '.join(LOCALES)} or null",
+                {"locale": body.locale},
+            )
+        user.locale = body.locale
+        user.updated_at = utcnow()
+        session.flush()
+    return _me_out(session, user, _settings(request).data_dir)
+
+
 @router.get("/users", response_model=list[UserOut])
 def list_users(
     session: Session = Depends(get_session),
@@ -250,31 +297,31 @@ def put_user(
 ) -> UserOut:
     settings = _settings(request)
     if body.role not in ("admin", "member"):
-        raise HTTPException(status_code=400, detail="role must be admin or member")
+        raise ApiError(400, "invalid_role", "role must be admin or member")
     if settings.platform != "standalone":
-        raise HTTPException(status_code=400, detail="local users are not used on QNAP")
+        raise ApiError(400, "local_users_unavailable", "local users are not used on QNAP")
     username = _normalize_local_username(body.username)
     if body.id:
         user = session.get(User, body.id)
         if user is None or user.deleted_at is not None:
-            raise HTTPException(status_code=404, detail="user not found")
+            raise ApiError(404, "user_not_found", "user not found")
         clash = find_user(session, PROVIDER_LOCAL, username)
         if clash is not None and clash.id != user.id:
-            raise HTTPException(status_code=409, detail="username already exists")
+            raise ApiError(409, "username_taken", "username already exists")
         user.provider_subject = username
         user.display_name = body.display_name.strip() or username
         user.role = body.role
         if body.password:
-            if len(body.password) < 8:
-                raise HTTPException(status_code=400, detail="password must be at least 8 characters")
+            if len(body.password) < MIN_PASSWORD:
+                raise _password_too_short()
             cred = session.get(LocalCredential, user.id)
             if cred is None:
                 session.add(LocalCredential(user_id=user.id, password_hash=hash_password(body.password)))
             else:
                 cred.password_hash = hash_password(body.password)
         return _user_out(user)
-    if not body.password or len(body.password) < 8:
-        raise HTTPException(status_code=400, detail="password must be at least 8 characters")
+    if not body.password or len(body.password) < MIN_PASSWORD:
+        raise _password_too_short()
     try:
         user = create_local_user(
             session,
@@ -284,7 +331,7 @@ def put_user(
             role=body.role,
         )
     except ValueError as exc:
-        detail = str(exc)
-        code = 409 if "already exists" in detail else 400
-        raise HTTPException(status_code=code, detail=detail) from exc
+        if "already exists" in str(exc):
+            raise ApiError(409, "username_taken", "username already exists") from exc
+        raise wrapped(400, "user_rejected", exc) from exc
     return _user_out(user)
