@@ -13,7 +13,7 @@ Short onboarding snapshot for agents. **Session start:** always read [index.md](
 
 ## Next
 
-**Milestone 4 — advanced UI** (top bar and sidebar). Then 5 schema maintenance (versioned upgrades of `library.db`), 6 backup / restore / export, 7 ARM64 QPKG, 8 multilingual API (translated messages and locale date/time in responses).
+**Milestone 4 — advanced UI** (top bar and sidebar). Then 5 schema maintenance (versioned upgrades of `library.db`), 6 backup / restore / export, 7 ARM64 QPKG, 8 multilingual API (translated messages and locale date/time in responses), 9 gallery tools (select many, scrubber, search, light theme).
 
 ## Constraints
 

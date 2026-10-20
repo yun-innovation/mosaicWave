@@ -15,3 +15,4 @@ Open items only. Roadmap: ordered milestones in [roadmap.md](roadmap.md). The ea
 - [ ] Backup / restore / export (library archive of SQLite + FileStore + thumbs; not sync JSON) (**milestone 6**)
 - [ ] ARM64 QPKG sideload on a QTS 5 ARM64 NAS (**milestone 7**)
 - [ ] Multilingual API: language code on requests; translated messages and locale-formatted date/time in responses; sync and ordering timestamps stay UTC; response language and switch target kept separate, tags normalized to canonical codes (**milestone 8**)
+- [ ] Gallery tools: select many, timeline scrubber, search (new API), light theme (**milestone 9**)
