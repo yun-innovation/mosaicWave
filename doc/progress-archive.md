@@ -144,6 +144,7 @@ Dated milestones and decisions. Day-to-day process notes: [process.md](process.m
 | 2026-10-21 | Milestone | **Milestone 4 — done** (advanced UI, PR #24; Chinese strings accepted as shipped). Next is milestone 5 — schema maintenance |
 | 2026-10-21 | Decision | `mosaic done` and `milestone N done` status edits reuse the unmerged topic branch or open status PR instead of each opening a PR (`bulk-ship.mdc` § Status edits) |
 | 2026-10-21 | Work | Milestone 5 built on `feature/schema-versions`: `library.db` schema v2 in `PRAGMA user_version` + `schema_history`, ordered steps, pre-upgrade copy, newer database refused; replaces `_migrate_schema` ([schema.md](schema.md#schema-versions)) |
+| 2026-10-21 | Milestone | **Milestone 5 — done** (schema maintenance, PR #27). Next is milestone 6 — backup / restore / export |
 
 
 ---
