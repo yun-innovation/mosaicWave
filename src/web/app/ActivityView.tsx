@@ -45,7 +45,7 @@ export function ActivityView({ importer, libraryRev }: Props) {
     const timer = busy ? window.setInterval(() => ignoreAbort(load()), 3000) : undefined;
     return () => {
       window.clearInterval(timer);
-      ctrl.abort("unmount");
+      ctrl.abort();
     };
   }, [libraryRev, busy]);
 

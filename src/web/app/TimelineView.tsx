@@ -77,7 +77,7 @@ export function TimelineView({ albumId, albums, libraryRev, onAlbumsChanged, onL
   useEffect(() => {
     const ctrl = new AbortController();
     ignoreAbort(load(ctrl.signal));
-    return () => ctrl.abort("unmount");
+    return () => ctrl.abort();
   }, [load, libraryRev]);
 
   async function loadMore() {

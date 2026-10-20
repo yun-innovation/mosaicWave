@@ -38,7 +38,7 @@ export function UploadDialog({ onClose, onUploaded }: Props) {
         setError(err instanceof Error ? err.message : i18n.t("common:networkError"));
         setSources([]);
       });
-    return () => ctrl.abort("unmount");
+    return () => ctrl.abort();
   }, []);
 
   useEffect(() => {

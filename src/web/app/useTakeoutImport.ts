@@ -134,7 +134,7 @@ export function useTakeoutImport(me: Me | null, onFinished: () => void) {
       .catch((err: unknown) => {
         if (isAbortError(err)) return;
       });
-    return () => ctrl.abort("unmount");
+    return () => ctrl.abort();
   }, [me, poll]);
 
   async function postTakeout(inspectOnly: boolean) {

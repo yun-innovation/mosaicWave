@@ -61,7 +61,7 @@ export default function Home() {
         if (isAbortError(err)) return;
         setHealthError(err instanceof Error ? err.message : i18n.t("common:networkError"));
       });
-    return () => ctrl.abort("unmount");
+    return () => ctrl.abort();
   }, []);
 
   useEffect(() => {
@@ -95,7 +95,7 @@ export default function Home() {
         if (isAbortError(err)) return;
         setAuthReady(true);
       });
-    return () => ctrl.abort("unmount");
+    return () => ctrl.abort();
   }, []);
 
   const signedIn = me !== null;
@@ -112,7 +112,7 @@ export default function Home() {
       }
     }
     ignoreAbort(load());
-    return () => ctrl.abort("unmount");
+    return () => ctrl.abort();
   }, [signedIn, albumsRev]);
 
   async function onLogout() {
