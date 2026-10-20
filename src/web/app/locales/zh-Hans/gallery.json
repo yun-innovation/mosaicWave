@@ -1,12 +1,9 @@
 {
-  "title": "照片库",
-  "tab": {
-    "timeline": "时间线",
-    "albums": "相册"
-  },
   "deleteAlbum": "删除相册",
   "generateThumbs": "生成缩略图",
   "album": {
+    "back": "所有相册",
+    "notFound": "找不到这个相册",
     "newPlaceholder": "新相册名称",
     "create": "创建相册",
     "loading": "正在加载相册…",
@@ -19,6 +16,9 @@
     "addedTo": "已添加到“{{name}}”"
   },
   "upload": {
+    "title": "上传到照片库",
+    "fileLabel": "照片或视频",
+    "noTarget": "你没有可以上传的照片库。",
     "sourceLabel": "上传目标",
     "yourLibrary": "你的照片库",
     "shared": "共享",

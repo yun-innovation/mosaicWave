@@ -3,9 +3,10 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { apiFetch, AppUser, Grant, HostSettings, Me, readDetail, saveLocale, Source } from "./api";
+import { apiFetch, AppUser, Grant, HostSettings, Me, readDetail, Source } from "./api";
 import { FolderPicker } from "./FolderPicker";
-import i18n, { applyLocale, isLocale, LOCALE_NAMES, LOCALES, rememberLocale, resolveLocale, storedLocale } from "./i18n";
+import i18n from "./i18n";
+import { LocaleSelect } from "./LocaleSelect";
 
 type SmbParts = { host: string; share: string; folder: string; user: string };
 
@@ -109,13 +110,11 @@ async function waitForApiAfterRestart() {
 type Props = {
   me: Me;
   platform: string;
-  onClose: () => void;
   onMe: (me: Me) => void;
 };
 
-export function SettingsPanel({ me, platform, onClose, onMe }: Props) {
+export function SettingsPanel({ me, platform, onMe }: Props) {
   const { t } = useTranslation(["settings", "common"]);
-  const [localeError, setLocaleError] = useState<string | null>(null);
   const [sources, setSources] = useState<Source[] | null>(null);
   const [users, setUsers] = useState<AppUser[] | null>(null);
   const [host, setHost] = useState<HostSettings | null>(null);
@@ -322,20 +321,6 @@ export function SettingsPanel({ me, platform, onClose, onMe }: Props) {
     await putGrants(next.map((row) => ({ user_id: row.user_id, perm: row.perm })));
   }
 
-  async function changeLocale(value: string) {
-    const choice = isLocale(value) ? value : null;
-    setLocaleError(null);
-    rememberLocale(choice);
-    onMe({ ...me, locale: choice });
-    await applyLocale(resolveLocale(choice));
-    try {
-      onMe(await saveLocale(choice));
-    } catch (err: unknown) {
-      const detail = err instanceof Error ? err.message : t("common:requestFailed");
-      setLocaleError(t("settings:language.saveFailed", { detail }));
-    }
-  }
-
   const library = sources?.find((row) => row.owned) ?? sources?.[0];
   const storageLocked = host?.env_override === true;
   const shareCandidates =
@@ -347,26 +332,11 @@ export function SettingsPanel({ me, platform, onClose, onMe }: Props) {
     <section className="card settings">
       <div className="gallery-head">
         <h2>{t("settings:title")}</h2>
-        <button type="button" onClick={onClose}>
-          {t("common:close")}
-        </button>
       </div>
       <div className="import">
         <label htmlFor="ui_locale">{t("settings:language.label")}</label>
         <p className="detail">{t("settings:language.help")}</p>
-        <select
-          id="ui_locale"
-          value={(isLocale(me.locale) ? me.locale : storedLocale()) ?? "auto"}
-          onChange={(e) => void changeLocale(e.target.value)}
-        >
-          <option value="auto">{t("settings:language.auto")}</option>
-          {LOCALES.map((code) => (
-            <option key={code} value={code} lang={code}>
-              {LOCALE_NAMES[code]}
-            </option>
-          ))}
-        </select>
-        {localeError && <p className="status fail">{localeError}</p>}
+        <LocaleSelect id="ui_locale" me={me} onMe={onMe} />
       </div>
       {error && <p className="status fail">{error}</p>}
       {notice && !error && <p className="detail">{notice}</p>}

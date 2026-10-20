@@ -140,6 +140,7 @@ Dated milestones and decisions. Day-to-day process notes: [process.md](process.m
 | 2026-10-19 | Decision | New milestone 5 — schema maintenance (versioned `library.db` upgrades), ahead of backup / restore so old archives can be upgraded. Backup is now 6, ARM64 QPKG 7 |
 | 2026-10-20 | Decision | New milestone 8 — multilingual API: requests carry a language code; responses give translated messages and locale date/time; sync and ordering timestamps stay UTC |
 | 2026-10-20 | Decision | Milestone 4 scope: top bar, sidebar (slide-over panel on phones), one view at a time, hash URLs (`#/albums/{id}`; no server fallback needed). Select many, timeline scrubber, search and light theme split out as milestone 9 — gallery tools |
+| 2026-10-20 | Work | Milestone 4 built on `feature/advanced-ui`: app shell (top bar, account menu, sidebar, phone panel), hash-routed views, `page.tsx` split into views and hooks; Generate thumbs moved to Activity, Upload to the top bar ([web-ui.md](web-ui.md)) |
 
 
 ---

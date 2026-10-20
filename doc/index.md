@@ -91,6 +91,7 @@ If the session was Q&A only with no edits, steps 2–3 are “N/A” — one-lin
 | [FileStore later](filestore-later.md) | BYO Drive/OneDrive/iCloud — **not a milestone** |
 | [Process](process.md) | API-first loop, git, QPKG / standalone |
 | [Naming](naming.md) | Product string, data dirs, env keys, branches, packages |
+| [Web UI](web-ui.md) | Top bar, sidebar, views, hash URLs (`#/albums/{id}`), phone panel |
 | [i18n and l10n](i18n.md) | Locales (`en`, `zh-Hant`, `zh-Hans`), react-i18next, `user.locale`, error codes |
 | [Roadmap](roadmap.md) | Ordered milestones; old Phase 0–9 plan in [roadmap-archive.md](roadmap-archive.md) |
 | [Status](status.md) | **Agent onboarding** — current milestone, next step, constraints |

@@ -14,23 +14,32 @@
     "admin": "admin",
     "member": "member"
   },
+  "nav": {
+    "label": "Main",
+    "menu": "Menu",
+    "photos": "Photos",
+    "albums": "Albums",
+    "import": "Import",
+    "activity": "Activity",
+    "settings": "Settings"
+  },
+  "account": {
+    "menu": "Account menu for {{name}}"
+  },
   "session": {
     "checking": "Checking session…",
-    "who": "{{name}} · {{role}}",
     "settings": "Settings",
     "signOut": "Sign out"
   },
   "health": {
-    "checking": "Checking API…",
-    "ok": "API OK",
-    "fail": "API fail",
+    "fail": "API unreachable",
     "unexpected": "unexpected response"
   },
   "picker": {
     "title": "Select folder on the server",
     "intro": "Folders on the mosaicWave host (this NAS or PC), not the browser computer. Choosing a folder only fills the path box — Save folder in Settings is what moves the library.",
     "places": "Places",
-    "notSignedIn": "Not signed in. Close Settings, reload, and sign in. Do not Create admin if a NAS move just failed.",
+    "notSignedIn": "Not signed in. Reload the page and sign in. Do not Create admin if a NAS move just failed.",
     "openedParent": "{{detail}} — opened parent of {{path}}",
     "browseFailed": "browse failed",
     "noSubfolders": "No subfolders in this directory.",
