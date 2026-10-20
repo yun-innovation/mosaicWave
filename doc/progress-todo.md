@@ -14,4 +14,4 @@ Open items only. Roadmap: ordered milestones in [roadmap.md](roadmap.md). The ea
 - [ ] Schema maintenance: detect the `library.db` schema version, apply upgrade steps in order to the current schema (**milestone 5**)
 - [ ] Backup / restore / export (library archive of SQLite + FileStore + thumbs; not sync JSON) (**milestone 6**)
 - [ ] ARM64 QPKG sideload on a QTS 5 ARM64 NAS (**milestone 7**)
-- [ ] Multilingual API: language code on requests; translated messages and locale-formatted date/time in responses; sync and ordering timestamps stay UTC; same codes as the UI and follows a language switch at once (**milestone 8**)
+- [ ] Multilingual API: language code on requests; translated messages and locale-formatted date/time in responses; sync and ordering timestamps stay UTC; response language and switch target kept separate, tags normalized to canonical codes (**milestone 8**)
