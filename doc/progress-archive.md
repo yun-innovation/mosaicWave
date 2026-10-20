@@ -138,6 +138,7 @@ Dated milestones and decisions. Day-to-day process notes: [process.md](process.m
 | 2026-10-19 | Feature | i18n implemented: react-i18next with bundled `en` / `zh-Hant` / `zh-Hans`; Settings language menu saved as `user.locale` (`PATCH /api/v1/me`); API errors carry `code` + `params`; Takeout warnings carry `params`; `npm run i18n-check` before build also checks server codes. Chinese strings are first-pass |
 | 2026-10-19 | Milestone | **Milestone 3 — done** (i18n and l10n). Next is milestone 4 — advanced UI (top bar and sidebar) |
 | 2026-10-19 | Decision | New milestone 5 — schema maintenance (versioned `library.db` upgrades), ahead of backup / restore so old archives can be upgraded. Backup is now 6, ARM64 QPKG 7 |
+| 2026-10-20 | Decision | New milestone 8 — multilingual API: requests carry a language code; responses give translated messages and locale date/time; sync and ordering timestamps stay UTC |
 
 
 ---
