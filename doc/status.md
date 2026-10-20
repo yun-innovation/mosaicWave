@@ -13,7 +13,7 @@ Short onboarding snapshot for agents. **Session start:** always read [index.md](
 
 ## Next
 
-**Milestone 5 — schema maintenance** (detect the `library.db` schema version and apply upgrade steps in order to the current schema). Then 6 backup / restore / export, 7 ARM64 QPKG, 8 multilingual API (translated messages and locale date/time in responses), 9 gallery tools (select many, scrubber, search, light theme).
+**Milestone 5 — schema maintenance** (detect the `library.db` schema version and apply upgrade steps in order to the current schema): built on `feature/schema-versions` ([schema.md § Schema versions](schema.md#schema-versions)); next is ship. Then 6 backup / restore / export, 7 ARM64 QPKG, 8 multilingual API (translated messages and locale date/time in responses), 9 gallery tools (select many, scrubber, search, light theme).
 
 ## Constraints
 

@@ -29,7 +29,8 @@
   },
   "appDir": {
     "label": "App folder",
-    "help": "Config, session key, SQLite, and packaged Python stay here. This is not the photo library. On a packaged Mac install it is /Library/Application Support/mosaicWave. Local debug uses /Library/Application Support/mosaicWave-dev."
+    "help": "Config, session key, SQLite, and packaged Python stay here. This is not the photo library. On a packaged Mac install it is /Library/Application Support/mosaicWave. Local debug uses /Library/Application Support/mosaicWave-dev.",
+    "schema": "Database schema: v{{version}}"
   },
   "current": {
     "label": "Current library",

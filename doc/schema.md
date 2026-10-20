@@ -1,6 +1,6 @@
 # Data schema (SQLite)
 
-**Implemented in Phase 2.** This is the physical schema in `library.db`. Source of truth in code: `src/server/mosaicwave/models.py`. SQLAlchemy `create_all` on startup — no migration tool yet.
+**Implemented in Phase 2.** This is the physical schema in `library.db`. Source of truth in code: `src/server/mosaicwave/models.py`. A new database is built with SQLAlchemy `create_all`; an existing one is upgraded by numbered steps ([§ Schema versions](#schema-versions)).
 
 Client replica + sync HTTP remain **Phase 7**. Sync columns (`id`, `rev`, `updated_at`, `deleted_at`) are already on every syncable table so we do not migrate later.
 
@@ -20,7 +20,7 @@ Related: [filestore.md](filestore.md), [storage.md](storage.md), [takeout.md](ta
 | Override | `$MOSAICWAVE_DATA_DIR/library.db` when that env is set (QPKG). Wins over Settings. |
 | QNAP | `{volume}/.mosaicWave/library.db` (example `/share/CACHEDEV1_DATA/.mosaicWave`; `MOSAICWAVE_DATA_DIR`; survives QPKG Remove) |
 
-The API creates this file on first start (`create_all` in `db.py`). To create or migrate tables **without** uvicorn:
+The API creates this file on first start and upgrades an older one ([§ Schema versions](#schema-versions)). To create or upgrade tables **without** uvicorn:
 
 ```
 scripts\wipe.cmd
@@ -31,7 +31,7 @@ sh scripts/wipe.sh --db
 sh scripts/wipe.sh --storage
 ```
 
-No flags: wipes both — deletes `library.db` (and WAL) **and** `libraries/` (originals) **and** `blobs/` (thumbs), then recreates an empty schema. Pass one flag alone to wipe only that: `--db` (DB only) or `--storage` (originals + thumbs only). Neither touches `{data_dir}/tmp` (Takeout upload staging). There is no `--data-dir` override — this tool always targets the same folder the API itself uses (`Settings.from_env()`); to point it elsewhere, set `MOSAICWAVE_DATA_DIR` (the one override the API honors too). Stop the API first (`scripts\stop-api.cmd` / `sh scripts/stop-api.sh`). macOS debug `sh scripts/wipe.sh` re-execs with sudo (like `start.sh`) so an SMB-configured data dir can mount under `/Volumes`. Same Python: `cd src/server` then `python -m mosaicwave.wipe`. Does not create users (that is `POST /auth/setup`). Packaged installs have the same tool: `wipe.cmd` (MSI folder), `wipe.sh` or `mosaicWave.sh wipe` (posix tarball / QPKG) — [qpkg.md](qpkg.md).
+No flags: wipes both — deletes `library.db` (and WAL and the `library.db.pre-v*` upgrade copies) **and** `libraries/` (originals) **and** `blobs/` (thumbs), then recreates an empty schema. Pass one flag alone to wipe only that: `--db` (DB only) or `--storage` (originals + thumbs only). Neither touches `{data_dir}/tmp` (Takeout upload staging). There is no `--data-dir` override — this tool always targets the same folder the API itself uses (`Settings.from_env()`); to point it elsewhere, set `MOSAICWAVE_DATA_DIR` (the one override the API honors too). Stop the API first (`scripts\stop-api.cmd` / `sh scripts/stop-api.sh`). macOS debug `sh scripts/wipe.sh` re-execs with sudo (like `start.sh`) so an SMB-configured data dir can mount under `/Volumes`. Same Python: `cd src/server` then `python -m mosaicwave.wipe`. Does not create users (that is `POST /auth/setup`). Packaged installs have the same tool: `wipe.cmd` (MSI folder), `wipe.sh` or `mosaicWave.sh wipe` (posix tarball / QPKG) — [qpkg.md](qpkg.md).
 
 Open with [DB Browser for SQLite](https://sqlitebrowser.org/) or [DBeaver](https://dbeaver.io/). Stop the API before **writing** rows, or work on a copy — SQLite is one-writer; editing while uvicorn runs can lock or corrupt.
 
@@ -235,6 +235,52 @@ Unique `(album_id, asset_id)` — `uq_album_asset`.
 ## Indexes
 
 Today: primary keys plus the unique constraints above. `GET /api/v1/assets` orders by `taken_at DESC, id DESC` with a cursor; a dedicated index on `(taken_at, id)` is not created yet. Tens/hundreds of thousands of rows is the NAS/PC target; add indexes when list/sync is measured slow.
+
+## Schema versions
+
+Milestone 5. Code: `src/server/mosaicwave/schema/` (runner in `__init__.py`, steps in `steps.py`, frozen v1 tables in `v1.py`). Coding rule: `.cursor/rules/schema.mdc`.
+
+| Version | Shape |
+| --- | --- |
+| 0 | Pre-release databases: no `source.owner_user_id`, `album.source_id`, `job.user_id` |
+| 1 | Shipped in v0.1.0 and v0.1.1 |
+| 2 | Adds `user.locale` (milestone 3). Current |
+
+The number is SQLite's `PRAGMA user_version`. Each change also adds a row to `schema_history`:
+
+| Column | Notes |
+| --- | --- |
+| `version` | Version after the step |
+| `applied_at` | UTC, ISO 8601 |
+| `app_version` | mosaicWave version that ran it |
+| `note` | Step description, or `created` for a new database |
+
+`schema_history` is server-only (not synced, not in `models.py`).
+
+### At startup
+
+`make_engine()` (API start, data-folder switch, `wipe`) runs this before anything else touches the database:
+
+1. **Newer than the app:** read `user_version` over a plain connection; if it is above the app's version, stop with `SchemaTooNew` (names both versions and the `library.db.pre-v{N}` copy to restore). Nothing is written.
+2. **No tables:** `create_all`, then record the current version (`created`).
+3. **Older:** copy the file to `library.db.pre-v{N}` with the SQLite backup API (`N` = version before the upgrade; an older copy for the same `N` is replaced). Then apply each step above `N` in its own `BEGIN IMMEDIATE` transaction together with its `user_version` and `schema_history` update. A failed step rolls back and leaves the database at the last good version.
+4. **Same version:** nothing.
+
+Databases from before schema versions have `user_version = 0`. They run every step from 1; steps 1 and 2 are written to be safe on a database that already has part of them (`CREATE … IF NOT EXISTS`, add a column only if missing). The column check (`guess_version`) only names the backup copy and the history note ("looked like v1"). Pre-release databases also get the indexes and foreign keys they were missing.
+
+An old app (v0.1.1 or earlier) cannot refuse a newer database; it ignores columns it does not know.
+
+The upgrade copies stay next to `library.db` until `wipe --db`. Admin Settings shows the version ("Database schema: v2", `schema_version` on `GET /api/v1/settings`).
+
+### Adding a step
+
+1. Change `models.py`.
+2. Append `Step(N+1, "what changed", fn)` to `STEPS` with plain SQL for the change, and data backfill if needed. Never edit a shipped step or `v1.py`.
+3. Beyond `ADD COLUMN`: `rebuild_table(...)` in a step with `foreign_keys_off=True` (SQLite's create-copy-drop-rename), then recreate the table's indexes. The runner runs `PRAGMA foreign_key_check` before commit.
+4. `pytest tests/test_schema.py`: the drift test compares `create_all` with v1 + every step (columns, foreign keys, indexes). Add an upgrade test from version N with a few rows.
+5. Update the version table above.
+
+Restore from a backup archive (milestone 6) will run the same upgrade on the restored file.
 
 ## Browse the live DB
 

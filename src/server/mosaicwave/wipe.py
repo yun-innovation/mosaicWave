@@ -39,7 +39,8 @@ EXPECTED_TABLES = frozenset(
 
 
 def _sidecars(db: Path) -> list[Path]:
-    return [db, Path(str(db) + "-wal"), Path(str(db) + "-shm")]
+    upgrade_copies = sorted(db.parent.glob(f"{db.name}.pre-v*"))
+    return [db, Path(str(db) + "-wal"), Path(str(db) + "-shm"), *upgrade_copies]
 
 
 def table_names(db: Path) -> set[str]:

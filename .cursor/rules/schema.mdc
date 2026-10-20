@@ -1,0 +1,16 @@
+---
+description: Every library.db schema change is a numbered upgrade step (doc/schema.md § Schema versions).
+globs: src/server/mosaicwave/models.py,src/server/mosaicwave/schema/**
+alwaysApply: false
+---
+
+# library.db schema changes
+
+Design: `doc/schema.md` § Schema versions. Code: `src/server/mosaicwave/schema/`.
+
+1. **A `models.py` change needs a step.** Add a column, table, index or constraint to `models.py` **and** append `Step(N+1, …)` to `STEPS` in `schema/steps.py` that makes the same change in SQL. `CURRENT_VERSION` follows the last step.
+2. **Never edit a shipped step or `schema/v1.py`.** Fix mistakes with a new step.
+3. **Steps 3+ use plain SQL** for the exact previous shape. No `create_all`, no imports from `models.py` (they move on; the step must not).
+4. **Beyond `ADD COLUMN`** (drop / rename a column, change a type or constraint): use `rebuild_table` in a step with `foreign_keys_off=True`, then recreate that table's indexes.
+5. **Tests:** `tests/test_schema.py::test_steps_build_the_same_schema_as_models` must pass. Add a test that upgrades a database from the previous version with a few rows in it.
+6. **Data changes** (backfill, rename values) belong in the same step as the column they need.

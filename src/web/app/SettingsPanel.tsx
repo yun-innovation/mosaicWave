@@ -426,6 +426,7 @@ export function SettingsPanel({ me, platform, onMe }: Props) {
                   autoComplete="off"
                 />
               </div>
+              <p className="detail">{t("settings:appDir.schema", { version: host.schema_version })}</p>
               <label htmlFor="library_dir">{t("settings:current.label")}</label>
               <p className="detail">{t("settings:current.help")}</p>
               <div className="path-row">
