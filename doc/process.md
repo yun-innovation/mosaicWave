@@ -61,6 +61,7 @@ flowchart LR
 - **Commit messages:** Conventional Commits (`feat:`, `fix:`, `docs:`, `chore:`, `build:`, `test:`), imperative, summary under 72 characters. Focus on **why** (e.g. `feat: add cursor pagination so the timeline can scroll`).
 - **Identity:** commit with the GitHub no-reply address (`git config user.email`), because GitHub blocks pushes that expose a private email.
 - **Milestones:** only the owner's `milestone N done` message marks a milestone. A commit message never does. Wrap-up (`mosaic done`) is not a gate.
+- **Status edits ride one PR:** `mosaic done` and `milestone N done` commit to the unmerged topic branch (or the open status PR's branch), not a new branch each. A new `docs/status-<topic>` branch only when everything is merged ([bulk-ship.mdc](../.cursor/rules/bulk-ship.mdc) § Status edits).
 - **Tags and releases:** `vMAJOR.MINOR.PATCH`, protected. Build installers from a clean checkout of the tag and attach them to a GitHub Release. No binaries in git.
 - Commit when asked or at a coherent checkpoint; do not commit secrets (`.env`, NAS passwords, certificates).
 - Prefer small PRs: API slice, then UI slice, rather than a giant QPKG dump. Agent rule: [`.cursor/rules/bulk-ship.mdc`](../.cursor/rules/bulk-ship.mdc).
@@ -134,6 +135,7 @@ When we reverse a decision in these docs, add a one-line note here.
 | 2026-09-02 | Phase complete only on **`phase N done`**. `mosaic done` is wrap-up, not a phase gate |
 | 2026-10-12 | Gate language switched to **`milestone N done`** (roadmap is ordered milestones). Thin `doc/naming.md` added |
 | 2026-10-13 | Bulk ship: local commits on one topic branch; push/PR only on owner **`push`** / **`ship`** / **`bulk ship`** (prefer `gh pr create`) |
+| 2026-10-21 | `mosaic done` and `milestone N done` status edits reuse the unmerged branch or open status PR; no separate PR for each |
 | 2026-09-02 | Phase 3 is job workflow/audit (`workflow.md`). Gallery is Phase 4. Sync HTTP is Phase 7 |
 | 2026-08-29 | NAS identity is QNAP accounts; FastAPI checks QTS/QNAP then issues `/api/v1` session |
 | 2026-08-29 | Google Takeout import is Phase 2 (sample SQLite); not deferred to Phase 7 |

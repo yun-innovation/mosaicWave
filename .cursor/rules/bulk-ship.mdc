@@ -22,6 +22,15 @@ Do **not** push or open a PR after every edit. That is noisy.
 
 `bulk ship` means the same as `ship`: one push + one PR covering the whole branch, not one PR per commit.
 
+## Status edits (`mosaic done`, `milestone N done`)
+
+Wrap-up and milestone-done edits (status, the status rule, progress, archive, roadmap) must not each get their own PR.
+
+1. **Reuse an unmerged branch.** If the current topic branch is not merged yet (local only, or its PR is open), commit the status edits there. Check with `gh pr list --head <branch> --state all` before branching.
+2. **Only when every branch is merged**, create one `docs/status-<topic>` branch from the latest `main`. Any later `mosaic done` or `milestone N done` reuses it until it merges.
+3. **Open PR:** commit on its branch; on `ship`, push to update that PR. Do not open a second one.
+4. **Wrap-up right before a milestone gate:** if the wrap-up reports that only `milestone N done` is left, say in the report that shipping after `milestone N done` puts both in one PR.
+
 ## Do not
 
 - Create a new branch for every tiny follow-up on the same topic — keep committing on the open topic branch.
