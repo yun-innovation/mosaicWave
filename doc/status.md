@@ -13,7 +13,7 @@ Short onboarding snapshot for agents. **Session start:** always read [index.md](
 
 ## Next
 
-**Milestone 4 — advanced UI** (top bar and sidebar): built on `feature/advanced-ui` ([web-ui.md](web-ui.md)); next is review of the new Chinese strings, then ship. Then 5 schema maintenance (versioned upgrades of `library.db`), 6 backup / restore / export, 7 ARM64 QPKG, 8 multilingual API (translated messages and locale date/time in responses), 9 gallery tools (select many, scrubber, search, light theme).
+**Milestone 4 — advanced UI** (top bar and sidebar): merged as [PR #24](https://github.com/yun-innovation/mosaicWave/pull/24) ([web-ui.md](web-ui.md)); next is review of the first-pass Chinese strings, then `milestone 4 done`. Then 5 schema maintenance (versioned upgrades of `library.db`), 6 backup / restore / export, 7 ARM64 QPKG, 8 multilingual API (translated messages and locale date/time in responses), 9 gallery tools (select many, scrubber, search, light theme).
 
 ## Constraints
 

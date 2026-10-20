@@ -14,7 +14,8 @@ Open items only. Roadmap: ordered milestones in [roadmap.md](roadmap.md). The ea
   - [x] Shell: top bar (Upload, account menu with language switch, health warning), sidebar, phone slide-over panel
   - [x] Views Photos / Albums / Import / Activity / Settings with hash URLs; `page.tsx` split into views and hooks
   - [x] Strings in `en`, `zh-Hant`, `zh-Hans`; build, i18n-check, browser click-through (desktop + phone)
-  - [ ] Review the first-pass Chinese strings, then ship
+  - [x] Merged as [PR #24](https://github.com/yun-innovation/mosaicWave/pull/24) (includes the dev-mode abort fix on Photos)
+  - [ ] Review the first-pass Chinese strings
 - [ ] Schema maintenance: detect the `library.db` schema version, apply upgrade steps in order to the current schema (**milestone 5**)
 - [ ] Backup / restore / export (library archive of SQLite + FileStore + thumbs; not sync JSON) (**milestone 6**)
 - [ ] ARM64 QPKG sideload on a QTS 5 ARM64 NAS (**milestone 7**)
