@@ -1,6 +1,6 @@
 # Status
 
-**Updated:** 2026-10-19  
+**Updated:** 2026-10-20  
 **Keep in sync with:** [`.cursor/rules/mosaicwave-status.mdc`](../.cursor/rules/mosaicwave-status.mdc) (same date, same next step).
 
 Short onboarding snapshot for agents. **Session start:** always read [index.md](index.md) first (For AI Agents + Planning). Names: [naming.md](naming.md).
@@ -13,7 +13,7 @@ Short onboarding snapshot for agents. **Session start:** always read [index.md](
 
 ## Next
 
-**Milestone 4 — advanced UI** (top bar and sidebar). Then 5 schema maintenance (versioned upgrades of `library.db`), 6 backup / restore / export, 7 ARM64 QPKG, 8 multilingual API (translated messages and locale date/time in responses).
+**Milestone 4 — advanced UI** (top bar and sidebar): built on `feature/advanced-ui` ([web-ui.md](web-ui.md)); next is review of the new Chinese strings, then ship. Then 5 schema maintenance (versioned upgrades of `library.db`), 6 backup / restore / export, 7 ARM64 QPKG, 8 multilingual API (translated messages and locale date/time in responses), 9 gallery tools (select many, scrubber, search, light theme).
 
 ## Constraints
 
@@ -35,6 +35,7 @@ Short onboarding snapshot for agents. **Session start:** always read [index.md](
 | --- | --- |
 | What we are building | [system-overview.md](system-overview.md) |
 | How it is split | [architecture.md](architecture.md) |
+| Web UI layout / views / URLs | [web-ui.md](web-ui.md) |
 | Product / path names | [naming.md](naming.md) |
 | Virtual file / blob | [storage.md](storage.md) |
 | UNC / `smb://` paths | [smb-paths.md](smb-paths.md) |

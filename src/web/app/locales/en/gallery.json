@@ -1,12 +1,9 @@
 {
-  "title": "Library",
-  "tab": {
-    "timeline": "Timeline",
-    "albums": "Albums"
-  },
   "deleteAlbum": "Delete album",
   "generateThumbs": "Generate thumbs",
   "album": {
+    "back": "All albums",
+    "notFound": "Album not found",
     "newPlaceholder": "New album name",
     "create": "Create album",
     "loading": "Loading albums…",
@@ -19,6 +16,9 @@
     "addedTo": "Added to {{name}}"
   },
   "upload": {
+    "title": "Upload to library",
+    "fileLabel": "Photo or video",
+    "noTarget": "You have no library you can upload to.",
     "sourceLabel": "Upload source",
     "yourLibrary": "Your library",
     "shared": "Shared",

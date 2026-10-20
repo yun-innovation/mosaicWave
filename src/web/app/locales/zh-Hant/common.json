@@ -14,15 +14,24 @@
     "admin": "管理員",
     "member": "成員"
   },
+  "nav": {
+    "label": "主要",
+    "menu": "選單",
+    "photos": "相片",
+    "albums": "相簿",
+    "import": "匯入",
+    "activity": "活動",
+    "settings": "設定"
+  },
+  "account": {
+    "menu": "{{name}} 的帳號選單"
+  },
   "session": {
     "checking": "正在檢查登入狀態…",
-    "who": "{{name}} · {{role}}",
     "settings": "設定",
     "signOut": "登出"
   },
   "health": {
-    "checking": "正在檢查 API…",
-    "ok": "API 正常",
     "fail": "API 無法使用",
     "unexpected": "回應格式不符"
   },
@@ -30,7 +39,7 @@
     "title": "選擇伺服器上的資料夾",
     "intro": "這裡列出的是 mosaicWave 主機（這台 NAS 或電腦）上的資料夾，不是瀏覽器所在的電腦。選擇資料夾只會填入路徑欄位；要搬移相片庫，請在「設定」按「儲存資料夾」。",
     "places": "位置",
-    "notSignedIn": "尚未登入。請關閉「設定」、重新整理並登入。如果剛才搬移到 NAS 失敗，請勿按「建立管理員」。",
+    "notSignedIn": "尚未登入。請重新整理頁面並登入。如果剛才搬移到 NAS 失敗，請勿按「建立管理員」。",
     "openedParent": "{{detail}} — 已改為開啟 {{path}} 的上層資料夾",
     "browseFailed": "瀏覽失敗",
     "noSubfolders": "這個資料夾沒有子資料夾。",

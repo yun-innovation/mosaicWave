@@ -1,12 +1,9 @@
 {
-  "title": "相片庫",
-  "tab": {
-    "timeline": "時間軸",
-    "albums": "相簿"
-  },
   "deleteAlbum": "刪除相簿",
   "generateThumbs": "產生縮圖",
   "album": {
+    "back": "所有相簿",
+    "notFound": "找不到這本相簿",
     "newPlaceholder": "新相簿名稱",
     "create": "建立相簿",
     "loading": "正在載入相簿…",
@@ -19,6 +16,9 @@
     "addedTo": "已加入「{{name}}」"
   },
   "upload": {
+    "title": "上傳到相片庫",
+    "fileLabel": "相片或影片",
+    "noTarget": "你沒有可以上傳的相片庫。",
     "sourceLabel": "上傳目的地",
     "yourLibrary": "你的相片庫",
     "shared": "共享",

@@ -259,6 +259,7 @@ Thumbnails (and later optional transcodes) live in the **BlobStore**, keyed by a
 ## Web client
 
 - Next.js App Router, TypeScript, `"use client"` where the UI must fetch.
+- One page with a top bar, a sidebar and one view at a time, addressed by hash URLs (`#/photos`, `#/albums/{id}`, …) so the static export needs no server fallback. Layout and views: [web-ui.md](web-ui.md).
 - Photo grids, infinite scroll, detail view: **client-side** against FastAPI (later: replica when offline).
 - Video in the detail view: **Play / Pause**, a time bar, and **−10s / +10s**. People see clocks (`1:23 / 4:56`), not file offsets.
 - `next/image`: `unoptimized` or raw `<img src={thumbUrl}>` pointing at the API.

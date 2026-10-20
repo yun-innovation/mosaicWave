@@ -10,8 +10,13 @@ Open items only. Roadmap: ordered milestones in [roadmap.md](roadmap.md). The ea
 - [x] **Milestone 2** — packaging verify: MSI, QPKG x86_64, Linux + macOS posix tarballs — **done**
 - [x] Commit Next 16 web config: `tsconfig.json` / `next-env.d.ts`; `proxyClientMaxBodySize`; `output: export` only in production so `next dev` rewrites stay clean
 - [x] **Milestone 3** — i18n and l10n: `en`, `zh-Hant`, `zh-Hans`; `user.locale` + `PATCH /api/v1/me`; error `code` + `params`; `i18n-check` before build — **done**
-- [ ] Advanced UI: top bar and sidebar (**milestone 4**)
+- [ ] Advanced UI: top bar and sidebar (**milestone 4**) — [web-ui.md](web-ui.md)
+  - [x] Shell: top bar (Upload, account menu with language switch, health warning), sidebar, phone slide-over panel
+  - [x] Views Photos / Albums / Import / Activity / Settings with hash URLs; `page.tsx` split into views and hooks
+  - [x] Strings in `en`, `zh-Hant`, `zh-Hans`; build, i18n-check, browser click-through (desktop + phone)
+  - [ ] Review the first-pass Chinese strings, then ship
 - [ ] Schema maintenance: detect the `library.db` schema version, apply upgrade steps in order to the current schema (**milestone 5**)
 - [ ] Backup / restore / export (library archive of SQLite + FileStore + thumbs; not sync JSON) (**milestone 6**)
 - [ ] ARM64 QPKG sideload on a QTS 5 ARM64 NAS (**milestone 7**)
 - [ ] Multilingual API: language code on requests; translated messages and locale-formatted date/time in responses; sync and ordering timestamps stay UTC; response language and switch target kept separate, tags normalized to canonical codes (**milestone 8**)
+- [ ] Gallery tools: select many, timeline scrubber, search (new API), light theme (**milestone 9**)
