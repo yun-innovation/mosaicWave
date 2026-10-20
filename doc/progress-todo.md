@@ -10,12 +10,7 @@ Open items only. Roadmap: ordered milestones in [roadmap.md](roadmap.md). The ea
 - [x] **Milestone 2** — packaging verify: MSI, QPKG x86_64, Linux + macOS posix tarballs — **done**
 - [x] Commit Next 16 web config: `tsconfig.json` / `next-env.d.ts`; `proxyClientMaxBodySize`; `output: export` only in production so `next dev` rewrites stay clean
 - [x] **Milestone 3** — i18n and l10n: `en`, `zh-Hant`, `zh-Hans`; `user.locale` + `PATCH /api/v1/me`; error `code` + `params`; `i18n-check` before build — **done**
-- [ ] Advanced UI: top bar and sidebar (**milestone 4**) — [web-ui.md](web-ui.md)
-  - [x] Shell: top bar (Upload, account menu with language switch, health warning), sidebar, phone slide-over panel
-  - [x] Views Photos / Albums / Import / Activity / Settings with hash URLs; `page.tsx` split into views and hooks
-  - [x] Strings in `en`, `zh-Hant`, `zh-Hans`; build, i18n-check, browser click-through (desktop + phone)
-  - [x] Merged as [PR #24](https://github.com/yun-innovation/mosaicWave/pull/24) (includes the dev-mode abort fix on Photos)
-  - [ ] Review the first-pass Chinese strings
+- [x] **Milestone 4** — advanced UI: top bar, account menu, sidebar (slide-over panel on phones), hash-routed views; [web-ui.md](web-ui.md), [PR #24](https://github.com/yun-innovation/mosaicWave/pull/24) — **done**
 - [ ] Schema maintenance: detect the `library.db` schema version, apply upgrade steps in order to the current schema (**milestone 5**)
 - [ ] Backup / restore / export (library archive of SQLite + FileStore + thumbs; not sync JSON) (**milestone 6**)
 - [ ] ARM64 QPKG sideload on a QTS 5 ARM64 NAS (**milestone 7**)

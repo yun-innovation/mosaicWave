@@ -1,6 +1,6 @@
 # Status
 
-**Updated:** 2026-10-20  
+**Updated:** 2026-10-21  
 **Keep in sync with:** [`.cursor/rules/mosaicwave-status.mdc`](../.cursor/rules/mosaicwave-status.mdc) (same date, same next step).
 
 Short onboarding snapshot for agents. **Session start:** always read [index.md](index.md) first (For AI Agents + Planning). Names: [naming.md](naming.md).
@@ -9,11 +9,11 @@ Short onboarding snapshot for agents. **Session start:** always read [index.md](
 
 **v0.1.1 published** (GitHub pre-release with MSI, QPKG x86_64, posix tarball, `SHA256SUMS.txt`). Repo: https://github.com/yun-innovation/mosaicWave. License FSL-1.1-Apache-2.0. Never work on `main`: branch, push, PR, squash-merge ([process.md](process.md)). Roadmap uses **ordered milestones** ([roadmap.md](roadmap.md)); old Phase 0–9 plan: [roadmap-archive.md](roadmap-archive.md).
 
-**Milestone 1 — done.** **Milestone 2 — done** (packaging verify: MSI, QPKG x86_64, Linux + macOS posix tarballs). **Milestone 3 — done** (i18n and l10n: `en`, `zh-Hant`, `zh-Hans`; [i18n.md](i18n.md)). New UI strings must follow `.cursor/rules/i18n.mdc`.
+**Milestone 1 — done.** **Milestone 2 — done** (packaging verify: MSI, QPKG x86_64, Linux + macOS posix tarballs). **Milestone 3 — done** (i18n and l10n: `en`, `zh-Hant`, `zh-Hans`; [i18n.md](i18n.md)). **Milestone 4 — done** (advanced UI: top bar, sidebar, hash-routed views; [web-ui.md](web-ui.md)). New UI strings must follow `.cursor/rules/i18n.mdc`.
 
 ## Next
 
-**Milestone 4 — advanced UI** (top bar and sidebar): merged as [PR #24](https://github.com/yun-innovation/mosaicWave/pull/24) ([web-ui.md](web-ui.md)); next is review of the first-pass Chinese strings, then `milestone 4 done`. Then 5 schema maintenance (versioned upgrades of `library.db`), 6 backup / restore / export, 7 ARM64 QPKG, 8 multilingual API (translated messages and locale date/time in responses), 9 gallery tools (select many, scrubber, search, light theme).
+**Milestone 5 — schema maintenance** (detect the `library.db` schema version and apply upgrade steps in order to the current schema). Then 6 backup / restore / export, 7 ARM64 QPKG, 8 multilingual API (translated messages and locale date/time in responses), 9 gallery tools (select many, scrubber, search, light theme).
 
 ## Constraints
 

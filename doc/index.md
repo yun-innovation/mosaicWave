@@ -74,6 +74,8 @@ Use when closing a session after substantive work. **Do not** re-read roadmap, a
 4. **Handoff** — bullet list of open follow-ups for the next session (from conversation, not a full todo re-read).
 5. **Report** — short structured reply only; no waiting for approval.
 
+**Branch for status edits** (here and in `milestone N done`): reuse the unmerged topic branch or open status PR; never a second PR for status alone. See `.cursor/rules/bulk-ship.mdc` § Status edits.
+
 If the session was Q&A only with no edits, steps 2–3 are “N/A” — one-line summary is enough.
 
 ---

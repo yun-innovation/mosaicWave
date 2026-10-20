@@ -141,6 +141,8 @@ Dated milestones and decisions. Day-to-day process notes: [process.md](process.m
 | 2026-10-20 | Decision | New milestone 8 — multilingual API: requests carry a language code; responses give translated messages and locale date/time; sync and ordering timestamps stay UTC |
 | 2026-10-20 | Decision | Milestone 4 scope: top bar, sidebar (slide-over panel on phones), one view at a time, hash URLs (`#/albums/{id}`; no server fallback needed). Select many, timeline scrubber, search and light theme split out as milestone 9 — gallery tools |
 | 2026-10-20 | Work | Milestone 4 built on `feature/advanced-ui`: app shell (top bar, account menu, sidebar, phone panel), hash-routed views, `page.tsx` split into views and hooks; Generate thumbs moved to Activity, Upload to the top bar ([web-ui.md](web-ui.md)) |
+| 2026-10-21 | Milestone | **Milestone 4 — done** (advanced UI, PR #24; Chinese strings accepted as shipped). Next is milestone 5 — schema maintenance |
+| 2026-10-21 | Decision | `mosaic done` and `milestone N done` status edits reuse the unmerged topic branch or open status PR instead of each opening a PR (`bulk-ship.mdc` § Status edits) |
 
 
 ---
