@@ -44,6 +44,7 @@ export type HostSettings = {
   data_dir_mount?: string | null;
   smb_user?: string | null;
   env_override: boolean;
+  schema_version: number;
   restarting?: boolean;
   notice?: string | null;
 };

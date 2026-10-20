@@ -28,7 +28,8 @@
   },
   "appDir": {
     "label": "應用程式資料夾",
-    "help": "設定、工作階段金鑰、SQLite 和內建的 Python 都放在這裡，這裡不是相片庫。Mac 安裝版的位置是 /Library/Application Support/mosaicWave，本機除錯版使用 /Library/Application Support/mosaicWave-dev。"
+    "help": "設定、工作階段金鑰、SQLite 和內建的 Python 都放在這裡，這裡不是相片庫。Mac 安裝版的位置是 /Library/Application Support/mosaicWave，本機除錯版使用 /Library/Application Support/mosaicWave-dev。",
+    "schema": "資料庫結構版本：v{{version}}"
   },
   "current": {
     "label": "目前的相片庫",

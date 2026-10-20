@@ -43,6 +43,7 @@ class HostSettingsOut(BaseModel):
     data_dir_mount: str | None = None
     smb_user: str | None = None
     env_override: bool
+    schema_version: int
     restarting: bool = False
     notice: str | None = None
 
@@ -76,6 +77,8 @@ def _out(
     boot_path = Path(settings.bootstrap_dir or settings.data_dir).expanduser().resolve()
     boot = str(boot_path)
     smb = read_data_dir_smb(boot_path)
+    with request.app.state.engine.connect() as conn:
+        schema_version = int(conn.exec_driver_sql("PRAGMA user_version").scalar_one())
     return HostSettingsOut(
         data_dir=str(settings.data_dir.expanduser().resolve()),
         default_data_dir=boot,
@@ -84,6 +87,7 @@ def _out(
         data_dir_mount=read_data_dir_mount(boot_path),
         smb_user=_smb_user_from_settings(smb),
         env_override=data_dir_env_override(),
+        schema_version=schema_version,
         restarting=restarting,
         notice=notice,
     )

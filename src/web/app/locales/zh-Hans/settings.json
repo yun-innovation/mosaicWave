@@ -28,7 +28,8 @@
   },
   "appDir": {
     "label": "应用程序文件夹",
-    "help": "配置、会话密钥、SQLite 和内置的 Python 都放在这里，这里不是照片库。Mac 安装版的位置是 /Library/Application Support/mosaicWave，本地调试版使用 /Library/Application Support/mosaicWave-dev。"
+    "help": "配置、会话密钥、SQLite 和内置的 Python 都放在这里，这里不是照片库。Mac 安装版的位置是 /Library/Application Support/mosaicWave，本地调试版使用 /Library/Application Support/mosaicWave-dev。",
+    "schema": "数据库结构版本：v{{version}}"
   },
   "current": {
     "label": "当前照片库",

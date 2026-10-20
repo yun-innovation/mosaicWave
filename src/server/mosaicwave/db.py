@@ -6,40 +6,40 @@ from collections.abc import Generator
 from pathlib import Path
 
 from fastapi import Request
-from sqlalchemy import create_engine, event, text
+from sqlalchemy import create_engine, event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import NullPool
 
+from mosaicwave import schema
 from mosaicwave.config import Settings, ensure_data_dir_exists
 from mosaicwave.models import Base
 
 
-def _column_names(conn, table: str) -> set[str]:
-    rows = conn.execute(text(f"PRAGMA table_info({table})")).fetchall()
-    return {row[1] for row in rows}
+def _refuse_newer_schema(path: Path, *, nolock: bool) -> None:
+    """Read user_version without the engine's pragmas, so a too-new file is never written."""
+    if not path.is_file():
+        return
+    if nolock:
+        con = sqlite3.connect(_sqlite_file_uri(path, "mode=ro&nolock=1"), uri=True, timeout=30.0)
+    else:
+        con = sqlite3.connect(os.fspath(path.resolve()), timeout=30.0)
+    try:
+        found = schema.stored_version(con)
+    finally:
+        con.close()
+    if found > schema.CURRENT_VERSION:
+        raise schema.SchemaTooNew(path, found, schema.CURRENT_VERSION)
 
 
-def _migrate_schema(engine: Engine) -> None:
-    with engine.begin() as conn:
-        tables = {
-            row[0] for row in conn.execute(text("SELECT name FROM sqlite_master WHERE type='table'"))
-        }
-        if "user" in tables and "locale" not in _column_names(conn, '"user"'):
-            conn.execute(text('ALTER TABLE "user" ADD COLUMN locale VARCHAR(16)'))
-        if "source" in tables:
-            if "owner_user_id" not in _column_names(conn, "source"):
-                conn.execute(text("ALTER TABLE source ADD COLUMN owner_user_id VARCHAR(36)"))
-            if "source_id" not in _column_names(conn, "album"):
-                conn.execute(text("ALTER TABLE album ADD COLUMN source_id VARCHAR(36)"))
-            if "user_id" not in _column_names(conn, "job"):
-                conn.execute(text("ALTER TABLE job ADD COLUMN user_id VARCHAR(36)"))
-            conn.execute(
-                text(
-                    "CREATE UNIQUE INDEX IF NOT EXISTS uq_source_owner_live "
-                    "ON source(owner_user_id) WHERE deleted_at IS NULL AND owner_user_id IS NOT NULL"
-                )
-            )
+def _ensure_schema(engine: Engine, path: Path) -> int:
+    raw = engine.raw_connection()
+    try:
+        return schema.ensure_schema(
+            raw.driver_connection, path, lambda: Base.metadata.create_all(engine)
+        )
+    finally:
+        raw.close()
 
 
 def _is_network_path(path: Path) -> bool:
@@ -99,18 +99,26 @@ def make_engine(settings: Settings) -> Engine:
         _configure_engine(engine, network=network or nolock)
         return engine
 
+    try:
+        _refuse_newer_schema(db_path, nolock=False)
+    except sqlite3.OperationalError:
+        if not network:
+            raise
+        _refuse_newer_schema(db_path, nolock=True)
+
     engine = _engine(nolock=False)
     try:
-        Base.metadata.create_all(engine)
-        _migrate_schema(engine)
+        _ensure_schema(engine, db_path)
         return engine
+    except schema.SchemaTooNew:
+        engine.dispose()
+        raise
     except Exception:
         engine.dispose()
         if not network:
             raise
         engine = _engine(nolock=True)
-        Base.metadata.create_all(engine)
-        _migrate_schema(engine)
+        _ensure_schema(engine, db_path)
         return engine
 
 

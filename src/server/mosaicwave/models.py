@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import DateTime, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint, text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -37,6 +37,14 @@ class User(Base):
 
 class Source(Base):
     __tablename__ = "source"
+    __table_args__ = (
+        Index(
+            "uq_source_owner_live",
+            "owner_user_id",
+            unique=True,
+            sqlite_where=text("deleted_at IS NULL AND owner_user_id IS NOT NULL"),
+        ),
+    )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     owner_user_id: Mapped[str | None] = mapped_column(ForeignKey("user.id"), nullable=True, index=True)

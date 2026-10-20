@@ -195,6 +195,8 @@ Photo **files** stay in a FileStore (v1: local folders / QNAP shares). The datab
 
 **Choice: SQLite.** FastAPI talks to it through SQLAlchemy (or similar). One file in the **data directory** next to the blob root. Until the Phase 9 backup/restore/export feature ships, a backup is a copy of that data dir (stop the API or use the SQLite backup API). Do not restore from sync JSON.
 
+**Schema versions.** `library.db` records its schema version (`PRAGMA user_version`). At startup the server applies numbered upgrade steps in order, keeps a copy of the file from before the upgrade, and refuses a database newer than the app. See [schema.md § Schema versions](schema.md#schema-versions).
+
 ### Why not MongoDB
 
 MongoDB can store photo documents and album arrays. It is still the wrong default for mosaicWave.
