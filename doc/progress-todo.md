@@ -11,11 +11,7 @@ Open items only. Roadmap: ordered milestones in [roadmap.md](roadmap.md). The ea
 - [x] Commit Next 16 web config: `tsconfig.json` / `next-env.d.ts`; `proxyClientMaxBodySize`; `output: export` only in production so `next dev` rewrites stay clean
 - [x] **Milestone 3** — i18n and l10n: `en`, `zh-Hant`, `zh-Hans`; `user.locale` + `PATCH /api/v1/me`; error `code` + `params`; `i18n-check` before build — **done**
 - [x] **Milestone 4** — advanced UI: top bar, account menu, sidebar (slide-over panel on phones), hash-routed views; [web-ui.md](web-ui.md), [PR #24](https://github.com/yun-innovation/mosaicWave/pull/24) — **done**
-- [ ] Schema maintenance: detect the `library.db` schema version, apply upgrade steps in order to the current schema (**milestone 5**) — [schema.md § Schema versions](schema.md#schema-versions)
-  - [x] `PRAGMA user_version` + `schema_history`; steps 1 (v0.1.x baseline) and 2 (`user.locale`); unversioned databases upgraded; `library.db.pre-v{N}` copy; newer database refused unchanged
-  - [x] Drift test (`create_all` = v1 + steps); `.cursor/rules/schema.mdc`; admin Settings shows the version
-  - [x] Verified on a real v0.1.1 database (upgrade, rows kept, copy, history) and a refused v99
-  - [ ] Ship
+- [x] **Milestone 5** — schema maintenance: `PRAGMA user_version` + `schema_history`, ordered steps, pre-upgrade copy, newer database refused; [schema.md § Schema versions](schema.md#schema-versions), [PR #27](https://github.com/yun-innovation/mosaicWave/pull/27) — **done**
 - [ ] Backup / restore / export (library archive of SQLite + FileStore + thumbs; not sync JSON) (**milestone 6**)
 - [ ] ARM64 QPKG sideload on a QTS 5 ARM64 NAS (**milestone 7**)
 - [ ] Multilingual API: language code on requests; translated messages and locale-formatted date/time in responses; sync and ordering timestamps stay UTC; response language and switch target kept separate, tags normalized to canonical codes (**milestone 8**)
