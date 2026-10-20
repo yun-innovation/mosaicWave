@@ -21,14 +21,14 @@ A multi-platform photo/video library: Python API, static web UI, one `/api/v1`. 
 | **1** | AI rules + doc structure | Always-on rules force `index.md` at session start and docs-before-code; thin [naming.md](naming.md); status/index use milestones (not phases); status **Next** is one task |
 | **2** | Packaging verify | MSI installed on a test PC; QPKG x86_64 sideloaded on QTS 5; Linux/macOS tarball unpacked on a real host — **done** |
 | **3** | i18n and l10n | UI and user-facing strings can be translated; at least one locale besides the default — **done** |
-| **4** | Advanced UI | Immich-style chrome: top bar and sidebar (not wrapping Immich); one view at a time with hash URLs; sidebar becomes a slide-over panel on phones |
+| **4** | Advanced UI | Immich-style chrome: top bar and sidebar (not wrapping Immich); one view at a time with hash URLs; sidebar becomes a slide-over panel on phones — **done** |
 | **5** | Schema maintenance | `library.db` records its schema version. At startup the server detects the version (older databases without one are identified from their tables and columns), applies each upgrade step in order until it matches the current schema, and refuses a database newer than the app |
 | **6** | Backup / restore / export | Library archive of SQLite + FileStore + thumbs (not sync JSON); restoring an older archive upgrades it through milestone 5 |
 | **7** | ARM64 QPKG | Sideload on a QTS 5 ARM64 NAS |
 | **8** | Multilingual API | A client sends a language code (`en`, `zh-Hant`, `zh-Hans`; else the user's saved `user.locale`, then `en`) and `/api/v1` answers with translated messages, including error text, Takeout warnings, and job errors and progress text, plus dates and times formatted for that language. Timestamps used for sync and ordering (`rev`, `updated_at`, `taken_at` and the like) stay ISO 8601 in UTC next to any formatted text, so existing clients keep working. The per-request response language and the target language of the language switch (`PATCH /api/v1/me`) are separate inputs: neither sets the other, API tags are normalized to the UI's canonical codes, and after a switch the next response is in the new language ([i18n.md § API language](i18n.md#api-language-milestone-8-planned)) |
 | **9** | Gallery tools | Select several photos at once (add to album, download); timeline scrubber to jump by month and year; search by filename and date (needs a new API); light theme toggle. Each can ship as its own PR |
 
-**Current:** milestone **4** (milestones **1**–**3** done).
+**Current:** milestone **5** (milestones **1**–**4** done).
 
 ## Known open items (not a milestone yet)
 
