@@ -145,6 +145,8 @@ Dated milestones and decisions. Day-to-day process notes: [process.md](process.m
 | 2026-10-21 | Decision | `mosaic done` and `milestone N done` status edits reuse the unmerged topic branch or open status PR instead of each opening a PR (`bulk-ship.mdc` § Status edits) |
 | 2026-10-21 | Work | Milestone 5 built on `feature/schema-versions`: `library.db` schema v2 in `PRAGMA user_version` + `schema_history`, ordered steps, pre-upgrade copy, newer database refused; replaces `_migrate_schema` ([schema.md](schema.md#schema-versions)) |
 | 2026-10-21 | Milestone | **Milestone 5 — done** (schema maintenance, PR #27). Next is milestone 6 — backup / restore / export |
+| 2026-10-21 | Work | The 12 tests that always failed on Windows (11 macOS mount/keychain tests, 1 colon-filename test) are skipped on Windows with a reason; Windows now runs 0 failed. [testing.md](testing.md) lists them and how to reproduce and check them on macOS. Branch `fix/skip-platform-tests` |
+| 2026-10-21 | Work | macOS check of `fix/skip-platform-tests` ([testing.md](testing.md) § Check on macOS): macOS 27.0.1, Python 3.14.7. Full suite 208 passed, 4 skipped (unrelated: 3 Windows-data-dir tests, 1 ffmpeg-not-on-PATH), 0 failed. All 12 previously-Windows-skipped tests run (not skipped) and pass individually. `npm run build` in `src/web` succeeds (`i18n-check` OK); `next-env.d.ts` restored after |
 
 
 ---

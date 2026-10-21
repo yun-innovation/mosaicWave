@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import os
 import shutil
 import threading
 import time
 from io import BytesIO
 from pathlib import Path
 
+import pytest
 from PIL import Image
 from fastapi.testclient import TestClient
 from sqlalchemy import select
@@ -358,6 +360,7 @@ def test_takeout_push_file_larger_than_multipart_cap(tmp_path: Path) -> None:
     client.post(f"/api/v1/import/takeout/push/{job_id}/cancel")
 
 
+@pytest.mark.skipif(os.name == "nt", reason="Windows cannot create a file named with a colon; see doc/testing.md")
 def test_takeout_sanitizes_colon_filename(tmp_path: Path) -> None:
     takeout = tmp_path / "Takeout"
     dest = tmp_path / "library"

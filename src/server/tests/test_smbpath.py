@@ -6,6 +6,10 @@ from pathlib import Path
 import pytest
 
 from mosaicwave.config import normalize_host_path_text
+
+# Skipped on Windows: they assert /Volumes/... paths or patch os.geteuid (POSIX only).
+# Run them on macOS or Linux. See doc/testing.md.
+POSIX_ONLY = pytest.mark.skipif(os.name == "nt", reason="macOS/POSIX paths or os.geteuid; see doc/testing.md")
 from mosaicwave.storage.smbpath import (
     RemoteShare,
     native_share_path_text,
@@ -331,6 +335,7 @@ def test_is_app_volume_name_accepts_bare_prefix() -> None:
     assert _is_app_volume_name("/Volumes/mosaicWaveX") is False
 
 
+@POSIX_ONLY
 def test_is_app_volume_name_is_case_insensitive() -> None:
     """/Volumes is case-insensitive; macOS can hand back a mount in a different case
     than what we requested (e.g. lowercased by the OS/NAS)."""
@@ -353,6 +358,7 @@ def test_forbidden_finder_dest_allows_our_own_lowercased_mount(
     assert _forbidden_finder_dest("/Volumes/mosaicwave-dev") == ""
 
 
+@POSIX_ONLY
 def test_app_volume_root_bare_prefix_is_top_level_only() -> None:
     """The bare "mosaicWave" dest itself is a volume root, but a nested folder that
     happens to be named "mosaicWave" under a *different* volume is not."""
@@ -366,6 +372,7 @@ def test_app_volume_root_bare_prefix_is_top_level_only() -> None:
     )
 
 
+@POSIX_ONLY
 def test_effective_mount_dest_strips_library_folder(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("mosaicwave.storage.smbpath.sys.platform", "darwin")
     monkeypatch.setattr("mosaicwave.storage.smbpath._darwin_volume_prefix", lambda: "mosaicWave")
@@ -378,6 +385,7 @@ def test_effective_mount_dest_strips_library_folder(monkeypatch: pytest.MonkeyPa
     assert _effective_mount_dest(share, f"{unique}/mosaicWave") == unique
 
 
+@POSIX_ONLY
 def test_effective_mount_dest_keeps_user_dest(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("mosaicwave.storage.smbpath.sys.platform", "darwin")
     monkeypatch.setenv("MOSAICWAVE_PROFILE", "dev")
@@ -452,6 +460,7 @@ def test_try_mount_uses_explicit_mount_point(monkeypatch: pytest.MonkeyPatch, tm
     assert posix.endswith("/mw-mnt/mosaicWave")
 
 
+@POSIX_ONLY
 def test_normalize_mount_rejects_finder_public(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("mosaicwave.storage.smbpath.sys.platform", "darwin")
     monkeypatch.setattr("mosaicwave.storage.smbpath._is_smbfs_mount", lambda _p: False)
@@ -587,6 +596,7 @@ def test_coerce_keeps_settings_password_on_share(monkeypatch: pytest.MonkeyPatch
     assert "mosaicWave" in str(got).replace("\\", "/")
 
 
+@POSIX_ONLY
 def test_darwin_keychain_password_reads_system_keychain(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -629,6 +639,7 @@ def test_darwin_keychain_password_reads_system_keychain(
     assert len(seen) == 1
 
 
+@POSIX_ONLY
 def test_darwin_keychain_password_root_skips_login_keychain(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -659,6 +670,7 @@ def test_darwin_keychain_password_root_skips_login_keychain(
     assert len(seen) == 1
 
 
+@POSIX_ONLY
 def test_ensure_system_keychain_root_writes_system_only(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -971,6 +983,7 @@ def test_prepare_mount_dest_keeps_mosaicwave_leftover(
     assert list(stash_to.iterdir()) == []
 
 
+@POSIX_ONLY
 def test_prepare_mount_dest_volumes_permission_is_error(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -997,6 +1010,7 @@ def test_prepare_mount_dest_volumes_permission_is_error(
     assert dest in err
 
 
+@POSIX_ONLY
 def test_prepare_mount_dest_volumes_sudo_n(monkeypatch: pytest.MonkeyPatch) -> None:
     dest = "/Volumes/mosaicWave-dev"
     monkeypatch.setattr("mosaicwave.storage.smbpath.sys.platform", "darwin")

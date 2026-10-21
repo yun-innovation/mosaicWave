@@ -89,6 +89,7 @@ def test_relocates_legacy_localappdata(monkeypatch: pytest.MonkeyPatch, tmp_path
     assert Path(uri) == (dest / "libraries" / "user-1").resolve()
 
 
+@pytest.mark.skipif(os.name == "nt", reason="needs a macOS (POSIX) home path; see doc/testing.md")
 def test_relocates_macos_legacy_user_library(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     home = tmp_path / "home"
     legacy = home / "Library" / "Application Support" / "mosaicWave"
