@@ -18,7 +18,8 @@ Show why tests were skipped: add `-rs`.
 | OS | Result |
 | --- | --- |
 | Windows | 0 failed, 15 skipped (12 of them listed below) |
-| macOS / Linux | 0 failed; far fewer skips (the Windows-only tests skip themselves) |
+| macOS | 0 failed, 4 skipped (3 Windows-data-dir tests, 1 that needs ffmpeg on `PATH`); checked 2026-10-21, macOS 27.0.1, Python 3.14.7: 208 passed |
+| Linux | 0 failed expected; not checked yet |
 
 A failure on any OS is a real finding. Do not fix it by adding a skip.
 
@@ -56,7 +57,7 @@ Expected: `12 failed, 103 passed` with exactly the tests in the table above (che
 
 ## Check on macOS (for the macOS session)
 
-These 12 are the point of running the suite on a Mac: they test code that only runs there, and they have not been run on macOS since the skips were added.
+These 12 are the point of running the suite on a Mac: they test code that only runs there. **Checked 2026-10-21: all 12 run (not skipped) and pass on macOS.** Repeat this after changing `smbpath.py`, `config.py` or the Takeout filename code.
 
 1. `cd src/server`, create the venv (see Run), then `python -m pytest -q -rs`.
 2. Expect **0 failed**. The `test_takeout_sanitizes_colon_filename` and macOS-path tests should now run (not skip).
