@@ -92,3 +92,18 @@ For each user: create `accounts/{id}/library.db` at the current library schema, 
 - **Orphans:** `album` rows with `source_id IS NULL` and `source` rows with no owner belong to nobody. Report them in the migration notes and do not copy them (they are not reachable through the albums API today).
 - **Existing `rev` values are kept.** A client that stored `since_rev` from the old global clock may now be ahead of its library's `server_rev`. `GET /sync/changes` must treat `since_rev > server_rev` as `0` (full pull).
 - **Open data-folder moves** must not run while the migration runs; it happens at startup, before the API serves.
+
+## Migration as built (cutover step 1)
+
+`schema/split.py`, not yet wired into startup: `migrate_site_database(site_db, accounts_dir)`.
+
+1. Bring the site file to v2 (usual upgrade and `pre-v` copy), so old and unversioned databases are handled first.
+2. For each user that owns a source, build `accounts/{id}/library.db.migrating` from the site tables (`ATTACH`), keep every `rev` and every tombstone, then check foreign keys, `integrity_check` and that the row counts add up across all users plus the skipped rows. Any mismatch raises `SplitError` and removes everything built.
+3. Rename the verified files into place, then apply site step 3, which drops `album_asset`, `album`, `asset`, `source_grant` and `source` (after the usual `library.db.pre-v2` copy).
+4. Write `library.db.split-report.json` next to the site database.
+
+Until step 3 commits, the site tables are the source of truth, so an interrupted run is simply redone and stale library files are rebuilt.
+
+Skipped rows (counted in the report, never copied): sources with no owner or an unknown owner, assets and albums under them, albums with no source, memberships of those, and memberships tying an album to another user's photo. An album cover that points at another user's photo is cleared. Live grants are counted as dropped.
+
+Checked on a database made by the real v0.1.1 code: 2 users, 3 assets, 2 albums, 1 membership and 1 grant moved or dropped as expected, with clean foreign-key checks.
