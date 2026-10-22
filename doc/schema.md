@@ -47,7 +47,7 @@ Clients (web/mobile) **never** mount this file. They will use a replica over HTT
 | Metadata (date, album, size, mime, GPS extras) | Server SQLite `asset` / `album` | **Yes** — replica of rows |
 | Thumbnails | BlobStore (under the host data dir) | **Yes** — cache thumbs the user has seen or pinned |
 | User/session | Auth provider identity; mosaicWave `user` row + session | Login required to sync; replica may stay readable until expiry policy |
-| Who may see a source | Owner, plus live `source_grant` (`read` / `write`). No admin bypass | Sync payload is already filtered |
+| Who may see a library | Its owner only: each library is its own SQLite file. No admin bypass | Sync payload is already filtered |
 
 Do **not** put original JPEG/MP4 bytes into SQLite. That fights File Station/SMB/Explorer and blows up the database. “Store media data” means **metadata + pointers** (`relative_path`, size, hash), plus derived thumbs in the BlobStore. Host `root_uri` is never synced to clients. **Password hashes** stay on the server (`local_credential`); they are not replica entities. **Jobs** (`job` / `job_event`) are server audit only ([workflow.md](workflow.md)).
 
@@ -67,12 +67,12 @@ There is **no `folder` table**. Subdirectories exist only as segments of `asset.
 
 Public ids are **UUID strings** (API and clients). Do not use filesystem paths as primary keys (Takeout duplicates and renames).
 
-On `asset`, `album`, `album_asset`, `source`, `user`, `source_grant`:
+On `asset`, `album`, `album_asset`, `source`, `user`:
 
 | Column | Role |
 | --- | --- |
 | `id` | UUID, stable across sync |
-| `rev` | Library-wide change clock on syncable rows; insert/update sets `max(rev)+1` so `since_rev` pull sees new rows |
+| `rev` | Per-library change clock on syncable rows (each user's library file has its own); insert/update sets `max(rev)+1` so `since_rev` pull sees new rows |
 | `updated_at` | UTC timestamp |
 | `deleted_at` | NULL or tombstone; sync **keeps** deleted rows until clients have seen them |
 
@@ -83,8 +83,6 @@ On `asset`, `album`, `album_asset`, `source`, `user`, `source_grant`:
 ```mermaid
 erDiagram
   user ||--o| source : owns
-  user ||--o{ source_grant : grants
-  source ||--o{ source_grant : granted
   source ||--o{ asset : contains
   source ||--o{ album : albums
   user ||--o| local_credential : standalone
@@ -124,18 +122,6 @@ One indexed tree. `root_uri` is the FileStore root on **this host**.
 | `rev`, `updated_at`, `deleted_at` | | Sync fields |
 
 Created on first login / `/me` (`ensure_user_library`). Takeout dump path lives on the import **job** (`input_json`), not here.
-
-### `source_grant`
-
-| Column | Type | Notes |
-| --- | --- | --- |
-| `id` | TEXT PK | UUID |
-| `user_id` | TEXT FK → `user.id` | |
-| `source_id` | TEXT FK → `source.id` | |
-| `perm` | TEXT | `read` \| `write` (default `read`) |
-| `rev`, `updated_at`, `deleted_at` | | Sync fields |
-
-Unique `(user_id, source_id)` — constraint `uq_grant_user_source`. **Owner** `GET`/`PUT /sources/{id}/grants` replaces the live list (tombstone removed rows). Access is owner **or** a live grant. No admin bypass. See [architecture.md](architecture.md) Authorization.
 
 ### `local_credential`
 
@@ -282,11 +268,11 @@ The upgrade copies stay next to `library.db` until `wipe --db`. Admin Settings s
 
 ### Library track (milestone 6, foundations)
 
-A second, independent track exists for the per-user library databases: `schema/library.py` (`LIBRARY_STEPS`, `create_library_schema`). It describes `source`, `asset`, `album` and `album_asset` with no foreign key to another file (`source.owner_user_id` is a plain id). `library/dbs.py` (`LibraryDbs`) opens `accounts/{user_id}/library.db` next to `library.db` (`Settings.accounts_dir`), creating or upgrading it lazily with its own `user_version`, `schema_history` and `library.db.pre-v{N}` copy. **Nothing uses it yet**: the app still runs on the single database above until the cutover PR. `models.SITE_TABLES` and `models.LIBRARY_TABLES` record which database each table moves to.
+The photos live in a second, independent track, the per-user library databases (milestone 6): `schema/library.py` (`LIBRARY_STEPS`, `create_library_schema`). It describes `source`, `asset`, `album` and `album_asset` with no foreign key to another file (`source.owner_user_id` is a plain id). `library/dbs.py` (`LibraryDbs`) opens `accounts/{user_id}/library.db` next to `library.db` (`Settings.accounts_dir`), creating or upgrading it lazily with its own `user_version`, `schema_history` and `library.db.pre-v{N}` copy. The site database (`library.db`, schema v3) keeps only `user`, `local_credential`, `job` and `job_event`; `models.SITE_TABLES` and `models.LIBRARY_TABLES` record which database each table is in. A database from before v3 is split at startup by `schema/split.py` (see below); step 3 of `STEPS` drops the moved tables only after every library was copied and verified.
 
-Until the cutover, a change to a library table (`source`, `asset`, `album`, `album_asset`) needs **two** steps: one in `STEPS` and one in `LIBRARY_STEPS`. `tests/test_library_dbs.py::test_library_schema_matches_the_models` fails when they drift.
+A change to a library table (`source`, `asset`, `album`, `album_asset`) needs a step in `LIBRARY_STEPS` only (the site file no longer has these tables, but a pre-v3 file still builds them in steps 1-2, which are frozen). `tests/test_library_dbs.py::test_library_schema_matches_the_models` fails when the models and the library DDL drift.
 
-Restore from a backup archive (milestone 7) will run the same upgrade on the restored file. Milestone 6 plans to split this one database into a site DB and one library DB per user, each with its own versions and `rev` clock ([per-library-db.md](per-library-db.md)); this page describes the single-file schema until that ships.
+Restore from a backup archive (milestone 7) will run the same upgrade on the restored file. Milestone 6 split the single database into a site DB and one library DB per user, each with its own versions and `rev` clock ([per-library-db.md](per-library-db.md)). The table definitions below are unchanged; read them as "in the owner's library file" for `source`, `asset`, `album` and `album_asset`, and "in the site file" for the rest.
 
 ## Browse the live DB
 
@@ -316,7 +302,7 @@ API list is a **timeline** (default 50, max 200), not a folder listing. The web 
 
 ## Client replica (web + mobile)
 
-Same **entity names and ids**. Omit `root_uri` / `backend` / other users’ grants / credentials. Keep `relative_path` only if the UI shows folders. Sync **only** assets (and albums those assets belong to) in sources the user may read.
+Same **entity names and ids**. Omit `root_uri` / `backend` / credentials. Keep `relative_path` only if the UI shows folders. Sync **only** assets (and albums those assets belong to) in sources the user may read.
 
 | Client | Local store |
 | --- | --- |
@@ -371,13 +357,13 @@ Auth: same mosaicWave session as the rest of `/api/v1`. No anonymous sync. Do no
 - **Originals:** server FileStore wins. Client cannot “overwrite” a server file via metadata sync.
 - **Metadata/albums:** higher `rev` wins; push with stale `base_rev` fails.
 - **No multi-device CRDT** in v1. Replica push with a stale `base_rev` is **409** (pull and retry). Live web UI without `base_rev` is last-write-wins.
-- Sync the **sources the caller may read** (own library plus grants), not the whole disk. After a grant is revoked, do a full pull (`since_rev=0`) or drop local rows that are no longer listed.
+- Sync the **caller's own library**, not the whole disk. A `since_rev` ahead of the library's clock (a restored or rebuilt library) is answered with a full pull.
 
 ## Out of schema
 
 - Face embeddings
 - Original media blobs in SQLite
 - A `folder` table (paths live on `asset.relative_path`)
-- Password hashes or other users’ grants in the client replica
+- Password hashes in the client replica
 - Per-client schema that does not map 1:1 to these ids
 - Mongo or a second server database for “flex sync”

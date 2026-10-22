@@ -144,8 +144,6 @@ Illustrative v1 surface (names can change; behavior should not):
 | GET | `/api/v1/sources` | Own library first (`owned=true`, `perm=write`), then libraries shared with the caller |
 | POST | `/api/v1/sources` | **409** — each user already has one library |
 | DELETE | `/api/v1/sources/{id}` | **400** — cannot delete your library |
-| GET | `/api/v1/sources/{id}/grants` | Owner only. Live `read`/`write` grants |
-| PUT | `/api/v1/sources/{id}/grants` | Owner only. Replace live grants. Empty list revokes. Cannot grant to yourself |
 | POST | `/api/v1/sources/{id}/scan` | Re-index the **owner’s** library |
 | GET | `/api/v1/assets` | Timeline/list (cursor pagination; `album_id` filters membership) |
 | GET | `/api/v1/albums` | Virtual albums in sources the caller may read (`rev` included) |
@@ -224,7 +222,6 @@ Originals are **not** blobs in the DB (they live in FileStore). Clients keep a *
 ```
 user            id, provider, provider_subject, role, ...
 source          id, owner_user_id, backend, root_uri, kind, last_scan, error, rev, updated_at, deleted_at
-source_grant    id, user_id, source_id, perm, ...   # owner shares read|write
 asset           id, source_id, relative_path, size, mtime, mime,
                 width, height, taken_at, duration, extra_json, content_hash,
                 thumb_rev, rev, updated_at, deleted_at
@@ -338,7 +335,7 @@ Publish: `scripts/publish-posix.ps1` (or `.sh`) → `dist/posix/mosaicWave/`. Pa
 
 | Profile | Identity |
 | --- | --- |
-| **`qnap`** (QPKG on QTS) | **QNAP accounts only.** No mosaicWave password table on this profile. A `user` row still exists (id, role, grants) keyed by QNAP username. First QNAP login creates that row (admin if first). |
+| **`qnap`** (QPKG on QTS) | **QNAP accounts only.** No mosaicWave password table on this profile. A `user` row still exists (id, role) keyed by QNAP username. First QNAP login creates that row (admin if first). |
 | **`standalone`** (Windows / Linux / macOS product) | **Local auth provider** (hashed passwords in a credential table, not synced to clients). Required because there is no QTS. Gated off when `platform=qnap`. |
 
 | Client | How identity is established |
@@ -351,32 +348,32 @@ Publish: `scripts/publish-posix.ps1` (or `.sh`) → `dist/posix/mosaicWave/`. Pa
 
 ## Authorization
 
-**Decision:** Each user has **one private library** (`source.owner_user_id`). Login is not enough to see another user's photos. The **owner** may share that library with another user via `source_grant` (`read` or `write`). **Admin has no bypass** — they see another library only if it was shared with them. “Every logged-in user sees every source” is **rejected**. Admin may create **local** members on standalone only (not on QNAP).
+**Decision:** Each user has **one private library** (`source.owner_user_id`). Login is not enough to see another user's photos. Each library is its **own SQLite file** (`accounts/{user_id}/library.db`), so there is no code path that can read another user's rows. **Admin has no bypass.** Sharing with other people is planned as **share links** (milestone 6, PR 3), not user-to-user grants. “Every logged-in user sees every source” is **rejected**. Admin may create **local** members on standalone only (not on QNAP).
 
 The QPKG/uvicorn process is a **service account**. It cannot use the caller’s OS file ACL by default. Per-user access is therefore **in SQLite**, not `chmod`.
 
 | Role | Who | May |
 | --- | --- | --- |
-| **admin** | First-run user; QNAP administrators group can map to admin on `qnap` | Own library (read/write, Takeout, scan, upload, jobs). Create/update **members** on standalone. Other libraries only with a grant |
-| **member** | Everyone else with a `user` row | Own library (same photo rights as admin). Other libraries only with a grant |
+| **admin** | First-run user; QNAP administrators group can map to admin on `qnap` | Own library (read/write, Takeout, scan, upload, jobs). Create/update **members** on standalone. No access to other libraries |
+| **member** | Everyone else with a `user` row | Own library (same photo rights as admin). No access to other libraries |
 
-`source_grant`: unique `(user_id, source_id)`. Owner `PUT` replaces the live list; removed rows are tombstoned. `read` = list/thumb/file/albums/sync. `write` = that plus upload and album edits. Takeout import, scan, and Settings data-dir stay on the **owner**. `POST /sources` returns **409**. `DELETE` of a library returns **400**.
+The old `source_grant` table and `GET`/`PUT /sources/{id}/grants` were removed in milestone 6. Takeout import, scan, and Settings data-dir stay on the **owner**. `POST /sources` returns **409**. `DELETE` of a library returns **400**.
 
 Rules:
 
 1. Unauthenticated → 401 on all library routes (health stays open).
-2. Asset ids outside the caller's readable sources → **404** (do not leak that the asset exists).
-3. List, thumb, file, and sync **filter** to owned + granted sources. No admin bypass.
+2. Asset ids outside the caller's own library → **404** (do not leak that the asset exists).
+3. List, thumb, file, and sync read only the caller's own library database. No admin bypass.
 4. Takeout import writes into `{data_dir}/libraries/{user_id}`. `dest` on the import body is ignored.
 5. Jobs are filtered by `job.user_id`.
-6. First standalone user (or first QNAP admin to open the app) is **admin** and still has only their own library until they share or receive a grant.
+6. First standalone user (or first QNAP admin to open the app) is **admin** and has only their own library, like everyone else.
 
-Phases 1–4 used an unauthenticated stub so import/scan/jobs could land. **Phase 5** enforced login. Grants were the Phase 5 access model, then private-library-only; **share** turns `source_grant` back on, owned by the library owner (not a global admin grant).
+Phases 1–4 used an unauthenticated stub so import/scan/jobs could land. **Phase 5** enforced login. Grants were the Phase 5 access model, then private-library-only; milestone 6 removed grants for per-user library files, and share links will replace them.
 
 ## Security (baseline)
 
 - API is not public to the internet by default; reverse proxy (QNAP myQNAPcloud, Caddy/nginx on standalone) is the user’s choice later.
-- Authenticate all library routes except health. **Authorize** by library ownership plus `source_grant` (no admin bypass).
+- Authenticate all library routes except health. **Authorize** by library ownership (each user's library is its own database file; no admin bypass).
 - FileStore must not follow symlinks/junctions out of the source root ([storage.md](storage.md)).
 - Path traversal: asset ids in the API, never raw user paths in query strings.
 - Uploads: size limits, allowed extensions, write only via FileStore under the caller's library.

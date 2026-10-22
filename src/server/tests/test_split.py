@@ -76,10 +76,10 @@ def _seed(settings: Settings) -> dict[str, str]:
         s.add_all([LocalCredential(user_id=alice.id, password_hash="x"), Job(kind="takeout_import", user_id=bob.id)])
         ids.update(alice=alice.id, bob=bob.id)
 
-        a_src = Source(owner_user_id=alice.id, root_uri="/data/libraries/a", kind="folder")
-        a_old = Source(owner_user_id=alice.id, root_uri="/data/libraries/a-old", kind="folder", deleted_at=utcnow())
-        b_src = Source(owner_user_id=bob.id, root_uri="/data/libraries/b", kind="folder")
-        stray = Source(owner_user_id=None, root_uri="/data/stray", kind="folder")
+        a_src = Source(owner_user_id=alice.id, root_uri=str(settings.data_dir / "libraries" / "a"), kind="folder")
+        a_old = Source(owner_user_id=alice.id, root_uri=str(settings.data_dir / "libraries" / "a-old"), kind="folder", deleted_at=utcnow())
+        b_src = Source(owner_user_id=bob.id, root_uri=str(settings.data_dir / "libraries" / "b"), kind="folder")
+        stray = Source(owner_user_id=None, root_uri=str(settings.data_dir / "stray"), kind="folder")
         s.add_all([a_src, a_old, b_src, stray])
         s.flush()
 
@@ -287,3 +287,28 @@ def test_newer_site_database_is_refused(tmp_path: Path) -> None:
     con.close()
     with pytest.raises(schema.SchemaTooNew):
         migrate_site_database(db, settings.accounts_dir)
+
+
+def test_app_starts_on_an_old_database_and_serves_each_users_library(tmp_path: Path) -> None:
+    """Whole path: a pre-split database, the app starting on it, a user signing in."""
+    from fastapi.testclient import TestClient
+
+    from mosaicwave.auth.passwords import hash_password
+    from mosaicwave.main import create_app
+
+    settings = _settings(tmp_path)
+    ids = _seed(settings)
+    con = sqlite3.connect(settings.database_path)
+    con.execute("UPDATE local_credential SET password_hash = ?", (hash_password("secret12"),))
+    con.commit()
+    con.close()
+
+    client = TestClient(create_app(settings))
+    login = client.post("/api/v1/auth/login", json={"username": "alice", "password": "secret12"})
+    assert login.status_code == 200, login.text
+    names = {item["filename"] for item in client.get("/api/v1/assets").json()["items"]}
+    assert names == {"a1.jpg", "a2.jpg"}
+    assert {row["name"] for row in client.get("/api/v1/albums").json()} == {"Trip", "Borrowed cover"}
+    assert (settings.accounts_dir / ids["alice"] / "library.db").is_file()
+    assert settings.database_path.with_name(REPORT_NAME).is_file()
+    assert schema.CURRENT_VERSION == 3

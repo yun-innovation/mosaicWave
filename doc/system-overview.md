@@ -95,4 +95,4 @@ On Windows/Linux, Explorer or the desktop file manager plays the same coexistenc
 
 ## Success for the first usable release
 
-A user installs the QPKG **or** runs standalone, points at a folder of photos, and in the web UI sees a **timeline of thumbnails** that open the original (or a preview). Identity is **QNAP users on QTS** or **local users on standalone**; **authorization** is per-source grants (members do not see everything). A mosaicWave API session follows. Must exist before the API is exposed beyond localhost.
+A user installs the QPKG **or** runs standalone, points at a folder of photos, and in the web UI sees a **timeline of thumbnails** that open the original (or a preview). Identity is **QNAP users on QTS** or **local users on standalone**; **authorization** is one private library per user (members do not see each other's photos). A mosaicWave API session follows. Must exist before the API is exposed beyond localhost.
