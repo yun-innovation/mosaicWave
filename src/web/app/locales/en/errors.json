@@ -51,7 +51,6 @@
   "source_read_only": "This library is read-only.",
   "library_exists": "Each user already has one private library.",
   "library_delete_forbidden": "You cannot delete your library.",
-  "share_rejected": "Could not update sharing: {{message}}",
 
   "album_not_found": "Album not found.",
   "asset_not_in_album": "That photo is not in this album.",

@@ -3,7 +3,7 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { apiFetch, AppUser, Grant, HostSettings, Me, readDetail, Source } from "./api";
+import { apiFetch, AppUser, HostSettings, Me, readDetail, Source } from "./api";
 import { FolderPicker } from "./FolderPicker";
 import i18n from "./i18n";
 import { LocaleSelect } from "./LocaleSelect";
@@ -130,9 +130,6 @@ export function SettingsPanel({ me, platform, onMe }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [grants, setGrants] = useState<Grant[] | null>(null);
-  const [shareUserId, setShareUserId] = useState("");
-  const [sharePerm, setSharePerm] = useState<"read" | "write">("read");
   const [newUser, setNewUser] = useState({ username: "", password: "", display_name: "" });
   const [memberFieldsLocked, setMemberFieldsLocked] = useState(true);
 
@@ -170,16 +167,6 @@ export function SettingsPanel({ me, platform, onMe }: Props) {
       }
       const rows = (await srcRes.json()) as Source[];
       setSources(rows);
-      const mine = rows.find((row) => row.owned) ?? rows[0];
-      if (mine) {
-        const grantRes = await apiFetch(`/api/v1/sources/${mine.id}/grants`);
-        if (!grantRes.ok) {
-          const detail = await readDetail(grantRes);
-          setError((prev) => prev || detail);
-        } else {
-          setGrants((await grantRes.json()) as Grant[]);
-        }
-      }
       const userRes = await apiFetch("/api/v1/users");
       if (!userRes.ok) {
         const detail = await readDetail(userRes);
@@ -289,45 +276,8 @@ export function SettingsPanel({ me, platform, onMe }: Props) {
     }
   }
 
-  async function putGrants(next: { user_id: string; perm: string }[]) {
-    if (!library) return;
-    setBusy(true);
-    setError(null);
-    try {
-      const res = await apiFetch(`/api/v1/sources/${library.id}/grants`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ grants: next }),
-      });
-      if (!res.ok) {
-        setError(await readDetail(res));
-        return;
-      }
-      setGrants((await res.json()) as Grant[]);
-      setShareUserId("");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function addShare(event: FormEvent) {
-    event.preventDefault();
-    if (!shareUserId) {
-      setError(t("settings:share.chooseFirst"));
-      return;
-    }
-    const next = (grants ?? []).filter((row) => row.user_id !== shareUserId);
-    next.push({ user_id: shareUserId, perm: sharePerm, username: "", display_name: "" });
-    await putGrants(next.map((row) => ({ user_id: row.user_id, perm: row.perm })));
-  }
-
   const library = sources?.find((row) => row.owned) ?? sources?.[0];
   const storageLocked = host?.env_override === true;
-  const shareCandidates =
-    users?.filter(
-      (row) => row.id !== me.id && !(grants ?? []).some((g) => g.user_id === row.id),
-    ) ?? [];
-
   return (
     <section className="card settings">
       <div className="gallery-head">
@@ -346,69 +296,6 @@ export function SettingsPanel({ me, platform, onMe }: Props) {
           {t("settings:library.summary", { count: library.asset_count })}
           {library.error ? ` · ${library.error}` : ""}
         </p>
-      )}
-      {library && (
-        <form className="import" onSubmit={addShare}>
-          <label htmlFor="share_user">{t("settings:share.label")}</label>
-          <p className="detail">{t("settings:share.help")}</p>
-          {(grants ?? []).map((row) => (
-            <div className="grant-row" key={row.user_id}>
-              <span>
-                {t("settings:share.grant", {
-                  name: row.display_name || row.username,
-                  perm: row.perm === "write" ? t("settings:perm.write") : t("settings:perm.read"),
-                })}
-              </span>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() =>
-                  void putGrants(
-                    (grants ?? [])
-                      .filter((g) => g.user_id !== row.user_id)
-                      .map((g) => ({ user_id: g.user_id, perm: g.perm })),
-                  )
-                }
-              >
-                {t("common:remove")}
-              </button>
-            </div>
-          ))}
-          {users && users.filter((u) => u.id !== me.id).length === 0 && (
-            <p className="detail">
-              {platform === "qnap" ? t("settings:share.qnapHint") : t("settings:share.localHint")}
-            </p>
-          )}
-          {shareCandidates.length > 0 && (
-            <div className="grant-row">
-              <select
-                id="share_user"
-                value={shareUserId}
-                onChange={(e) => setShareUserId(e.target.value)}
-                disabled={busy}
-              >
-                <option value="">{t("settings:share.choose")}</option>
-                {shareCandidates.map((row) => (
-                  <option key={row.id} value={row.id}>
-                    {row.display_name || row.username}
-                  </option>
-                ))}
-              </select>
-              <select
-                aria-label={t("settings:share.permLabel")}
-                value={sharePerm}
-                onChange={(e) => setSharePerm(e.target.value as "read" | "write")}
-                disabled={busy}
-              >
-                <option value="read">{t("settings:perm.read")}</option>
-                <option value="write">{t("settings:perm.write")}</option>
-              </select>
-              <button type="submit" disabled={busy || !shareUserId}>
-                {t("settings:share.submit")}
-              </button>
-            </div>
-          )}
-        </form>
       )}
       {me.role === "admin" && (
         <>

@@ -11,21 +11,6 @@
   "library": {
     "summary_other": "你的相片庫 · {{count, number}} 個項目"
   },
-  "share": {
-    "label": "共享這個相片庫",
-    "help": "讀取：時間軸、縮圖、原始檔、相簿、同步。寫入：另可上傳及編輯相簿。對方仍保有自己的相片庫。除非你共享，否則管理員也看不到你的相片庫。",
-    "grant": "{{name}} · {{perm}}",
-    "qnapHint": "對方必須先用自己的 QNAP 帳號登入一次，你才能與他共享。",
-    "localHint": "請先在下方建立成員，再回到這裡與對方共享。",
-    "choose": "選擇對象…",
-    "chooseFirst": "請選擇要共享的對象",
-    "permLabel": "共享權限",
-    "submit": "共享"
-  },
-  "perm": {
-    "read": "讀取",
-    "write": "寫入"
-  },
   "appDir": {
     "label": "應用程式資料夾",
     "help": "設定、工作階段金鑰、SQLite 和內建的 Python 都放在這裡，這裡不是相片庫。Mac 安裝版的位置是 /Library/Application Support/mosaicWave，本機除錯版使用 /Library/Application Support/mosaicWave-dev。",
