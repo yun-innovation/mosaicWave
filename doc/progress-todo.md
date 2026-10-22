@@ -12,7 +12,11 @@ Open items only. Roadmap: ordered milestones in [roadmap.md](roadmap.md). The ea
 - [x] **Milestone 3** — i18n and l10n: `en`, `zh-Hant`, `zh-Hans`; `user.locale` + `PATCH /api/v1/me`; error `code` + `params`; `i18n-check` before build — **done**
 - [x] **Milestone 4** — advanced UI: top bar, account menu, sidebar (slide-over panel on phones), hash-routed views; [web-ui.md](web-ui.md), [PR #24](https://github.com/yun-innovation/mosaicWave/pull/24) — **done**
 - [x] **Milestone 5** — schema maintenance: `PRAGMA user_version` + `schema_history`, ordered steps, pre-upgrade copy, newer database refused; [schema.md § Schema versions](schema.md#schema-versions), [PR #27](https://github.com/yun-innovation/mosaicWave/pull/27) — **done**
-- [ ] Backup / restore / export (library archive of SQLite + FileStore + thumbs; not sync JSON) (**milestone 6**)
-- [ ] ARM64 QPKG sideload on a QTS 5 ARM64 NAS (**milestone 7**)
+- [ ] Per-library databases (**milestone 6**, [per-library-db.md](per-library-db.md))
+  - [ ] PR 1: site/library DB routing, per-library `rev`, v2 to v3 migration
+  - [ ] PR 2: move assets, albums, sync, Takeout, scan, thumbs, jobs onto the library DB
+  - [ ] PR 3: share links; retire `source_grant`
+- [ ] Backup / restore / export (site and per-user, exact-swap restore, export) (**milestone 7**, after 6)
+- [ ] ARM64 QPKG sideload on a QTS 5 ARM64 NAS (**milestone 10, frozen**: no ARM hardware)
 - [ ] Multilingual API: language code on requests; translated messages and locale-formatted date/time in responses; sync and ordering timestamps stay UTC; response language and switch target kept separate, tags normalized to canonical codes (**milestone 8**)
 - [ ] Gallery tools: select many, timeline scrubber, search (new API), light theme (**milestone 9**)

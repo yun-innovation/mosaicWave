@@ -47,7 +47,7 @@ Tests: `cd src/server`, then `.venv/bin/pytest` (macOS/Linux) or `.\.venv\Script
 
 ## Status
 
-v0.1. Development is paused after the first feature set; the roadmap is being rebuilt ([doc/roadmap.md](doc/roadmap.md)). Known open items: Linux tarball unpack and the ARM64 QPKG are untested, and backup/restore/export is not built.
+v0.1. Development is paused after the first feature set; the roadmap is being rebuilt ([doc/roadmap.md](doc/roadmap.md)). Known open items: Linux tarball unpack and the ARM64 QPKG are untested (ARM64 is frozen until hardware is available), and backup/restore/export is not built.
 
 ## License
 

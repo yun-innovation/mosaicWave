@@ -1,6 +1,6 @@
 # Status
 
-**Updated:** 2026-10-21  
+**Updated:** 2026-10-23  
 **Keep in sync with:** [`.cursor/rules/mosaicwave-status.mdc`](../.cursor/rules/mosaicwave-status.mdc) (same date, same next step).
 
 Short onboarding snapshot for agents. **Session start:** always read [index.md](index.md) first (For AI Agents + Planning). Names: [naming.md](naming.md).
@@ -13,7 +13,7 @@ Short onboarding snapshot for agents. **Session start:** always read [index.md](
 
 ## Next
 
-**Milestone 6 — backup / restore / export** (library archive of SQLite + FileStore + thumbs, not sync JSON; restoring an older archive upgrades it through the schema steps). Then 7 ARM64 QPKG, 8 multilingual API (translated messages and locale date/time in responses), 9 gallery tools (select many, scrubber, search, light theme).
+**Milestone 6 — per-library databases** (each user's photos and albums in their own SQLite file with their own `rev` clock; share links replace `source_grant`; three PRs, [per-library-db.md](per-library-db.md)). Then 7 backup / restore / export (builds on 6), 8 multilingual API (translated messages and locale date/time in responses), 9 gallery tools (select many, scrubber, search, light theme). 10 ARM64 QPKG is **frozen** (no ARM hardware) and skipped.
 
 ## Constraints
 
