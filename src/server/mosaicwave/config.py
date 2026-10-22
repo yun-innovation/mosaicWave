@@ -793,6 +793,11 @@ class Settings:
         return Path(boot) / "library.db"
 
     @property
+    def accounts_dir(self) -> Path:
+        """Per-user library databases. Beside library.db (not in a data folder that may be SMB)."""
+        return self.database_path.parent / "accounts"
+
+    @property
     def blob_dir(self) -> Path:
         return self.data_dir / "blobs"
 

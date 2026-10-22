@@ -13,7 +13,7 @@ Open items only. Roadmap: ordered milestones in [roadmap.md](roadmap.md). The ea
 - [x] **Milestone 4** — advanced UI: top bar, account menu, sidebar (slide-over panel on phones), hash-routed views; [web-ui.md](web-ui.md), [PR #24](https://github.com/yun-innovation/mosaicWave/pull/24) — **done**
 - [x] **Milestone 5** — schema maintenance: `PRAGMA user_version` + `schema_history`, ordered steps, pre-upgrade copy, newer database refused; [schema.md § Schema versions](schema.md#schema-versions), [PR #27](https://github.com/yun-innovation/mosaicWave/pull/27) — **done**
 - [ ] Per-library databases (**milestone 6**, [per-library-db.md](per-library-db.md))
-  - [ ] PR 1: foundations: two model sets and schema tracks, `accounts_dir`, library-DB manager (no behaviour change)
+  - [x] PR 1: foundations: two model sets and schema tracks, `accounts_dir`, library-DB manager (no behaviour change)
   - [ ] PR 2: cutover: per-request site/library sessions, v2 to v3 migration, API/jobs/sync on the library DB, `source_grant` removed
   - [ ] PR 3: share links (`share` table, public route, Share UI)
 - [ ] Backup / restore / export (site and per-user, exact-swap restore, export) (**milestone 7**, after 6)

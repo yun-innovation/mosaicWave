@@ -280,6 +280,12 @@ The upgrade copies stay next to `library.db` until `wipe --db`. Admin Settings s
 4. `pytest tests/test_schema.py`: the drift test compares `create_all` with v1 + every step (columns, foreign keys, indexes). Add an upgrade test from version N with a few rows.
 5. Update the version table above.
 
+### Library track (milestone 6, foundations)
+
+A second, independent track exists for the per-user library databases: `schema/library.py` (`LIBRARY_STEPS`, `create_library_schema`). It describes `source`, `asset`, `album` and `album_asset` with no foreign key to another file (`source.owner_user_id` is a plain id). `library/dbs.py` (`LibraryDbs`) opens `accounts/{user_id}/library.db` next to `library.db` (`Settings.accounts_dir`), creating or upgrading it lazily with its own `user_version`, `schema_history` and `library.db.pre-v{N}` copy. **Nothing uses it yet**: the app still runs on the single database above until the cutover PR. `models.SITE_TABLES` and `models.LIBRARY_TABLES` record which database each table moves to.
+
+Until the cutover, a change to a library table (`source`, `asset`, `album`, `album_asset`) needs **two** steps: one in `STEPS` and one in `LIBRARY_STEPS`. `tests/test_library_dbs.py::test_library_schema_matches_the_models` fails when they drift.
+
 Restore from a backup archive (milestone 7) will run the same upgrade on the restored file. Milestone 6 plans to split this one database into a site DB and one library DB per user, each with its own versions and `rev` clock ([per-library-db.md](per-library-db.md)); this page describes the single-file schema until that ships.
 
 ## Browse the live DB

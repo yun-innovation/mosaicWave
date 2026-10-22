@@ -1,6 +1,6 @@
 ---
 description: Every library.db schema change is a numbered upgrade step (doc/schema.md § Schema versions).
-globs: src/server/mosaicwave/models.py,src/server/mosaicwave/schema/**
+globs: src/server/mosaicwave/models.py,src/server/mosaicwave/schema/**,src/server/mosaicwave/library/dbs.py
 alwaysApply: false
 ---
 
@@ -13,4 +13,5 @@ Design: `doc/schema.md` § Schema versions. Code: `src/server/mosaicwave/schema/
 3. **Steps 3+ use plain SQL** for the exact previous shape. No `create_all`, no imports from `models.py` (they move on; the step must not).
 4. **Beyond `ADD COLUMN`** (drop / rename a column, change a type or constraint): use `rebuild_table` in a step with `foreign_keys_off=True`, then recreate that table's indexes.
 5. **Tests:** `tests/test_schema.py::test_steps_build_the_same_schema_as_models` must pass. Add a test that upgrades a database from the previous version with a few rows in it.
-6. **Data changes** (backfill, rename values) belong in the same step as the column they need.
+6. **Library tables have a second track** (milestone 6). A change to `source`, `asset`, `album` or `album_asset` also needs a step in `LIBRARY_STEPS` (`schema/library.py`, per-user `accounts/{id}/library.db`, no foreign keys to other files). `tests/test_library_dbs.py::test_library_schema_matches_the_models` must pass. Plan: `doc/per-library-db.md`.
+7. **Data changes** (backfill, rename values) belong in the same step as the column they need.

@@ -165,3 +165,10 @@ class AlbumAsset(Base):
     rev: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+# Which database each table belongs to once milestone 6 (doc/per-library-db.md) cuts over.
+# Until then everything still lives in the single library.db. `source_grant` is removed at
+# the cutover, so it only has a place in the site list for now.
+SITE_TABLES = frozenset({"user", "local_credential", "job", "job_event", "source_grant"})
+LIBRARY_TABLES = frozenset({"source", "asset", "album", "album_asset"})
