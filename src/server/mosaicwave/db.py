@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 import sqlite3
-from collections.abc import Generator
+from collections.abc import Callable, Generator, Sequence
 from pathlib import Path
 
 from fastapi import Request
@@ -14,9 +14,10 @@ from sqlalchemy.pool import NullPool
 from mosaicwave import schema
 from mosaicwave.config import Settings, ensure_data_dir_exists
 from mosaicwave.models import Base
+from mosaicwave.schema.steps import STEPS, Step
 
 
-def _refuse_newer_schema(path: Path, *, nolock: bool) -> None:
+def _refuse_newer_schema(path: Path, *, nolock: bool, supported: int | None = None) -> None:
     """Read user_version without the engine's pragmas, so a too-new file is never written."""
     if not path.is_file():
         return
@@ -28,15 +29,21 @@ def _refuse_newer_schema(path: Path, *, nolock: bool) -> None:
         found = schema.stored_version(con)
     finally:
         con.close()
-    if found > schema.CURRENT_VERSION:
-        raise schema.SchemaTooNew(path, found, schema.CURRENT_VERSION)
+    limit = schema.CURRENT_VERSION if supported is None else supported
+    if found > limit:
+        raise schema.SchemaTooNew(path, found, limit)
 
 
-def _ensure_schema(engine: Engine, path: Path) -> int:
+def _ensure_schema(
+    engine: Engine,
+    path: Path,
+    steps: Sequence[Step],
+    create_current: Callable[[Engine], None],
+) -> int:
     raw = engine.raw_connection()
     try:
         return schema.ensure_schema(
-            raw.driver_connection, path, lambda: Base.metadata.create_all(engine)
+            raw.driver_connection, path, lambda: create_current(engine), steps
         )
     finally:
         raw.close()
@@ -83,12 +90,34 @@ def _configure_engine(engine: Engine, *, network: bool) -> None:
         cursor.close()
 
 
+def _create_site_schema(engine: Engine) -> None:
+    Base.metadata.create_all(engine)
+
+
 def make_engine(settings: Settings) -> Engine:
     ensure_data_dir_exists(settings.data_dir)
     if settings.bootstrap_dir is not None:
         ensure_data_dir_exists(Path(settings.bootstrap_dir))
-    db_path = settings.database_path
+    return open_engine(
+        settings.database_path,
+        steps=STEPS,
+        create_current=_create_site_schema,
+    )
+
+
+def open_engine(
+    db_path: Path,
+    *,
+    steps: Sequence[Step],
+    create_current: Callable[[Engine], None],
+) -> Engine:
+    """Open one SQLite file at the newest version of the track `steps` describes.
+
+    The site database and every per-library database go through here: refuse a file that is
+    newer than `steps`, upgrade an older one (with a pre-upgrade copy), create an empty one.
+    """
     network = _is_network_path(db_path)
+    supported = steps[-1].version
 
     def _engine(*, nolock: bool) -> Engine:
         engine = create_engine(
@@ -100,15 +129,15 @@ def make_engine(settings: Settings) -> Engine:
         return engine
 
     try:
-        _refuse_newer_schema(db_path, nolock=False)
+        _refuse_newer_schema(db_path, nolock=False, supported=supported)
     except sqlite3.OperationalError:
         if not network:
             raise
-        _refuse_newer_schema(db_path, nolock=True)
+        _refuse_newer_schema(db_path, nolock=True, supported=supported)
 
     engine = _engine(nolock=False)
     try:
-        _ensure_schema(engine, db_path)
+        _ensure_schema(engine, db_path, steps, create_current)
         return engine
     except schema.SchemaTooNew:
         engine.dispose()
@@ -118,7 +147,7 @@ def make_engine(settings: Settings) -> Engine:
         if not network:
             raise
         engine = _engine(nolock=True)
-        _ensure_schema(engine, db_path)
+        _ensure_schema(engine, db_path, steps, create_current)
         return engine
 
 

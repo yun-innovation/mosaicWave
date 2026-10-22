@@ -16,6 +16,7 @@ from mosaicwave.config import (
     write_data_dir_config,
 )
 from mosaicwave.db import make_engine
+from mosaicwave.library.dbs import LibraryDbs
 from mosaicwave.library.importjob import ImportJobRunner, recover_interrupted_jobs
 from mosaicwave.storage.blobstore import LocalBlobStore
 
@@ -33,12 +34,16 @@ def attach_runtime(app: FastAPI, settings: Settings, *, recover: bool = False) -
     app.state.engine = engine
     app.state.session_factory = factory
     app.state.blob_store = blobs
+    app.state.library_dbs = LibraryDbs(settings)
     app.state.import_jobs = ImportJobRunner(factory, blobs)
     if recover:
         recover_interrupted_jobs(factory)
 
 
 def dispose_runtime(app: FastAPI) -> None:
+    library_dbs = getattr(app.state, "library_dbs", None)
+    if library_dbs is not None:
+        library_dbs.dispose_all()
     engine = getattr(app.state, "engine", None)
     if engine is not None:
         engine.dispose()
