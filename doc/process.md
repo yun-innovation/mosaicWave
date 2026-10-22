@@ -137,6 +137,7 @@ When we reverse a decision in these docs, add a one-line note here.
 | 2026-10-12 | Gate language switched to **`milestone N done`** (roadmap is ordered milestones). Thin `doc/naming.md` added |
 | 2026-10-13 | Bulk ship: local commits on one topic branch; push/PR only on owner **`push`** / **`ship`** / **`bulk ship`** (prefer `gh pr create`) |
 | 2026-10-21 | `mosaic done` and `milestone N done` status edits reuse the unmerged branch or open status PR; no separate PR for each |
+| 2026-10-23 | Dependabot security updates enabled (were off, so the patch-ignore rule could have hidden a security fix). Next.js 16.4.2 and sharp 0.35.5 for the advisories reported against Next 16.0.0-16.4.0 |
 | 2026-10-23 | CI added (GitHub Actions on pull requests), reversing "no CI for now". Dependabot: weekly check, 28-day cooldown, patch bumps ignored, grouped, 2 open PRs max |
 | 2026-10-23 | `main` ruleset now requires the `server` and `web` checks; bypass list cleared |
 | 2026-10-23 | New milestone 6 per-library databases (SaaS isolation; own `rev` per user; share links replace `source_grant`). Backup/restore/export moves to 7. ARM64 QPKG moves to 10 and is frozen (no ARM hardware) |
