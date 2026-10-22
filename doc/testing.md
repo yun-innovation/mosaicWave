@@ -1,6 +1,6 @@
 # Testing
 
-How to run the checks by hand (there is no CI) and which tests are skipped on which OS.
+How to run the checks by hand (CI runs the same two commands on pull requests, see [process.md](process.md)) and which tests are skipped on which OS.
 
 ## Run
 

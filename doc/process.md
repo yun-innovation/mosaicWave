@@ -57,7 +57,8 @@ flowchart LR
   - **`push`** — upload the branch only.
   - **`PR`** / **`ship`** / **`bulk ship`** — push (if needed) and open **one** PR for the whole branch (all local commits since `main`). Prefer GitHub CLI `gh pr create` when available and logged in; otherwise use the GitHub web “open a pull request” link.
 - **Merge via PR on GitHub:** **Squash and merge**, delete the branch, then `git pull` on `main`. History stays linear.
-- **No CI yet:** before merging, run `pytest` in `src/server` and `npm run build` in `src/web` by hand. This also applies to Dependabot PRs.
+- **CI:** `.github/workflows/ci.yml` runs `pytest` (Ubuntu, Python 3.12) and `npm run build` (Node 22) on every pull request, Dependabot's included. Merge only when both are green. CI does not cover the UI, so look at the browser after a Next or React bump. To run the same checks by hand see [testing.md](testing.md).
+- **Dependabot:** checks weekly but waits 28 days after a release (`cooldown`), skips patch releases, groups all npm updates into one PR and all pip updates into one PR, and keeps at most 2 open per ecosystem. Security updates are not affected by these settings.
 - **Commit messages:** Conventional Commits (`feat:`, `fix:`, `docs:`, `chore:`, `build:`, `test:`), imperative, summary under 72 characters. Focus on **why** (e.g. `feat: add cursor pagination so the timeline can scroll`).
 - **Identity:** commit with the GitHub no-reply address (`git config user.email`), because GitHub blocks pushes that expose a private email.
 - **Milestones:** only the owner's `milestone N done` message marks a milestone. A commit message never does. Wrap-up (`mosaic done`) is not a gate.
@@ -136,6 +137,7 @@ When we reverse a decision in these docs, add a one-line note here.
 | 2026-10-12 | Gate language switched to **`milestone N done`** (roadmap is ordered milestones). Thin `doc/naming.md` added |
 | 2026-10-13 | Bulk ship: local commits on one topic branch; push/PR only on owner **`push`** / **`ship`** / **`bulk ship`** (prefer `gh pr create`) |
 | 2026-10-21 | `mosaic done` and `milestone N done` status edits reuse the unmerged branch or open status PR; no separate PR for each |
+| 2026-10-23 | CI added (GitHub Actions on pull requests), reversing "no CI for now". Dependabot: weekly check, 28-day cooldown, patch bumps ignored, grouped, 2 open PRs max |
 | 2026-09-02 | Phase 3 is job workflow/audit (`workflow.md`). Gallery is Phase 4. Sync HTTP is Phase 7 |
 | 2026-08-29 | NAS identity is QNAP accounts; FastAPI checks QTS/QNAP then issues `/api/v1` session |
 | 2026-08-29 | Google Takeout import is Phase 2 (sample SQLite); not deferred to Phase 7 |

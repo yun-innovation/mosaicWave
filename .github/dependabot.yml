@@ -4,7 +4,28 @@ updates:
     directory: "/src/server"
     schedule:
       interval: "weekly"
+    # Wait 28 days after a release before proposing it. Security updates ignore this.
+    cooldown:
+      default-days: 28
+    open-pull-requests-limit: 2
+    # Patch releases are skipped; security patches still arrive as security updates.
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-patch"]
+    # One PR for everything that is due (react and react-dom must move together).
+    groups:
+      pip-all:
+        patterns: ["*"]
   - package-ecosystem: "npm"
     directory: "/src/web"
     schedule:
       interval: "weekly"
+    cooldown:
+      default-days: 28
+    open-pull-requests-limit: 2
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-patch"]
+    groups:
+      npm-all:
+        patterns: ["*"]
