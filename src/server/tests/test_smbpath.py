@@ -303,6 +303,35 @@ def test_stash_local_dir_moves_non_library_leftover(
     assert (Path(moved) / "readme.txt").read_text(encoding="utf-8") == "keep"
 
 
+def test_junk_is_swept_even_when_a_real_entry_is_listed_first(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """listdir order is arbitrary on Linux; junk must go whichever entry comes first."""
+    import os
+
+    from mosaicwave.storage.smbpath import _mount_dest_ready, clear_stale_mount_dir
+
+    real_listdir = os.listdir
+    monkeypatch.setattr(
+        "mosaicwave.storage.smbpath._is_smbfs_mount", lambda _p: False
+    )
+    monkeypatch.setattr("mosaicwave.storage.smbpath._dest_is_mount", lambda _p: False)
+    for check in (_mount_dest_ready, clear_stale_mount_dir):
+        dest = tmp_path / f"mosaicWave-fileserver-{check.__name__}"
+        (dest / "mosaicWave").mkdir(parents=True)
+        (dest / ".DS_Store").write_bytes(b"x")
+        monkeypatch.setattr(
+            os,
+            "listdir",
+            lambda p, _d=dest: (
+                ["mosaicWave", ".DS_Store"] if Path(p) == _d else real_listdir(p)
+            ),
+        )
+        assert check(str(dest)) is False
+        assert not (dest / ".DS_Store").exists()
+        assert (dest / "mosaicWave").is_dir()
+
+
 def test_stash_local_dir_keeps_mosaicwave_items(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
