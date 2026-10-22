@@ -601,13 +601,16 @@ def _mount_dest_ready(dest: str) -> bool:
         names = os.listdir(dest)
     except OSError:
         return False
+    # Sweep every junk file first: listdir order is arbitrary, so a real entry seen early
+    # must not leave junk behind.
+    ready = True
     for name in names:
         if _is_mount_junk(name):
             if not _unlink_mount_junk(os.path.join(dest, name)):
-                return False
+                ready = False
             continue
-        return False
-    return True
+        ready = False
+    return ready
 
 
 def _leftover_dest_error(dest: str) -> str:
