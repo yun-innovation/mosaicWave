@@ -21,28 +21,14 @@ from pathlib import Path
 
 from mosaicwave import schema
 from mosaicwave.schema.library import LIBRARY_CURRENT_VERSION, create_library_schema
-from mosaicwave.schema.steps import STEPS, Step
+from mosaicwave.schema.steps import STEPS
 
 _log = logging.getLogger(__name__)
 
-SPLIT_VERSION = 3
+SPLIT_VERSION = len(STEPS)  # the step that drops the moved tables
 REPORT_NAME = "library.db.split-report.json"
 
 _COPY = ("source", "asset", "album", "album_asset")
-
-
-def _drop_moved_tables(con: sqlite3.Connection) -> None:
-    for table in ("album_asset", "album", "asset", "source_grant", "source"):
-        con.execute(f'DROP TABLE IF EXISTS "{table}"')
-
-
-SPLIT_STEP = Step(
-    SPLIT_VERSION,
-    "per-library databases: source, asset, album, album_asset moved to accounts/{id}/library.db; "
-    "source_grant dropped",
-    _drop_moved_tables,
-    foreign_keys_off=True,
-)
 
 
 class SplitError(RuntimeError):
@@ -278,7 +264,7 @@ def migrate_site_database(site_db: Path, accounts_dir: Path) -> SplitReport | No
 
     con = sqlite3.connect(os.fspath(site_db), timeout=30.0)
     try:
-        schema.ensure_schema(con, site_db, lambda: None, STEPS)
+        schema.ensure_schema(con, site_db, lambda: None, STEPS[: SPLIT_VERSION - 1])
     finally:
         con.close()
 
@@ -286,7 +272,7 @@ def migrate_site_database(site_db: Path, accounts_dir: Path) -> SplitReport | No
 
     con = sqlite3.connect(os.fspath(site_db), timeout=30.0)
     try:
-        schema.ensure_schema(con, site_db, lambda: None, [*STEPS, SPLIT_STEP])
+        schema.ensure_schema(con, site_db, lambda: None, STEPS)
     finally:
         con.close()
 

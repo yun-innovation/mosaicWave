@@ -13,7 +13,8 @@ from sqlalchemy.pool import NullPool
 
 from mosaicwave import schema
 from mosaicwave.config import Settings, ensure_data_dir_exists
-from mosaicwave.models import Base
+from mosaicwave.models import SITE_TABLES, Base
+from mosaicwave.schema.split import migrate_site_database
 from mosaicwave.schema.steps import STEPS, Step
 
 
@@ -91,13 +92,16 @@ def _configure_engine(engine: Engine, *, network: bool) -> None:
 
 
 def _create_site_schema(engine: Engine) -> None:
-    Base.metadata.create_all(engine)
+    tables = [Base.metadata.tables[name] for name in sorted(SITE_TABLES)]
+    Base.metadata.create_all(engine, tables=tables)
 
 
 def make_engine(settings: Settings) -> Engine:
     ensure_data_dir_exists(settings.data_dir)
     if settings.bootstrap_dir is not None:
         ensure_data_dir_exists(Path(settings.bootstrap_dir))
+    # A database from before milestone 6 still holds every user's photos: move them out first.
+    migrate_site_database(settings.database_path, settings.accounts_dir)
     return open_engine(
         settings.database_path,
         steps=STEPS,

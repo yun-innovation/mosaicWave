@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Generator
+
 from fastapi import Depends, Request
 from sqlalchemy.orm import Session
 
@@ -49,6 +51,24 @@ def require_user_brief(request: Request) -> User:
             raise ApiError(401, "not_authenticated", "not authenticated")
         session.expunge(user)
         return user
+    finally:
+        session.close()
+
+
+def get_library_session(
+    request: Request, user: User = Depends(require_user)
+) -> Generator[Session, None, None]:
+    """The caller's own library database (accounts/{user_id}/library.db), created on first use."""
+    factory = request.app.state.library_dbs.factory(user.id)
+    session = factory()
+    try:
+        yield session
+        if session.is_active:
+            session.commit()
+    except Exception:
+        if session.is_active:
+            session.rollback()
+        raise
     finally:
         session.close()
 

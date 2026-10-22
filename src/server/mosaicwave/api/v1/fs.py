@@ -7,8 +7,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from mosaicwave.api.errors import ApiError, wrapped
-from mosaicwave.auth.deps import require_user
-from mosaicwave.db import get_session
+from mosaicwave.auth.deps import get_library_session, require_user
 from mosaicwave.library.fsbrowse import list_host_dir
 from mosaicwave.library.ownership import library_root, user_library
 from mosaicwave.models import User
@@ -42,7 +41,7 @@ def _is_under(path: Path, parent: Path) -> bool:
 def fs_list(
     request: Request,
     path: str | None = Query(default=None),
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_library_session),
     user: User = Depends(require_user),
 ) -> FsListOut:
     """Browse host folders. Listing does not move the library or write config."""

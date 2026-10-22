@@ -10,7 +10,6 @@ from sqlalchemy.orm import Session
 
 from mosaicwave.api.errors import ApiError, wrapped
 from mosaicwave.auth.deps import optional_user, require_admin, require_user
-from mosaicwave.auth.access import granted_source_ids
 from mosaicwave.auth.passwords import hash_password
 from mosaicwave.auth.providers import (
     PROVIDER_LOCAL,
@@ -45,8 +44,6 @@ class MeOut(BaseModel):
     role: str
     provider: str
     locale: str | None = None
-    granted_source_ids: list[str] | None = None
-    write_source_ids: list[str] | None = None
 
 
 class MePatchIn(BaseModel):
@@ -106,11 +103,14 @@ def _password_too_short() -> ApiError:
     )
 
 
-def _me_out(session: Session, user: User, data_dir: Path | None = None) -> MeOut:
-    if data_dir is not None:
-        ensure_user_library(session, user, data_dir)
-    granted = granted_source_ids(session, user)
-    write = granted_source_ids(session, user, write=True)
+def _me_out(request: Request, user: User) -> MeOut:
+    # Opening the library database also creates the caller's library on first login.
+    library = request.app.state.library_dbs.factory(user.id)()
+    try:
+        ensure_user_library(library, user, _settings(request).data_dir)
+        library.commit()
+    finally:
+        library.close()
     return MeOut(
         id=user.id,
         username=user.provider_subject,
@@ -118,8 +118,6 @@ def _me_out(session: Session, user: User, data_dir: Path | None = None) -> MeOut
         role=user.role,
         provider=user.provider,
         locale=user.locale,
-        granted_source_ids=sorted(granted),
-        write_source_ids=sorted(write),
     )
 
 
@@ -170,7 +168,7 @@ def auth_status(
     return AuthStatusOut(
         platform=settings.platform,
         needs_setup=needs_setup,
-        me=_me_out(session, user, settings.data_dir) if user else None,
+        me=_me_out(request, user) if user else None,
     )
 
 
@@ -200,7 +198,7 @@ def auth_setup(
     except ValueError as exc:
         raise wrapped(400, "user_rejected", exc) from exc
     _set_session_cookie(request, response, user)
-    return _me_out(session, user, settings.data_dir)
+    return _me_out(request, user)
 
 
 @router.post("/auth/login", response_model=MeOut)
@@ -240,7 +238,7 @@ def auth_login(
             display_name=subject,
         )
     _set_session_cookie(request, response, user)
-    return _me_out(session, user, settings.data_dir)
+    return _me_out(request, user)
 
 
 @router.post("/auth/logout")
@@ -255,7 +253,7 @@ def get_me(
     session: Session = Depends(get_session),
     user: User = Depends(require_user),
 ) -> MeOut:
-    return _me_out(session, user, _settings(request).data_dir)
+    return _me_out(request, user)
 
 
 @router.patch("/me", response_model=MeOut)
@@ -276,7 +274,7 @@ def patch_me(
         user.locale = body.locale
         user.updated_at = utcnow()
         session.flush()
-    return _me_out(session, user, _settings(request).data_dir)
+    return _me_out(request, user)
 
 
 @router.get("/users", response_model=list[UserOut])

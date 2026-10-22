@@ -237,6 +237,17 @@ def _rewrite_source_root_uris(db: Path, old_root: Path, new_root: Path) -> None:
         shutil.rmtree(tmp_dir, ignore_errors=True)
 
 
+def _library_dbs_beside(site_db: Path) -> list[Path]:
+    return sorted((site_db.parent / "accounts").glob("*/library.db"))
+
+
+def _rewrite_library_root_uris(site_db: Path, old_root: Path, new_root: Path) -> None:
+    """Rewrite source.root_uri in every library database next to site_db."""
+    _rewrite_source_root_uris(site_db, old_root, new_root)  # a pre-split file; no-op once migrated
+    for lib in _library_dbs_beside(site_db):
+        _rewrite_source_root_uris(lib, old_root, new_root)
+
+
 def _is_under(path: Path, parent: Path) -> bool:
     try:
         path.resolve().relative_to(parent.resolve())
@@ -344,6 +355,8 @@ def copy_data_dir(
         _checkpoint_library_db(src / "library.db")
     elif rewrite_target.is_file():
         _checkpoint_library_db(rewrite_target)
+        for lib in _library_dbs_beside(rewrite_target):
+            _checkpoint_library_db(lib)
     if replace_payload:
         names = set(_FILE_PAYLOAD_NAMES)
         if move_sqlite:
@@ -389,14 +402,14 @@ def copy_data_dir(
                 raise
             copied.append(item.name)
         if move_sqlite:
-            _rewrite_source_root_uris(dest / "library.db", src, dest)
+            _rewrite_library_root_uris(dest / "library.db", src, dest)
         elif rewrite_target.is_file():
-            _rewrite_source_root_uris(rewrite_target, src, dest)
+            _rewrite_library_root_uris(rewrite_target, src, dest)
             rewritten = True
     except Exception as exc:
         if rewritten and rewrite_target.is_file():
             try:
-                _rewrite_source_root_uris(rewrite_target, dest, src)
+                _rewrite_library_root_uris(rewrite_target, dest, src)
             except Exception:
                 pass
         _delete_named(dest, copied)

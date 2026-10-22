@@ -7,7 +7,7 @@ from PIL import Image
 from fastapi.testclient import TestClient
 
 from mosaicwave.config import Settings
-from authutil import ADMIN_PASS, authed_client, library_dir, library_id, scan_library
+from authutil import authed_client, library_dir, library_id, scan_library
 
 
 def _jpeg_bytes() -> bytes:
@@ -16,7 +16,7 @@ def _jpeg_bytes() -> bytes:
     return buf.getvalue()
 
 
-def _member(admin: TestClient) -> tuple[TestClient, str]:
+def _member(admin: TestClient) -> TestClient:
     created = admin.put(
         "/api/v1/users",
         json={
@@ -30,10 +30,11 @@ def _member(admin: TestClient) -> tuple[TestClient, str]:
     member = TestClient(admin.app)
     login = member.post("/api/v1/auth/login", json={"username": "pat", "password": "memberpass"})
     assert login.status_code == 200
-    return member, created.json()["id"]
+    return member
 
 
-def test_owner_can_share_read_and_write(tmp_path: Path) -> None:
+def test_libraries_are_isolated_per_user(tmp_path: Path) -> None:
+    """Two users never see, edit or upload into each other's library (no grants any more)."""
     settings = Settings(data_dir=tmp_path / "data", takeout_dir=None, source_dir=None)
     admin = authed_client(settings)
     lib = library_dir(settings, admin)
@@ -41,107 +42,55 @@ def test_owner_can_share_read_and_write(tmp_path: Path) -> None:
     scan_library(admin)
     source_id = library_id(admin)
     asset_id = admin.get("/api/v1/assets").json()["items"][0]["id"]
-    album = admin.post("/api/v1/albums", json={"name": "SharedTrip"})
-    assert album.status_code == 200, album.text
-    album_id = album.json()["id"]
-    add = admin.post(f"/api/v1/albums/{album_id}/assets", json={"asset_ids": [asset_id]})
-    assert add.status_code == 200, add.text
+    album_id = admin.post("/api/v1/albums", json={"name": "SharedTrip"}).json()["id"]
+    assert (
+        admin.post(f"/api/v1/albums/{album_id}/assets", json={"asset_ids": [asset_id]}).status_code
+        == 200
+    )
 
-    member, member_id = _member(admin)
+    member = _member(admin)
     listed = member.get("/api/v1/users")
     assert listed.status_code == 200
     assert {row["username"] for row in listed.json()} >= {"admin", "pat"}
 
     assert member.get("/api/v1/assets").json()["items"] == []
     assert member.get(f"/api/v1/assets/{asset_id}").status_code == 404
+    assert member.get(f"/api/v1/assets/{asset_id}/thumb").status_code == 404
     assert member.get("/api/v1/albums").json() == []
+    assert member.get(f"/api/v1/albums/{album_id}").status_code == 404
+    assert member.patch(f"/api/v1/albums/{album_id}", json={"name": "Nope"}).status_code == 404
 
-    grants = admin.put(
-        f"/api/v1/sources/{source_id}/grants",
-        json={"grants": [{"user_id": member_id, "perm": "read"}]},
-    )
-    assert grants.status_code == 200, grants.text
-    assert grants.json()[0]["user_id"] == member_id
-    assert grants.json()[0]["perm"] == "read"
-    got = admin.get(f"/api/v1/sources/{source_id}/grants")
-    assert got.status_code == 200
-    assert len(got.json()) == 1
-
-    stranger = member.put(
-        f"/api/v1/sources/{source_id}/grants",
-        json={"grants": [{"user_id": member_id, "perm": "write"}]},
-    )
-    assert stranger.status_code == 404
-
-    names = {item["filename"] for item in member.get("/api/v1/assets").json()["items"]}
-    assert names == {"kept.jpg"}
-    assert member.get(f"/api/v1/assets/{asset_id}").status_code == 200
-    assert member.get(f"/api/v1/assets/{asset_id}/thumb").status_code == 200
-    albums = member.get("/api/v1/albums").json()
-    assert {row["name"] for row in albums} == {"SharedTrip"}
-    assert member.get(f"/api/v1/albums/{album_id}").status_code == 200
     sources = member.get("/api/v1/sources").json()
-    assert len(sources) == 2
-    shared = next(row for row in sources if not row["owned"])
-    assert shared["id"] == source_id
-    assert shared["perm"] == "read"
-    own = next(row for row in sources if row["owned"])
-    assert own["id"] == library_id(member)
+    assert len(sources) == 1 and sources[0]["owned"]
+    assert sources[0]["id"] != source_id
 
-    blocked_upload = member.post(
+    blocked = member.post(
         "/api/v1/assets",
         data={"source_id": source_id},
         files={"file": ("nope.jpg", _jpeg_bytes(), "image/jpeg")},
     )
-    assert blocked_upload.status_code == 404
-    blocked_patch = member.patch(f"/api/v1/albums/{album_id}", json={"name": "Nope"})
-    assert blocked_patch.status_code == 404
+    assert blocked.status_code == 404
+    assert member.get("/api/v1/sync/changes", params={"since_rev": 0}).json()["assets"] == []
 
-    pulled = member.get("/api/v1/sync/changes", params={"since_rev": 0})
-    assert pulled.status_code == 200
-    sync_names = {Path(a["relative_path"]).name for a in pulled.json()["assets"]}
-    assert "kept.jpg" in sync_names
-    assert any(row["id"] == album_id for row in pulled.json()["albums"])
+    # The grants API is gone.
+    assert admin.get(f"/api/v1/sources/{source_id}/grants").status_code in (404, 405)
+    assert (
+        admin.put(f"/api/v1/sources/{source_id}/grants", json={"grants": []}).status_code
+        in (404, 405)
+    )
 
-    write = admin.put(
-        f"/api/v1/sources/{source_id}/grants",
-        json={"grants": [{"user_id": member_id, "perm": "write"}]},
-    )
-    assert write.status_code == 200
-    assert write.json()[0]["perm"] == "write"
-    upload = member.post(
-        "/api/v1/assets",
-        data={"source_id": source_id},
-        files={"file": ("from-pat.jpg", _jpeg_bytes(), "image/jpeg")},
-    )
-    assert upload.status_code == 200, upload.text
-    renamed = member.patch(f"/api/v1/albums/{album_id}", json={"name": "PatEdit"})
-    assert renamed.status_code == 200, renamed.text
-    assert renamed.json()["name"] == "PatEdit"
-    admin_names = {item["filename"] for item in admin.get("/api/v1/assets").json()["items"]}
-    assert admin_names == {"kept.jpg", "from-pat.jpg"}
+    # Each user has a separate database file with its own revision clock.
+    db_root = settings.accounts_dir
+    assert len(list(db_root.glob("*/library.db"))) == 2
+    mine = admin.get("/api/v1/sync/changes", params={"since_rev": 0}).json()
+    assert [a["id"] for a in mine["assets"]] == [asset_id]
+    assert mine["server_rev"] > 0
 
-    revoked = admin.put(f"/api/v1/sources/{source_id}/grants", json={"grants": []})
-    assert revoked.status_code == 200
-    assert revoked.json() == []
-    assert member.get("/api/v1/assets").json()["items"] == []
-    assert member.get(f"/api/v1/assets/{asset_id}").status_code == 404
-    assert member.get("/api/v1/albums").json() == []
 
-    again = admin.put(
-        f"/api/v1/sources/{source_id}/grants",
-        json={"grants": [{"user_id": member_id, "perm": "read"}]},
-    )
-    assert again.status_code == 200
-    assert member.get(f"/api/v1/assets/{asset_id}").status_code == 200
-
-    bad_perm = admin.put(
-        f"/api/v1/sources/{source_id}/grants",
-        json={"grants": [{"user_id": member_id, "perm": "admin"}]},
-    )
-    assert bad_perm.status_code == 400
-    self_grant = admin.put(
-        f"/api/v1/sources/{source_id}/grants",
-        json={"grants": [{"user_id": admin.get("/api/v1/me").json()["id"], "perm": "read"}]},
-    )
-    assert self_grant.status_code == 400
+def test_client_ahead_of_library_clock_pulls_everything(tmp_path: Path) -> None:
+    settings = Settings(data_dir=tmp_path / "data", takeout_dir=None, source_dir=None)
+    admin = authed_client(settings)
+    (library_dir(settings, admin) / "kept.jpg").write_bytes(_jpeg_bytes())
+    scan_library(admin)
+    body = admin.get("/api/v1/sync/changes", params={"since_rev": 10_000}).json()
+    assert len(body["assets"]) == 1

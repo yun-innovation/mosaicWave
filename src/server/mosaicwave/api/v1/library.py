@@ -11,15 +11,8 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from mosaicwave.api.errors import ApiError, wrapped
-from mosaicwave.auth.access import (
-    can_read_source,
-    can_write_source,
-    grant_perm,
-    granted_source_ids,
-    list_live_grants,
-    replace_source_grants,
-)
-from mosaicwave.auth.deps import require_user, require_user_brief
+from mosaicwave.auth.access import can_use_source, granted_source_ids
+from mosaicwave.auth.deps import get_library_session, require_user, require_user_brief
 from mosaicwave.config import Settings
 from mosaicwave.db import get_session, sqlite_locked
 from mosaicwave.library.dump import TakeoutInspect, inspect_takeout_path
@@ -132,22 +125,6 @@ class SourceOut(BaseModel):
     owned: bool = False
 
 
-class GrantOut(BaseModel):
-    user_id: str
-    username: str
-    display_name: str
-    perm: str
-
-
-class GrantIn(BaseModel):
-    user_id: str
-    perm: str = "read"
-
-
-class GrantsPutIn(BaseModel):
-    grants: list[GrantIn]
-
-
 class AlbumOut(BaseModel):
     id: str
     source_id: str | None = None
@@ -217,8 +194,7 @@ def _own_library(request: Request, session: Session, user: User) -> Source:
 
 
 def _library_dest(request: Request, user: User) -> Path:
-    factory = request.app.state.session_factory
-    session = factory()
+    session = request.app.state.library_dbs.factory(user.id)()
     try:
         lib = _own_library(request, session, user)
         dest = Path(lib.root_uri)
@@ -237,24 +213,7 @@ def _readable_ids(session: Session, user: User) -> set[str]:
 
 
 def _writable_ids(session: Session, user: User) -> set[str]:
-    return granted_source_ids(session, user, write=True)
-
-
-def _owned_source(session: Session, user: User, source_id: str) -> Source:
-    source = _live_source(session, source_id)
-    if source.owner_user_id != user.id:
-        raise ApiError(404, "source_not_found", "source not found")
-    return source
-
-
-def _grant_out(session: Session, row) -> GrantOut:
-    target = session.get(User, row.user_id)
-    return GrantOut(
-        user_id=row.user_id,
-        username=target.provider_subject if target is not None else "",
-        display_name=target.display_name if target is not None else "",
-        perm=row.perm,
-    )
+    return granted_source_ids(session, user)
 
 
 def _job_owned(row: Job, user: User) -> bool:
@@ -398,7 +357,7 @@ def _live_asset(session: Session, asset_id: str, user: User) -> tuple[Asset, Sou
     source = session.get(Source, asset.source_id)
     if source is None or source.deleted_at is not None:
         raise ApiError(404, "asset_not_found", "asset not found")
-    if not can_read_source(session, user, source.id):
+    if not can_use_source(session, user, source.id):
         raise ApiError(404, "asset_not_found", "asset not found")
     return asset, source
 
@@ -417,7 +376,7 @@ def _count_live(session: Session, source_id: str) -> int:
 @router.get("/assets", response_model=AssetListOut)
 def get_assets(
     request: Request,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_library_session),
     user: User = Depends(require_user),
     limit: int = Query(50, ge=1, le=200),
     cursor: str | None = None,
@@ -486,7 +445,7 @@ def _album_http_error(exc: Exception) -> None:
 @router.get("/albums", response_model=list[AlbumOut])
 def get_albums(
     request: Request,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_library_session),
     user: User = Depends(require_user),
 ) -> list[AlbumOut]:
     _own_library(request, session, user)
@@ -497,7 +456,7 @@ def get_albums(
 def post_album(
     body: AlbumCreateIn,
     request: Request,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_library_session),
     user: User = Depends(require_user),
 ) -> AlbumOut:
     lib = _own_library(request, session, user)
@@ -515,7 +474,7 @@ def post_album(
 def get_album_one(
     album_id: str,
     request: Request,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_library_session),
     user: User = Depends(require_user),
 ) -> AlbumOut:
     _own_library(request, session, user)
@@ -531,7 +490,7 @@ def patch_album_one(
     album_id: str,
     body: AlbumPatchIn,
     request: Request,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_library_session),
     user: User = Depends(require_user),
 ) -> AlbumOut:
     _own_library(request, session, user)
@@ -553,7 +512,7 @@ def patch_album_one(
 def delete_album_one(
     album_id: str,
     request: Request,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_library_session),
     user: User = Depends(require_user),
     base_rev: int | None = Query(default=None, ge=0),
 ) -> dict:
@@ -574,7 +533,7 @@ def post_album_assets(
     album_id: str,
     body: AlbumAssetsIn,
     request: Request,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_library_session),
     user: User = Depends(require_user),
 ) -> AlbumOut:
     _own_library(request, session, user)
@@ -599,7 +558,7 @@ def delete_album_asset(
     album_id: str,
     asset_id: str,
     request: Request,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_library_session),
     user: User = Depends(require_user),
     base_rev: int | None = Query(default=None, ge=0),
 ) -> dict:
@@ -618,7 +577,7 @@ def delete_album_asset(
 @router.get("/sync/changes", response_model=SyncChangesOut)
 def get_sync_changes(
     request: Request,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_library_session),
     user: User = Depends(require_user),
     since_rev: int = Query(0, ge=0),
     cursor: str | None = None,
@@ -640,7 +599,7 @@ def get_sync_changes(
 @router.get("/assets/{asset_id}", response_model=AssetOut)
 def get_asset(
     asset_id: str,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_library_session),
     user: User = Depends(require_user),
 ) -> AssetOut:
     asset, _source = _live_asset(session, asset_id, user)
@@ -654,7 +613,7 @@ _THUMB_RETRY_CACHE = {"Cache-Control": "private, max-age=0, must-revalidate"}
 def get_asset_thumb(
     asset_id: str,
     request: Request,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_library_session),
     user: User = Depends(require_user),
 ) -> Response:
     asset, source = _live_asset(session, asset_id, user)
@@ -698,7 +657,7 @@ def get_asset_thumb(
 def get_asset_preview(
     asset_id: str,
     request: Request,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_library_session),
     user: User = Depends(require_user),
 ) -> Response:
     asset, source = _live_asset(session, asset_id, user)
@@ -721,7 +680,7 @@ def get_asset_preview(
 def get_asset_file(
     asset_id: str,
     request: Request,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_library_session),
     user: User = Depends(require_user),
     download: bool = Query(False),
 ) -> Response:
@@ -743,11 +702,11 @@ def get_asset_file(
 def post_asset(
     source_id: str = Form(...),
     file: UploadFile = File(...),
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_library_session),
     user: User = Depends(require_user),
 ) -> AssetOut:
     source = _live_source(session, source_id)
-    if not can_write_source(session, user, source.id):
+    if not can_use_source(session, user, source.id):
         raise ApiError(404, "source_not_found", "source not found")
     if source.kind != "folder":
         raise ApiError(
@@ -788,7 +747,7 @@ def post_asset(
 @router.post("/thumbs/generate", response_model=ImportOut)
 def post_thumbs_generate(
     request: Request,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_library_session),
     user: User = Depends(require_user),
 ) -> ImportOut:
     lib = _own_library(request, session, user)
@@ -803,26 +762,11 @@ def post_thumbs_generate(
 @router.get("/sources", response_model=list[SourceOut])
 def get_sources(
     request: Request,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_library_session),
     user: User = Depends(require_user),
 ) -> list[SourceOut]:
     lib = _own_library(request, session, user)
-    out = [_source_out(session, lib, perm="write", owned=True)]
-    for sid in sorted(_readable_ids(session, user)):
-        if sid == lib.id:
-            continue
-        source = session.get(Source, sid)
-        if source is None or source.deleted_at is not None:
-            continue
-        out.append(
-            _source_out(
-                session,
-                source,
-                perm=grant_perm(session, user, source.id),
-                owned=False,
-            )
-        )
-    return out
+    return [_source_out(session, lib, perm="write", owned=True)]
 
 
 @router.post("/sources", response_model=SourceOut)
@@ -845,43 +789,11 @@ def delete_source(
     raise ApiError(400, "library_delete_forbidden", "cannot delete your library")
 
 
-@router.get("/sources/{source_id}/grants", response_model=list[GrantOut])
-def get_source_grants(
-    source_id: str,
-    session: Session = Depends(get_session),
-    user: User = Depends(require_user),
-) -> list[GrantOut]:
-    source = _owned_source(session, user, source_id)
-    return [_grant_out(session, row) for row in list_live_grants(session, source.id)]
-
-
-@router.put("/sources/{source_id}/grants", response_model=list[GrantOut])
-def put_source_grants(
-    source_id: str,
-    body: GrantsPutIn,
-    session: Session = Depends(get_session),
-    user: User = Depends(require_user),
-) -> list[GrantOut]:
-    source = _owned_source(session, user, source_id)
-    try:
-        rows = replace_source_grants(
-            session,
-            source,
-            [(item.user_id, item.perm) for item in body.grants],
-        )
-    except FileNotFoundError as exc:
-        raise _not_found(exc) from exc
-    except ValueError as exc:
-        raise wrapped(400, "share_rejected", exc) from exc
-    session.commit()
-    return [_grant_out(session, row) for row in rows]
-
-
 @router.post("/sources/{source_id}/scan", response_model=SourceOut)
 def scan_source(
     request: Request,
     source_id: str,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_library_session),
     user: User = Depends(require_user),
 ) -> SourceOut:
     lib = _own_library(request, session, user)
@@ -958,7 +870,7 @@ def get_job_events(
 def post_takeout(
     request: Request,
     body: TakeoutImportIn | None = None,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_library_session),
     user: User = Depends(require_user),
 ) -> ImportOut:
     raw = _takeout_raw_path(request, body)
@@ -1009,7 +921,7 @@ def _declared_size(request: Request) -> int | None:
 def start_takeout_push(
     request: Request,
     body: TakeoutPushStartIn | None = None,
-    session: Session = Depends(get_session),
+    session: Session = Depends(get_library_session),
     user: User = Depends(require_user),
 ) -> ImportOut:
     _own_library(request, session, user)

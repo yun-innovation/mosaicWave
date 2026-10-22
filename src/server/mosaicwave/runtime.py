@@ -8,7 +8,7 @@ from sqlalchemy.orm import sessionmaker
 from mosaicwave.config import (
     Settings,
     _delete_named,
-    _rewrite_source_root_uris,
+    _rewrite_library_root_uris,
     clear_bootstrap_library_payload,
     copy_data_dir,
     session_secret_for,
@@ -35,7 +35,7 @@ def attach_runtime(app: FastAPI, settings: Settings, *, recover: bool = False) -
     app.state.session_factory = factory
     app.state.blob_store = blobs
     app.state.library_dbs = LibraryDbs(settings)
-    app.state.import_jobs = ImportJobRunner(factory, blobs)
+    app.state.import_jobs = ImportJobRunner(factory, blobs, app.state.library_dbs)
     if recover:
         recover_interrupted_jobs(factory)
 
@@ -82,7 +82,7 @@ def switch_data_dir(
             boot_db = boot / "library.db"
             if boot_db.is_file():
                 try:
-                    _rewrite_source_root_uris(boot_db, dest, src)
+                    _rewrite_library_root_uris(boot_db, dest, src)
                 except Exception:
                     pass
         if copied:

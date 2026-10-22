@@ -13,7 +13,7 @@ from mosaicwave.library.sync import assign_sync_rev
 from mosaicwave.library.takeout import import_takeout
 from mosaicwave.main import create_app
 from mosaicwave.models import Asset, utcnow
-from authutil import ADMIN_PASS, ADMIN_USER, authed_client, library_dir, library_id, scan_library, setup_admin
+from authutil import ADMIN_PASS, ADMIN_USER, authed_client, library_dir, library_id, library_session, scan_library, setup_admin
 
 
 def _jpeg_bytes() -> bytes:
@@ -43,7 +43,7 @@ def test_sync_pull_assets_albums_and_watermark(tmp_path: Path) -> None:
     settings = Settings(data_dir=tmp_path / "data", takeout_dir=takeout, source_dir=None)
     client = authed_client(settings)
     dest = library_dir(settings, client)
-    session = client.app.state.session_factory()
+    session = library_session(client)
     try:
         import_takeout(session, takeout, dest_root=dest, owner_user_id=client.get("/api/v1/me").json()["id"])
         session.commit()
@@ -114,7 +114,7 @@ def test_sync_includes_tombstones(tmp_path: Path) -> None:
     folder = library_dir(settings, client)
     (folder / "gone.jpg").write_bytes(_jpeg_bytes())
     scan_library(client)
-    session = client.app.state.session_factory()
+    session = library_session(client)
     try:
         row = session.scalars(select(Asset)).one()
         row.deleted_at = utcnow()
@@ -178,7 +178,7 @@ def test_second_client_list_thumb_and_sync(tmp_path: Path) -> None:
     assert new_id in replica["assets"]
     assert replica["assets"][asset_id]["relative_path"].endswith("shot.jpg")
 
-    session = app.state.session_factory()
+    session = library_session(first)
     try:
         row = session.get(Asset, asset_id)
         assert row is not None

@@ -64,7 +64,20 @@ def _user_locale(con: sqlite3.Connection) -> None:
         con.execute('ALTER TABLE "user" ADD COLUMN locale VARCHAR(16)')
 
 
+def _drop_moved_tables(con: sqlite3.Connection) -> None:
+    """Step 3 only runs after schema/split.py has copied every library out (see split.py)."""
+    for table in ("album_asset", "album", "asset", "source_grant", "source"):
+        con.execute(f'DROP TABLE IF EXISTS "{table}"')
+
+
 STEPS: list[Step] = [
     Step(1, "baseline (v0.1.0 / v0.1.1 tables)", _v1_baseline),
     Step(2, "user.locale (milestone 3)", _user_locale),
+    Step(
+        3,
+        "per-library databases: source, asset, album, album_asset moved to accounts/{id}/library.db; "
+        "source_grant dropped",
+        _drop_moved_tables,
+        foreign_keys_off=True,
+    ),
 ]

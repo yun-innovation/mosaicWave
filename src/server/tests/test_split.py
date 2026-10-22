@@ -5,11 +5,11 @@ import sqlite3
 from pathlib import Path
 
 import pytest
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
 from mosaicwave import schema
 from mosaicwave.config import Settings
-from mosaicwave.db import make_engine
 from mosaicwave.models import (
     Album,
     AlbumAsset,
@@ -17,7 +17,6 @@ from mosaicwave.models import (
     Job,
     LocalCredential,
     Source,
-    SourceGrant,
     User,
     utcnow,
 )
@@ -49,11 +48,25 @@ def _tables(path: Path) -> set[str]:
         con.close()
 
 
+def _seed_v2_schema(settings: Settings) -> dict[str, str]:
+    """An empty database exactly as v0.1.x / milestone 3 left it (schema version 2)."""
+    settings.database_path.parent.mkdir(parents=True, exist_ok=True)
+    con = sqlite3.connect(settings.database_path)
+    try:
+        for step in STEPS[:2]:
+            step.apply(con)
+        con.execute("PRAGMA user_version = 2")
+        con.commit()
+    finally:
+        con.close()
+    return {}
+
+
 def _seed(settings: Settings) -> dict[str, str]:
     """Two users with libraries, plus the awkward rows a real database can hold."""
-    engine = make_engine(settings)
+    ids = _seed_v2_schema(settings)
+    engine = create_engine(f"sqlite:///{settings.database_path}")
     factory = sessionmaker(engine, expire_on_commit=False)
-    ids: dict[str, str] = {}
     with factory() as s:
         alice = User(provider="local", provider_subject="alice", display_name="Alice", role="admin")
         bob = User(provider="local", provider_subject="bob", display_name="Bob")
@@ -97,7 +110,14 @@ def _seed(settings: Settings) -> dict[str, str]:
                 AlbumAsset(album_id=trip.id, asset_id=st.id, rev=2),  # asset nobody owns
             ]
         )
-        s.add(SourceGrant(user_id=bob.id, source_id=a_src.id, perm="read"))
+        s.commit()
+        s.execute(
+            text(
+                "INSERT INTO source_grant (id, user_id, source_id, perm, rev, updated_at) "
+                "VALUES ('g1', :u, :s, 'read', 1, CURRENT_TIMESTAMP)"
+            ),
+            {"u": bob.id, "s": a_src.id},
+        )
         s.commit()
     engine.dispose()
     return ids
