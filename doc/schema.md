@@ -280,7 +280,7 @@ The upgrade copies stay next to `library.db` until `wipe --db`. Admin Settings s
 4. `pytest tests/test_schema.py`: the drift test compares `create_all` with v1 + every step (columns, foreign keys, indexes). Add an upgrade test from version N with a few rows.
 5. Update the version table above.
 
-Restore from a backup archive (milestone 6) will run the same upgrade on the restored file.
+Restore from a backup archive (milestone 7) will run the same upgrade on the restored file. Milestone 6 plans to split this one database into a site DB and one library DB per user, each with its own versions and `rev` clock ([per-library-db.md](per-library-db.md)); this page describes the single-file schema until that ships.
 
 ## Browse the live DB
 

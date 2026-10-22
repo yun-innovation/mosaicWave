@@ -45,6 +45,7 @@ Root planning docs (open only when the task needs them):
 - [Takeout dump](takeout-dump.md) — zip splits, oversized files, metadata.json, Check folder
 - [Workflow](workflow.md) — job table, audit of Takeout import and later tasks
 - [Schema](schema.md) — server SQLite tables, `library.db`, offline replica, sync
+- [Per-library databases](per-library-db.md) — one SQLite file per user, per-library `rev`, share links (milestone 6, planned)
 - [FileStore](filestore.md) — originals I/O, virtual paths, LocalFileStore (v1 done)
 - [FileStore later](filestore-later.md) — BYO Drive/OneDrive; **not a milestone**
 - [Storage](storage.md) — FileStore / BlobStore requirements, BlobStore, multi-platform I/O
@@ -105,5 +106,6 @@ If the session was Q&A only with no edits, steps 2–3 are “N/A” — one-lin
 | [Takeout dump](takeout-dump.md) | Zip splits, oversized videos, `metadata.json`, inspect |
 | [Job workflow](workflow.md) | Task runs in SQLite for audit |
 | [Schema](schema.md) | SQLite tables, `library.db`, UUIDs, offline replica, sync |
+| [Per-library databases](per-library-db.md) | Planned split into site DB + one DB per user (milestone 6) |
 | [QPKG / standalone hosts](qpkg.md) | `publish.cmd` / `pack.cmd` (`msi` / `qpkg` / `posix`) |
 | [Postman collection](../postman/mosaicwave.postman_collection.json) | Importable `/api/v1` collection + environments (not a generated client) |

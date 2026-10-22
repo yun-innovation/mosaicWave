@@ -242,7 +242,7 @@ That checks **aarch64 wheels** (Pillow, pillow-heif, imageio-ffmpeg, FastAPI). I
 
 A cheap ARM64 Linux VM (cloud Ampere/Graviton, or a Pi) can run the **standalone** app the same way. Sideload on a **QTS 5 ARM64 NAS** remains the real host check.
 
-`pack-qpkg` already emits both CPU packages. Sideload the matching file; do not assume one Python wheel fits both (HEIF / ffmpeg thumbs can fail on ARM even when the QPKG installs). ARM64 QTS 5 start/stop/gallery is still a Phase 8 host check. 32-bit ARM + QTS 4.3 is out of scope.
+`pack-qpkg` already emits both CPU packages. Sideload the matching file; do not assume one Python wheel fits both (HEIF / ffmpeg thumbs can fail on ARM even when the QPKG installs). ARM64 QTS 5 start/stop/gallery is still a host check (roadmap milestone 10, **frozen** until ARM hardware is available). 32-bit ARM + QTS 4.3 is out of scope.
 
 ### Logs and QuLog
 
