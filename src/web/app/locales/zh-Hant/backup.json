@@ -1,0 +1,33 @@
+{
+  "title": "備份",
+  "intro": "整站備份是一個 zip，內含整站資料庫、每位使用者的相簿資料庫與所有原始相片。其中包含密碼雜湊，請像資料資料夾一樣妥善保管。",
+  "folder": "備份存放於 {{folder}}",
+  "start": "立即備份",
+  "withThumbs": "包含縮圖（備份較大；縮圖可重新產生）",
+  "list": {
+    "title": "備份檔",
+    "loading": "正在載入備份…",
+    "empty": "還沒有備份。",
+    "loadFailed": "無法載入備份。"
+  },
+  "users_one": "{{count, number}} 位使用者",
+  "users_other": "{{count, number}} 位使用者",
+  "assets_one": "{{count, number}} 張相片或影片",
+  "assets_other": "{{count, number}} 張相片和影片",
+  "albums_one": "{{count, number}} 個相簿",
+  "albums_other": "{{count, number}} 個相簿",
+  "thumbsIncluded": "含縮圖",
+  "warnings_one": "略過 {{count, number}} 個檔案",
+  "warnings_other": "略過 {{count, number}} 個檔案",
+  "download": "下載",
+  "delete": "刪除",
+  "confirmDelete": "要刪除這份備份嗎？",
+  "confirmYes": "確定刪除",
+  "deleted": "已刪除備份。",
+  "restore": {
+    "title": "還原",
+    "help": "還原會取代此伺服器上的所有資料，因此必須在 API 停止時執行。請先停止 mosaicWave，再於主機上執行：",
+    "check": "加上 --check 只會驗證備份檔，不會變更任何資料。",
+    "keep": "目前的資料會保留在旁邊，名稱為 *.before-restore-<時間>，直到你自行刪除。"
+  }
+}

@@ -38,6 +38,7 @@ export type HostSettings = {
   data_dir: string;
   default_data_dir: string;
   app_dir: string;
+  backup_dir: string;
   data_dir_smb?: string | null;
   data_dir_mount?: string | null;
   smb_user?: string | null;

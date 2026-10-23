@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ActivityView } from "./ActivityView";
+import { BackupView } from "./BackupView";
 import { AlbumsView } from "./AlbumsView";
 import { apiFetch, apiMediaUrl, AuthStatus, Me } from "./api";
 import { AppShell } from "./AppShell";
@@ -163,8 +164,11 @@ export default function Home() {
     case "activity":
       view = <ActivityView importer={importer} libraryRev={libraryRev} />;
       break;
+    case "backup":
+      view = me.role === "admin" ? <BackupView importer={importer} /> : <SettingsPanel me={me} platform={platform} importer={importer} onMe={setMe} />;
+      break;
     case "settings":
-      view = <SettingsPanel me={me} platform={platform} onMe={setMe} />;
+      view = <SettingsPanel me={me} platform={platform} importer={importer} onMe={setMe} />;
       break;
     default:
       view = (
@@ -188,6 +192,9 @@ export default function Home() {
       me={me}
       route={route}
       healthError={healthError}
+      job={importer.job}
+      finished={importer.finished}
+      onDismissFinished={importer.dismissFinished}
       onMe={setMe}
       onUpload={() => setUploadOpen(true)}
       onLogout={() => void onLogout()}

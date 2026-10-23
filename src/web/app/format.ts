@@ -52,7 +52,12 @@ export function formatBytes(size: number): string {
   if (size < 1024) {
     return new Intl.NumberFormat(locale, { style: "unit", unit: "byte", unitDisplay: "narrow" }).format(size);
   }
-  const [value, unit] = size < 1024 * 1024 ? [size / 1024, "kilobyte"] : [size / (1024 * 1024), "megabyte"];
+  const [value, unit] =
+    size < 1024 * 1024
+      ? [size / 1024, "kilobyte"]
+      : size < 1024 * 1024 * 1024
+        ? [size / (1024 * 1024), "megabyte"]
+        : [size / (1024 * 1024 * 1024), "gigabyte"];
   return new Intl.NumberFormat(locale, {
     style: "unit",
     unit,

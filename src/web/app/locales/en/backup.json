@@ -1,0 +1,33 @@
+{
+  "title": "Backup",
+  "intro": "A site backup is one zip with the site database, every user's library database and all original photos. It contains password hashes, so keep it as private as the data folder.",
+  "folder": "Archives are stored in {{folder}}",
+  "start": "Back up now",
+  "withThumbs": "Include thumbnails (bigger archive; they can be regenerated)",
+  "list": {
+    "title": "Archives",
+    "loading": "Loading backups…",
+    "empty": "No backups yet.",
+    "loadFailed": "Could not load the backups."
+  },
+  "users_one": "{{count, number}} user",
+  "users_other": "{{count, number}} users",
+  "assets_one": "{{count, number}} photo or video",
+  "assets_other": "{{count, number}} photos and videos",
+  "albums_one": "{{count, number}} album",
+  "albums_other": "{{count, number}} albums",
+  "thumbsIncluded": "with thumbnails",
+  "warnings_one": "{{count, number}} file skipped",
+  "warnings_other": "{{count, number}} files skipped",
+  "download": "Download",
+  "delete": "Delete",
+  "confirmDelete": "Delete this backup?",
+  "confirmYes": "Yes, delete",
+  "deleted": "Backup deleted.",
+  "restore": {
+    "title": "Restore",
+    "help": "A restore replaces all data on this server, so it runs with the API stopped. Stop mosaicWave, then run this on the host:",
+    "check": "Add --check to only validate the archive; nothing is changed.",
+    "keep": "Your current data is kept beside it as *.before-restore-<time> until you delete it."
+  }
+}

@@ -2,22 +2,28 @@ import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 
 import enAuth from "./locales/en/auth.json";
+import enBackup from "./locales/en/backup.json";
 import enCommon from "./locales/en/common.json";
 import enErrors from "./locales/en/errors.json";
 import enGallery from "./locales/en/gallery.json";
 import enImport from "./locales/en/import.json";
+import enJobbar from "./locales/en/jobbar.json";
 import enSettings from "./locales/en/settings.json";
 import hansAuth from "./locales/zh-Hans/auth.json";
+import hansBackup from "./locales/zh-Hans/backup.json";
 import hansCommon from "./locales/zh-Hans/common.json";
 import hansErrors from "./locales/zh-Hans/errors.json";
 import hansGallery from "./locales/zh-Hans/gallery.json";
 import hansImport from "./locales/zh-Hans/import.json";
+import hansJobbar from "./locales/zh-Hans/jobbar.json";
 import hansSettings from "./locales/zh-Hans/settings.json";
 import hantAuth from "./locales/zh-Hant/auth.json";
+import hantBackup from "./locales/zh-Hant/backup.json";
 import hantCommon from "./locales/zh-Hant/common.json";
 import hantErrors from "./locales/zh-Hant/errors.json";
 import hantGallery from "./locales/zh-Hant/gallery.json";
 import hantImport from "./locales/zh-Hant/import.json";
+import hantJobbar from "./locales/zh-Hant/jobbar.json";
 import hantSettings from "./locales/zh-Hant/settings.json";
 
 export const LOCALES = ["en", "zh-Hant", "zh-Hans"] as const;
@@ -36,24 +42,30 @@ export const resources = {
   en: {
     common: enCommon,
     auth: enAuth,
+    backup: enBackup,
     gallery: enGallery,
     import: enImport,
+    jobbar: enJobbar,
     settings: enSettings,
     errors: enErrors,
   },
   "zh-Hant": {
     common: hantCommon,
     auth: hantAuth,
+    backup: hantBackup,
     gallery: hantGallery,
     import: hantImport,
+    jobbar: hantJobbar,
     settings: hantSettings,
     errors: hantErrors,
   },
   "zh-Hans": {
     common: hansCommon,
     auth: hansAuth,
+    backup: hansBackup,
     gallery: hansGallery,
     import: hansImport,
+    jobbar: hansJobbar,
     settings: hansSettings,
     errors: hansErrors,
   },

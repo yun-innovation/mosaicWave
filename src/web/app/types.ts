@@ -59,6 +59,21 @@ export type ImportJob = {
 
 export type Notice = { text: string; ok: boolean };
 
+export type BackupItem = {
+  name: string;
+  size: number;
+  created_at: string;
+  app_version: string;
+  schema_version: number;
+  include_thumbs: boolean;
+  users: number;
+  assets: number;
+  albums: number;
+  file_count: number;
+  total_bytes: number;
+  warnings: string[];
+};
+
 export function isAbortError(err: unknown): boolean {
   return typeof err === "object" && err !== null && "name" in err && (err as { name: string }).name === "AbortError";
 }

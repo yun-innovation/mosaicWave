@@ -21,7 +21,8 @@
     "albums": "Albums",
     "import": "Import",
     "activity": "Activity",
-    "settings": "Settings"
+    "settings": "Settings",
+    "backup": "Backup"
   },
   "account": {
     "menu": "Account menu for {{name}}"

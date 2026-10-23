@@ -814,6 +814,11 @@ class Settings:
     def blob_dir(self) -> Path:
         return self.data_dir / "blobs"
 
+    @property
+    def backup_dir(self) -> Path:
+        """Site backups live beside the site database (the app folder), not in the library they back up."""
+        return self.database_path.parent / "backups"
+
     @classmethod
     def from_env(cls) -> Settings:
         boot = _platform_bootstrap_dir()

@@ -10,6 +10,8 @@ from typing import BinaryIO
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from mosaicwave.backup import backup_site
+from mosaicwave.config import Settings
 from mosaicwave.library.dbs import LibraryDbs
 from mosaicwave.library.dump import DumpWarning, TakeoutInspect, inspect_takeout_path
 from mosaicwave.library.takeout import import_takeout
@@ -21,6 +23,7 @@ from mosaicwave.storage.blobstore import BlobStore
 
 KIND_TAKEOUT = "takeout_import"
 KIND_THUMB = "thumb_batch"
+KIND_BACKUP = "site_backup"
 INTERRUPTED = "interrupted (process stopped)"
 
 
@@ -228,12 +231,17 @@ def list_job_events(session: Session, job_id: str) -> list[JobEvent]:
 
 class ImportJobRunner:
     def __init__(
-        self, factory: sessionmaker[Session], blobs: BlobStore, libraries: LibraryDbs
+        self,
+        factory: sessionmaker[Session],
+        blobs: BlobStore,
+        libraries: LibraryDbs,
+        settings: Settings | None = None,
     ) -> None:
         # `factory` is the site database (jobs). Photos and albums live in the owner's own
-        # library database, opened through `libraries`.
+        # library database, opened through `libraries`. `settings` is only needed for backups.
         self._factory = factory
         self._libraries = libraries
+        self._settings = settings
         self._blobs = blobs
         self._lock = threading.RLock()
         self._running_id: str | None = None
@@ -558,6 +566,99 @@ class ImportJobRunner:
         thread = threading.Thread(target=self._run_thumbs, args=(job_id,), daemon=True)
         thread.start()
         return view
+
+    def start_backup(self, *, user_id: str, include_thumbs: bool) -> dict:
+        if self._settings is None:
+            raise RuntimeError("backup needs the app settings")
+        with self._lock:
+            session = self._factory()
+            try:
+                self._fail_if_busy(session)
+                now = utcnow()
+                row = Job(
+                    id=new_id(),
+                    kind=KIND_BACKUP,
+                    status="running",
+                    created_at=now,
+                    started_at=now,
+                    user_id=user_id,
+                    input_json=json.dumps({"include_thumbs": include_thumbs}, sort_keys=True),
+                    result_json="{}",
+                )
+                session.add(row)
+                session.add(
+                    JobEvent(id=new_id(), job_id=row.id, level="info", message="Site backup started")
+                )
+                session.commit()
+                job_id = row.id
+                view = job_view(row)
+            finally:
+                session.close()
+            self._running_id = job_id
+        thread = threading.Thread(target=self._run_backup, args=(job_id, include_thumbs), daemon=True)
+        thread.start()
+        return view
+
+    def _run_backup(self, job_id: str, include_thumbs: bool) -> None:
+        assert self._settings is not None
+        session = self._factory()
+        try:
+            row = session.get(Job, job_id)
+            if row is None:
+                return
+
+            def on_progress(done: int, total: int, rel: str) -> None:
+                row.processed = done
+                row.total = total
+                row.current = rel
+                if done % 25 == 0:
+                    session.commit()
+
+            result = backup_site(
+                self._settings,
+                self._settings.backup_dir,
+                include_thumbs=include_thumbs,
+                on_progress=on_progress,
+            )
+            manifest = result.manifest
+            row.status = "done"
+            row.finished_at = utcnow()
+            row.current = None
+            row.processed = row.total
+            row.error = None
+            row.result_json = json.dumps(
+                {"backup": result.path.name, "assets": manifest["assets"], "albums": manifest["albums"]},
+                sort_keys=True,
+            )
+            session.add(
+                JobEvent(
+                    id=new_id(),
+                    job_id=row.id,
+                    level="info",
+                    message=f"Backup {result.path.name}: {manifest['assets']} assets, {manifest['file_count']} files",
+                )
+            )
+            for warning in manifest["warnings"]:
+                session.add(JobEvent(id=new_id(), job_id=row.id, level="info", message=warning))
+            session.commit()
+        except Exception as exc:  # ArchiveError, OSError, sqlite errors: all end the job the same way
+            try:
+                session.rollback()
+                row = session.get(Job, job_id)
+                if row is not None:
+                    row.status = "error"
+                    row.error = str(exc)
+                    row.finished_at = utcnow()
+                    row.current = None
+                    session.add(JobEvent(id=new_id(), job_id=row.id, level="error", message=str(exc)))
+                session.commit()
+            except Exception:
+                session.rollback()
+        finally:
+            session.close()
+            with self._lock:
+                if self._running_id == job_id:
+                    self._running_id = None
 
     def _run(self, job_id: str, root: Path, dest_root: Path, cleanup: Path | None = None) -> None:
         session = self._factory()

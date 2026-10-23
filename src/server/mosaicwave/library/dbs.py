@@ -21,7 +21,7 @@ from mosaicwave.db import open_engine
 from mosaicwave.schema.library import LIBRARY_STEPS, create_library_schema
 
 DB_NAME = "library.db"
-_USER_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")
+USER_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")
 
 
 def _create_current(engine: Engine) -> None:
@@ -45,7 +45,7 @@ class LibraryDbs:
         self._factories: dict[str, sessionmaker[Session]] = {}
 
     def path(self, user_id: str) -> Path:
-        if not _USER_ID.match(user_id or ""):
+        if not USER_ID.match(user_id or ""):
             raise ValueError(f"not a valid user id: {user_id!r}")
         return self._settings.accounts_dir / user_id / DB_NAME
 
@@ -58,7 +58,7 @@ class LibraryDbs:
         if not root.is_dir():
             return []
         return sorted(
-            p.name for p in root.iterdir() if _USER_ID.match(p.name) and (p / DB_NAME).is_file()
+            p.name for p in root.iterdir() if USER_ID.match(p.name) and (p / DB_NAME).is_file()
         )
 
     def engine(self, user_id: str) -> Engine:

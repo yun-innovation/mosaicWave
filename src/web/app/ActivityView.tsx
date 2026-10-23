@@ -7,13 +7,8 @@ import { apiFetch } from "./api";
 import { formatDateTime } from "./format";
 import i18n from "./i18n";
 import { ImportJob, ignoreAbort, isAbortError } from "./types";
+import { jobKindLabel } from "./useActiveJob";
 import { TakeoutImport } from "./useTakeoutImport";
-
-function jobKindLabel(kind: string | null): string {
-  if (kind === "takeout_import") return i18n.t("import:jobs.kind.takeout_import");
-  if (kind === "thumb_batch") return i18n.t("import:jobs.kind.thumb_batch");
-  return kind || i18n.t("import:jobs.kind.unknown");
-}
 
 const JOB_STATUSES = ["idle", "queued", "running", "done", "error"] as const;
 
@@ -25,7 +20,7 @@ function jobStatusLabel(status: string): string {
 type Props = { importer: TakeoutImport; libraryRev: number };
 
 export function ActivityView({ importer, libraryRev }: Props) {
-  const { t } = useTranslation(["import", "gallery", "common"]);
+  const { t } = useTranslation(["import"]);
   const [jobs, setJobs] = useState<ImportJob[] | null>(null);
   const { busy } = importer;
 
@@ -53,13 +48,7 @@ export function ActivityView({ importer, libraryRev }: Props) {
     <section className="card">
       <div className="gallery-head">
         <h2>{t("import:jobs.title")}</h2>
-        <div className="button-row">
-          <button type="button" disabled={busy} onClick={() => void importer.generateThumbs()}>
-            {busy ? t("common:working") : t("gallery:generateThumbs")}
-          </button>
-        </div>
       </div>
-      {busy && importer.message && <p className="detail import-progress">{importer.message}</p>}
       {jobs === null && <p className="detail">{t("import:jobs.loading")}</p>}
       {jobs && jobs.length === 0 && <p className="detail">{t("import:jobs.empty")}</p>}
       {jobs && jobs.length > 0 && (

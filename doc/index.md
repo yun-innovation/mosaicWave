@@ -45,6 +45,7 @@ Root planning docs (open only when the task needs them):
 - [Takeout dump](takeout-dump.md) — zip splits, oversized files, metadata.json, Check folder
 - [Workflow](workflow.md) — job table, audit of Takeout import and later tasks
 - [Schema](schema.md) — server SQLite tables, `library.db`, offline replica, sync
+- [Backup and restore](backup.md) — site archive format, offline restore, per-user backup (milestone 7)
 - [Per-library databases](per-library-db.md) — one SQLite file per user, per-library `rev` (milestone 6; share links are milestone 11, deferred)
 - [FileStore](filestore.md) — originals I/O, virtual paths, LocalFileStore (v1 done)
 - [FileStore later](filestore-later.md) — BYO Drive/OneDrive; **not a milestone**

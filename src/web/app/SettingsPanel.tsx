@@ -7,6 +7,7 @@ import { apiFetch, AppUser, HostSettings, Me, readDetail, Source } from "./api";
 import { FolderPicker } from "./FolderPicker";
 import i18n from "./i18n";
 import { LocaleSelect } from "./LocaleSelect";
+import type { TakeoutImport } from "./useTakeoutImport";
 
 type SmbParts = { host: string; share: string; folder: string; user: string };
 
@@ -110,11 +111,12 @@ async function waitForApiAfterRestart() {
 type Props = {
   me: Me;
   platform: string;
+  importer: TakeoutImport;
   onMe: (me: Me) => void;
 };
 
-export function SettingsPanel({ me, platform, onMe }: Props) {
-  const { t } = useTranslation(["settings", "common"]);
+export function SettingsPanel({ me, platform, importer, onMe }: Props) {
+  const { t } = useTranslation(["settings", "common", "gallery"]);
   const [sources, setSources] = useState<Source[] | null>(null);
   const [users, setUsers] = useState<AppUser[] | null>(null);
   const [host, setHost] = useState<HostSettings | null>(null);
@@ -130,6 +132,7 @@ export function SettingsPanel({ me, platform, onMe }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [thumbsError, setThumbsError] = useState<string | null>(null);
   const [newUser, setNewUser] = useState({ username: "", password: "", display_name: "" });
   const [memberFieldsLocked, setMemberFieldsLocked] = useState(true);
 
@@ -287,6 +290,23 @@ export function SettingsPanel({ me, platform, onMe }: Props) {
         <label htmlFor="ui_locale">{t("settings:language.label")}</label>
         <p className="detail">{t("settings:language.help")}</p>
         <LocaleSelect id="ui_locale" me={me} onMe={onMe} />
+      </div>
+      <div className="import">
+        <label>{t("settings:thumbnails.label")}</label>
+        <p className="detail">{t("settings:thumbnails.help")}</p>
+        <div className="button-row">
+          <button
+            type="button"
+            disabled={importer.busy}
+            onClick={() => {
+              setThumbsError(null);
+              void importer.generateThumbs().then(setThumbsError);
+            }}
+          >
+            {importer.busy ? t("common:working") : t("gallery:generateThumbs")}
+          </button>
+        </div>
+        {thumbsError && <p className="status fail">{thumbsError}</p>}
       </div>
       {error && <p className="status fail">{error}</p>}
       {notice && !error && <p className="detail">{notice}</p>}

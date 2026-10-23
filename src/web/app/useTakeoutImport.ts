@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { apiFetch, errorText, Me, readDetail } from "./api";
 import i18n from "./i18n";
 import { ImportJob, isAbortError, TakeoutInspect } from "./types";
+import { useActiveJob } from "./useActiveJob";
 
 function clientDumpPath(file: File): string {
   const raw = (file as File & { webkitRelativePath?: string }).webkitRelativePath || file.name;
@@ -18,14 +19,18 @@ export type TakeoutFrom = "server" | "device";
 export type TakeoutImport = ReturnType<typeof useTakeoutImport>;
 
 /**
- * Takeout import and thumbnail jobs. Lives in the app shell, not in a view, so a running job keeps
- * polling while the user browses other views. `onFinished` runs after a job ends or a push is cancelled.
+ * Takeout import form state and the browser-folder push, plus the signed-in user's job tracker
+ * (`useActiveJob`). Lives in the app shell, not in a view, so a running job keeps being followed
+ * while the user browses other views. `onFinished` runs after a job ends or a push is cancelled.
+ *
+ * `message` is the Import form's own result (folder check, upload steps, import result). Job
+ * progress is not in it: the status bar shows that for every job kind.
  */
 export function useTakeoutImport(me: Me | null, onFinished: () => void) {
   const [path, setPath] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [inspect, setInspect] = useState<TakeoutInspect | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [working, setWorking] = useState(false);
   const [from, setFrom] = useState<TakeoutFrom>("server");
   const [clientFiles, setClientFiles] = useState<File[]>([]);
   const [pushJobId, setPushJobId] = useState<string | null>(null);
@@ -33,14 +38,12 @@ export function useTakeoutImport(me: Me | null, onFinished: () => void) {
   const applyJobResult = useCallback(
     (job: ImportJob) => {
       if (job.status === "error") {
-        setMessage(job.error || i18n.t("import:fail.import"));
+        if (job.kind === "takeout_import") setMessage(job.error || i18n.t("import:fail.import"));
         onFinished();
         return;
       }
       if (job.status !== "done") return;
-      if (job.kind === "thumb_batch") {
-        setMessage(i18n.t("import:result.thumbsReady", { count: job.processed }));
-      } else {
+      if (job.kind === "takeout_import") {
         const counts = {
           assets: i18n.t("import:result.assets", { count: job.assets }),
           albums: i18n.t("import:result.albums", { count: job.albums }),
@@ -50,63 +53,35 @@ export function useTakeoutImport(me: Me | null, onFinished: () => void) {
             ? i18n.t("import:result.importedFrom", { ...counts, path: job.import_root })
             : i18n.t("import:result.imported", counts),
         );
-      }
-      if (job.warnings.length > 0) {
-        setInspect((prev) =>
-          prev
-            ? { ...prev, warnings: job.warnings }
-            : {
-                kind: "dump",
-                extract_root: null,
-                photos_root: job.import_root,
-                import_root: job.import_root,
-                zip_count: 0,
-                sidecar_without_media_count: 0,
-                sidecar_without_media: [],
-                album_metadata_count: 0,
-                ready: true,
-                warnings: job.warnings,
-                loose_media: [],
-              },
-        );
+        if (job.warnings.length > 0) {
+          setInspect((prev) =>
+            prev
+              ? { ...prev, warnings: job.warnings }
+              : {
+                  kind: "dump",
+                  extract_root: null,
+                  photos_root: job.import_root,
+                  import_root: job.import_root,
+                  zip_count: 0,
+                  sidecar_without_media_count: 0,
+                  sidecar_without_media: [],
+                  album_metadata_count: 0,
+                  ready: true,
+                  warnings: job.warnings,
+                  loose_media: [],
+                },
+          );
+        }
       }
       onFinished();
     },
     [onFinished],
   );
 
-  const poll = useCallback(
-    async (signal?: AbortSignal, jobId?: string | null) => {
-      try {
-        for (;;) {
-          const url = jobId ? `/api/v1/jobs/${jobId}` : "/api/v1/import/takeout/status";
-          const res = await apiFetch(url, { signal });
-          if (!res.ok) {
-            setMessage(await readDetail(res));
-            return;
-          }
-          const job = (await res.json()) as ImportJob;
-          if (job.status === "running") {
-            const values = { processed: job.processed, total: job.total || "?" };
-            const label =
-              job.kind === "thumb_batch"
-                ? i18n.t("import:progress.thumbs", values)
-                : i18n.t("import:progress.importing", values);
-            setMessage(job.current ? `${label} · ${job.current}` : label);
-            await new Promise((r) => setTimeout(r, 500));
-            continue;
-          }
-          applyJobResult(job);
-          return;
-        }
-      } catch (err: unknown) {
-        if (isAbortError(err)) return;
-        throw err;
-      }
-    },
-    [applyJobResult],
-  );
+  const tracker = useActiveJob(me, applyJobResult);
+  const { refresh } = tracker;
 
+  // A browser-folder push that was still receiving files when the page reloaded.
   useEffect(() => {
     if (!me) return;
     const ctrl = new AbortController();
@@ -114,28 +89,19 @@ export function useTakeoutImport(me: Me | null, onFinished: () => void) {
       .then(async (res) => {
         if (!res.ok) return;
         const job = (await res.json()) as ImportJob;
-        if (job.status !== "running") return;
-        if (job.mode === "push" && job.phase === "receiving") {
-          setPushJobId(job.id);
-          setMessage(
-            i18n.t("import:progress.waitingDevice", {
-              progress: job.total ? `${job.processed} / ${job.total}` : String(job.processed),
-            }),
-          );
-          return;
-        }
-        setBusy(true);
-        try {
-          await poll(ctrl.signal, job.id);
-        } finally {
-          setBusy(false);
-        }
+        if (job.status !== "running" || job.mode !== "push" || job.phase !== "receiving") return;
+        setPushJobId(job.id);
+        setMessage(
+          i18n.t("import:progress.waitingDevice", {
+            progress: job.total ? `${job.processed} / ${job.total}` : String(job.processed),
+          }),
+        );
       })
       .catch((err: unknown) => {
         if (isAbortError(err)) return;
       });
     return () => ctrl.abort();
-  }, [me, poll]);
+  }, [me]);
 
   async function postTakeout(inspectOnly: boolean) {
     const url = inspectOnly ? "/api/v1/import/takeout/inspect" : "/api/v1/import/takeout";
@@ -149,7 +115,7 @@ export function useTakeoutImport(me: Me | null, onFinished: () => void) {
   }
 
   async function check() {
-    setBusy(true);
+    setWorking(true);
     setMessage(null);
     try {
       const { res, body } = await postTakeout(true);
@@ -163,7 +129,7 @@ export function useTakeoutImport(me: Me | null, onFinished: () => void) {
       setInspect(null);
       setMessage(err instanceof Error ? err.message : i18n.t("import:fail.check"));
     } finally {
-      setBusy(false);
+      setWorking(false);
     }
   }
 
@@ -179,7 +145,7 @@ export function useTakeoutImport(me: Me | null, onFinished: () => void) {
 
   async function cancelPush() {
     if (!pushJobId) return;
-    setBusy(true);
+    setWorking(true);
     try {
       const res = await apiFetch(`/api/v1/import/takeout/push/${pushJobId}/cancel`, { method: "POST" });
       if (!res.ok) {
@@ -188,10 +154,20 @@ export function useTakeoutImport(me: Me | null, onFinished: () => void) {
       }
       setPushJobId(null);
       setMessage(i18n.t("import:result.cancelled"));
+      refresh();
       onFinished();
     } finally {
-      setBusy(false);
+      setWorking(false);
     }
+  }
+
+  /** A job that came back from a start/finish call: follow it, or apply it if it already ended. */
+  function followOrApply(job: ImportJob) {
+    if (job.status === "running" || job.status === "queued") {
+      refresh();
+      return;
+    }
+    applyJobResult(job);
   }
 
   async function deviceImport() {
@@ -199,7 +175,7 @@ export function useTakeoutImport(me: Me | null, onFinished: () => void) {
       setMessage(i18n.t("import:fail.chooseFolder"));
       return;
     }
-    setBusy(true);
+    setWorking(true);
     setMessage(null);
     try {
       const startRes = await apiFetch("/api/v1/import/takeout/push", {
@@ -247,17 +223,13 @@ export function useTakeoutImport(me: Me | null, onFinished: () => void) {
         setMessage(await readDetail(fin));
         return;
       }
-      const job = (await fin.json()) as ImportJob;
-      if (job.status === "running") {
-        await poll(undefined, job.id);
-        return;
-      }
-      applyJobResult(job);
+      setPushJobId(null);
+      followOrApply((await fin.json()) as ImportJob);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : i18n.t("import:fail.import");
       setMessage(msg === "Failed to fetch" ? i18n.t("import:fail.connectionDropped") : msg);
     } finally {
-      setBusy(false);
+      setWorking(false);
     }
   }
 
@@ -266,7 +238,7 @@ export function useTakeoutImport(me: Me | null, onFinished: () => void) {
       await deviceImport();
       return;
     }
-    setBusy(true);
+    setWorking(true);
     setMessage(null);
     try {
       const { res, body } = await postTakeout(false);
@@ -274,41 +246,27 @@ export function useTakeoutImport(me: Me | null, onFinished: () => void) {
         setMessage(errorText(body, res.status));
         return;
       }
-      const job = body as ImportJob;
-      if (job.status === "running") {
-        setMessage(i18n.t("import:progress.importingShort"));
-        await poll(undefined, job.id);
-        return;
-      }
-      applyJobResult(job);
+      followOrApply(body as ImportJob);
     } catch (err: unknown) {
       setMessage(err instanceof Error ? err.message : i18n.t("import:fail.import"));
     } finally {
-      setBusy(false);
+      setWorking(false);
     }
   }
 
-  async function generateThumbs() {
-    setBusy(true);
-    setMessage(null);
+  /** Starts a thumbnail job. Returns an error text, or null when the job started. */
+  async function generateThumbs(): Promise<string | null> {
+    setWorking(true);
     try {
       const res = await apiFetch("/api/v1/thumbs/generate", { method: "POST" });
       const body: unknown = await res.json().catch(() => null);
-      if (!res.ok) {
-        setMessage(errorText(body, res.status));
-        return;
-      }
-      const job = body as ImportJob;
-      if (job.status === "running") {
-        setMessage(i18n.t("import:progress.generatingThumbs"));
-        await poll(undefined, job.id);
-        return;
-      }
-      applyJobResult(job);
+      if (!res.ok) return errorText(body, res.status);
+      followOrApply(body as ImportJob);
+      return null;
     } catch (err: unknown) {
-      setMessage(err instanceof Error ? err.message : i18n.t("import:fail.thumbs"));
+      return err instanceof Error ? err.message : i18n.t("import:fail.thumbs");
     } finally {
-      setBusy(false);
+      setWorking(false);
     }
   }
 
@@ -317,7 +275,14 @@ export function useTakeoutImport(me: Me | null, onFinished: () => void) {
     setPath,
     message,
     inspect,
-    busy,
+    /** True while this tab is starting something or the server is running any job. */
+    busy: working || tracker.job !== null,
+    /** True only while this tab itself is starting or uploading something. */
+    working,
+    job: tracker.job,
+    finished: tracker.finished,
+    dismissFinished: tracker.dismissFinished,
+    refreshJobs: refresh,
     from,
     setFrom,
     clientFiles,

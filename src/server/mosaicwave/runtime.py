@@ -35,7 +35,7 @@ def attach_runtime(app: FastAPI, settings: Settings, *, recover: bool = False) -
     app.state.session_factory = factory
     app.state.blob_store = blobs
     app.state.library_dbs = LibraryDbs(settings)
-    app.state.import_jobs = ImportJobRunner(factory, blobs, app.state.library_dbs)
+    app.state.import_jobs = ImportJobRunner(factory, blobs, app.state.library_dbs, settings)
     if recover:
         recover_interrupted_jobs(factory)
 

@@ -13,7 +13,7 @@ Short onboarding snapshot for agents. **Session start:** always read [index.md](
 
 ## Next
 
-**Milestone 7 — backup / restore / export** (site and per-user backup, exact-swap restore, export; rebuild on the per-library layout, reference commit `3967fe1`). Then 8 multilingual API (translated messages and locale date/time in responses), 9 gallery tools (select many, scrubber, search, light theme). 10 ARM64 QPKG is **frozen** (no ARM hardware) and 11 share links (SaaS) is **deferred**; both are skipped.
+**Milestone 12 — maintenance mode** (flag file, `503 maintenance` for non-admins, full-page alert, simplified admin menu; see [doc/roadmap.md](doc/roadmap.md)), then **milestone 7** PR 2 online site restore from the Backup page, PR 3 per-user backup + online restore, PR 4 export (milestone 7 PR 1, site backup + admin Backup page + offline restore, is built; [doc/backup.md](doc/backup.md)). Then 8 multilingual API (translated messages and locale date/time in responses), 9 gallery tools (select many, scrubber, search, light theme). 10 ARM64 QPKG is **frozen** (no ARM hardware) and 11 share links (SaaS) is **deferred**; both are skipped.
 
 ## Constraints
 

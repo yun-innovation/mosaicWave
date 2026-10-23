@@ -10,7 +10,7 @@ import { TakeoutImport } from "./useTakeoutImport";
 export function ImportView({ importer }: { importer: TakeoutImport }) {
   const { t } = useTranslation(["import", "common"]);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const { busy, inspect } = importer;
+  const { busy, working, inspect } = importer;
 
   function onSubmit(event: FormEvent) {
     event.preventDefault();
@@ -88,7 +88,7 @@ export function ImportView({ importer }: { importer: TakeoutImport }) {
             {busy ? t("common:working") : t("import:import")}
           </button>
           {importer.pushJobId && (
-            <button type="button" disabled={busy} onClick={() => void importer.cancelPush()}>
+            <button type="button" disabled={working} onClick={() => void importer.cancelPush()}>
               {t("import:cancelUpload")}
             </button>
           )}

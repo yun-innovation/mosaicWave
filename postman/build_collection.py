@@ -190,6 +190,13 @@ EXPECT_409 = [
     "});",
 ]
 
+SAVE_BACKUP = [
+    "if (pm.response.code === 200) {",
+    "  const b = pm.response.json();",
+    "  if (Array.isArray(b) && b[0]) { pm.collectionVariables.set('backupName', b[0].name); }",
+    "}",
+]
+
 SAVE_JOB = [
     "if (pm.response.code === 200) {",
     "  const b = pm.response.json();",
@@ -215,6 +222,8 @@ collection = {
 
 Hit FastAPI directly (`http://127.0.0.1:8000` debug, `:8090` MSI/QPKG), not the Next.js `:3000` proxy, unless you intend to test the rewrite.
 
+**Backups (admin):** folder **Backups**. Start a site backup, poll the job in **Jobs**, then List backups saves `{{backupName}}` for Download / Delete. Restore is offline only (`python -m mosaicwave.restore`), not an API.
+
 OpenAPI at `{{baseUrl}}/docs` stays the living spec; this collection is a snapshot for manual tests.""",
         "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     },
@@ -228,6 +237,7 @@ OpenAPI at `{{baseUrl}}/docs` stays the living spec; this collection is a snapsh
         {"key": "assetId", "value": ""},
         {"key": "assetCursor", "value": ""},
         {"key": "jobId", "value": ""},
+        {"key": "backupName", "value": ""},
         {"key": "sinceRev", "value": "0"},
         {"key": "syncCursor", "value": ""},
         {"key": "albumId", "value": ""},
@@ -703,6 +713,38 @@ OpenAPI at `{{baseUrl}}/docs` stays the living spec; this collection is a snapsh
                 ),
                 req("Get job", "GET", "/api/v1/jobs/{{jobId}}"),
                 req("Job events", "GET", "/api/v1/jobs/{{jobId}}/events"),
+            ],
+        ),
+        folder(
+            "Backups",
+            [
+                req(
+                    "Start site backup",
+                    "POST",
+                    "/api/v1/backups",
+                    description="Admin only. Starts a job (kind site_backup) and saves {{jobId}}; poll GET /jobs/{{jobId}}. 409 if another job is running. Archive lands in the app folder's backups/. include_thumbs adds thumbnails (can be regenerated).",
+                    body="{\n  \"include_thumbs\": false\n}",
+                    tests=SAVE_JOB,
+                ),
+                req(
+                    "List backups",
+                    "GET",
+                    "/api/v1/backups",
+                    description="Admin only. Newest first. Saves {{backupName}} from the first item.",
+                    tests=SAVE_BACKUP,
+                ),
+                req(
+                    "Download backup",
+                    "GET",
+                    "/api/v1/backups/{{backupName}}",
+                    description="Admin only. The zip contains password hashes and every user's originals; store it like the data folder. Use Send and Download in Postman.",
+                ),
+                req(
+                    "Delete backup",
+                    "DELETE",
+                    "/api/v1/backups/{{backupName}}",
+                    description="Admin only. 404 backup_not_found if the name does not exist.",
+                ),
             ],
         ),
     ],
