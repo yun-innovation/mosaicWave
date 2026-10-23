@@ -16,10 +16,12 @@ Open items only. Roadmap: ordered milestones in [roadmap.md](roadmap.md). The ea
   - [x] PR 1: foundations: two model sets and schema tracks, `accounts_dir`, library-DB manager (no behaviour change)
   - [x] PR 2: cutover: per-request site/library sessions, v2 to v3 migration, API/jobs/sync on the library DB, `source_grant` removed
 - [ ] Share links for SaaS (`share` table, public read-only route, Share UI) (**milestone 11, deferred**: only useful when a host is open to the internet)
-- [ ] Backup / restore / export (**milestone 7**, three PRs; [backup.md](backup.md))
-  - [x] PR 1: site backup (`POST/GET/DELETE /backups`, `python -m mosaicwave.backup`) and offline restore (`python -m mosaicwave.restore`)
-  - [ ] PR 2: per-user backup, online exact-swap restore, Backup view
-  - [ ] PR 3: export selected albums/photos as ordinary files
+- [ ] Maintenance mode (**milestone 12**, next, before milestone 7 PR 2): flag file, `503 maintenance` for non-admins, public status + full-page alert, simplified admin menu, `python -m mosaicwave.maintenance`
+- [ ] Backup / restore / export (**milestone 7**, four PRs; [backup.md](backup.md))
+  - [x] PR 1: site backup (`POST/GET/DELETE /backups`, `python -m mosaicwave.backup`), admin Backup page, offline restore (`python -m mosaicwave.restore`); Generate thumbs moved to Settings
+  - [ ] PR 2: online site restore from the Backup page (needs milestone 12)
+  - [ ] PR 3: per-user backup and online exact-swap restore of one library
+  - [ ] PR 4: export selected albums/photos as ordinary files
 - [ ] ARM64 QPKG sideload on a QTS 5 ARM64 NAS (**milestone 10, frozen**: no ARM hardware)
 - [ ] Multilingual API: language code on requests; translated messages and locale-formatted date/time in responses; sync and ordering timestamps stay UTC; response language and switch target kept separate, tags normalized to canonical codes (**milestone 8**)
 - [ ] Gallery tools: select many, timeline scrubber, search (new API), light theme (**milestone 9**)

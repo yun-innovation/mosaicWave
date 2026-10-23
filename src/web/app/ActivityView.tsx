@@ -26,7 +26,7 @@ function jobStatusLabel(status: string): string {
 type Props = { importer: TakeoutImport; libraryRev: number };
 
 export function ActivityView({ importer, libraryRev }: Props) {
-  const { t } = useTranslation(["import", "gallery", "common"]);
+  const { t } = useTranslation(["import"]);
   const [jobs, setJobs] = useState<ImportJob[] | null>(null);
   const { busy } = importer;
 
@@ -54,11 +54,6 @@ export function ActivityView({ importer, libraryRev }: Props) {
     <section className="card">
       <div className="gallery-head">
         <h2>{t("import:jobs.title")}</h2>
-        <div className="button-row">
-          <button type="button" disabled={busy} onClick={() => void importer.generateThumbs()}>
-            {busy ? t("common:working") : t("gallery:generateThumbs")}
-          </button>
-        </div>
       </div>
       {busy && importer.message && <p className="detail import-progress">{importer.message}</p>}
       {jobs === null && <p className="detail">{t("import:jobs.loading")}</p>}

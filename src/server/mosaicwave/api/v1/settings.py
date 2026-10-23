@@ -39,6 +39,7 @@ class HostSettingsOut(BaseModel):
     data_dir: str
     default_data_dir: str
     app_dir: str
+    backup_dir: str
     data_dir_smb: str | None = None
     data_dir_mount: str | None = None
     smb_user: str | None = None
@@ -83,6 +84,7 @@ def _out(
         data_dir=str(settings.data_dir.expanduser().resolve()),
         default_data_dir=boot,
         app_dir=boot,
+        backup_dir=str(settings.backup_dir.expanduser().resolve()),
         data_dir_smb=smb,
         data_dir_mount=read_data_dir_mount(boot_path),
         smb_user=_smb_user_from_settings(smb),

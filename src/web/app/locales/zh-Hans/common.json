@@ -21,7 +21,8 @@
     "albums": "相册",
     "import": "导入",
     "activity": "活动",
-    "settings": "设置"
+    "settings": "设置",
+    "backup": "备份"
   },
   "account": {
     "menu": "{{name}} 的账号菜单"

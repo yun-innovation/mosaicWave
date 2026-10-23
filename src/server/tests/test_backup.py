@@ -338,3 +338,12 @@ def test_databases_in_the_app_folder_and_photos_in_the_data_folder(tmp_path: Pat
     items = restored.get("/api/v1/assets").json()["items"]
     assert len(items) == 2
     assert restored.get(f"/api/v1/assets/{items[0]['id']}/file").status_code == 200
+
+def test_backup_folder_follows_the_site_database(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # Normal install: the site DB is in the app folder, so are the backups.
+    split = Settings(data_dir=tmp_path / 'nas', bootstrap_dir=tmp_path / 'app', takeout_dir=None, source_dir=None)
+    assert split.backup_dir == tmp_path / 'app' / 'backups'
+    # QPKG style: MOSAICWAVE_DATA_DIR puts the site DB in the data folder, and the backups go beside it.
+    monkeypatch.setenv('MOSAICWAVE_DATA_DIR', str(tmp_path / 'nas'))
+    assert split.database_path == tmp_path / 'nas' / 'library.db'
+    assert split.backup_dir == tmp_path / 'nas' / 'backups'

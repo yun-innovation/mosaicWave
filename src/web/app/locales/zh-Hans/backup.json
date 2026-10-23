@@ -1,0 +1,37 @@
+{
+  "title": "备份",
+  "intro": "整站备份是一个 zip，内含整站数据库、每位用户的相册数据库和所有原始照片。其中包含密码哈希，请像数据文件夹一样妥善保管。",
+  "folder": "备份存放在 {{folder}}",
+  "start": "立即备份",
+  "withThumbs": "包含缩略图（备份更大；缩略图可重新生成）",
+  "starting": "正在开始备份…",
+  "progress": "备份中 {{processed}} / {{total}}",
+  "done": "备份完成。",
+  "failed": "备份失败。",
+  "list": {
+    "title": "备份文件",
+    "loading": "正在加载备份…",
+    "empty": "还没有备份。",
+    "loadFailed": "无法加载备份。"
+  },
+  "users_one": "{{count, number}} 位用户",
+  "users_other": "{{count, number}} 位用户",
+  "assets_one": "{{count, number}} 张照片或视频",
+  "assets_other": "{{count, number}} 张照片和视频",
+  "albums_one": "{{count, number}} 个相册",
+  "albums_other": "{{count, number}} 个相册",
+  "thumbsIncluded": "含缩略图",
+  "warnings_one": "跳过 {{count, number}} 个文件",
+  "warnings_other": "跳过 {{count, number}} 个文件",
+  "download": "下载",
+  "delete": "删除",
+  "confirmDelete": "要删除这份备份吗？",
+  "confirmYes": "确定删除",
+  "deleted": "已删除备份。",
+  "restore": {
+    "title": "还原",
+    "help": "还原会替换此服务器上的所有数据，因此必须在 API 停止时执行。请先停止 mosaicWave，再在主机上运行：",
+    "check": "加上 --check 只会验证备份文件，不会更改任何数据。",
+    "keep": "当前的数据会保留在旁边，名称为 *.before-restore-<时间>，直到你自行删除。"
+  }
+}

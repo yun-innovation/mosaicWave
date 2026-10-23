@@ -816,9 +816,8 @@ class Settings:
 
     @property
     def backup_dir(self) -> Path:
-        """Site backups live in the app folder, not in the library they back up."""
-        boot = self.bootstrap_dir if self.bootstrap_dir is not None else self.data_dir
-        return Path(boot) / "backups"
+        """Site backups live beside the site database (the app folder), not in the library they back up."""
+        return self.database_path.parent / "backups"
 
     @classmethod
     def from_env(cls) -> Settings:

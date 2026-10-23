@@ -2,18 +2,21 @@ import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 
 import enAuth from "./locales/en/auth.json";
+import enBackup from "./locales/en/backup.json";
 import enCommon from "./locales/en/common.json";
 import enErrors from "./locales/en/errors.json";
 import enGallery from "./locales/en/gallery.json";
 import enImport from "./locales/en/import.json";
 import enSettings from "./locales/en/settings.json";
 import hansAuth from "./locales/zh-Hans/auth.json";
+import hansBackup from "./locales/zh-Hans/backup.json";
 import hansCommon from "./locales/zh-Hans/common.json";
 import hansErrors from "./locales/zh-Hans/errors.json";
 import hansGallery from "./locales/zh-Hans/gallery.json";
 import hansImport from "./locales/zh-Hans/import.json";
 import hansSettings from "./locales/zh-Hans/settings.json";
 import hantAuth from "./locales/zh-Hant/auth.json";
+import hantBackup from "./locales/zh-Hant/backup.json";
 import hantCommon from "./locales/zh-Hant/common.json";
 import hantErrors from "./locales/zh-Hant/errors.json";
 import hantGallery from "./locales/zh-Hant/gallery.json";
@@ -36,6 +39,7 @@ export const resources = {
   en: {
     common: enCommon,
     auth: enAuth,
+    backup: enBackup,
     gallery: enGallery,
     import: enImport,
     settings: enSettings,
@@ -44,6 +48,7 @@ export const resources = {
   "zh-Hant": {
     common: hantCommon,
     auth: hantAuth,
+    backup: hantBackup,
     gallery: hantGallery,
     import: hantImport,
     settings: hantSettings,
@@ -52,6 +57,7 @@ export const resources = {
   "zh-Hans": {
     common: hansCommon,
     auth: hansAuth,
+    backup: hansBackup,
     gallery: hansGallery,
     import: hansImport,
     settings: hansSettings,

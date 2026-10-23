@@ -22,7 +22,7 @@ The manifest holds counts and byte totals, not a per-file list: the zip's own di
 
 ## Make a backup
 
-- **Web (admin):** `POST /api/v1/backups` starts a job (kind `site_backup`, visible in Activity). Archives go to `{app folder}/backups`, outside the library they protect. `GET /api/v1/backups` lists them, `GET /api/v1/backups/{name}` downloads, `DELETE` removes. A backup cannot run while another job (import, thumbnails) is running.
+- **Web (admin):** the **Backup** page (`#/backup`) starts a backup (optional thumbnails), shows progress, lists the archives with date, size and counts, and downloads or deletes them. It also shows the exact restore command for the newest archive. Behind it, `POST /api/v1/backups` starts a job (kind `site_backup`, also visible in Activity). Archives go to `backups/` beside the site database (the app folder; with `MOSAICWAVE_DATA_DIR` set, the data folder), outside the libraries they protect. `GET /api/v1/settings` reports the folder as `backup_dir`. `GET /api/v1/backups` lists them, `GET /api/v1/backups/{name}` downloads, `DELETE` removes. A backup cannot run while another job (import, thumbnails) is running.
 - **Command line:** `python -m mosaicwave.backup [--out FOLDER] [--include-thumbs]`. Uses the same data folder as the API. The archive is written as `*.part` and renamed when complete, so a crash never leaves a half archive with the final name.
 
 ## Restore (offline, admin)
@@ -45,7 +45,7 @@ The restore is an exact replacement of the site's data:
 
 An archive from an older app version is upgraded by the normal [schema steps](schema.md#schema-versions) the next time the API starts (site file at startup, each library when first opened, with the usual `library.db.pre-v{N}` copy).
 
-Nothing is deleted: remove the `*.before-restore-*` items yourself once you are satisfied. Thumbnails are not in the archive by default; start the API and use **Generate thumbs**. Sessions stay valid only if `session.key` is unchanged; users may have to sign in again.
+Nothing is deleted: remove the `*.before-restore-*` items yourself once you are satisfied. Thumbnails are not in the archive by default; start the API and use **Generate thumbs** in Settings. Sessions stay valid only if `session.key` is unchanged; users may have to sign in again.
 
 ## Per-user backup and restore (next PR)
 

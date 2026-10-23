@@ -73,5 +73,9 @@
     "displayName": "Display name",
     "password": "Password (8+)",
     "create": "Create member"
+  },
+  "thumbnails": {
+    "label": "Thumbnails",
+    "help": "Create small previews for photos that do not have one yet, for example after an import or a restore. Progress also shows in Activity."
   }
 }
