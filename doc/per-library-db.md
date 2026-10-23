@@ -4,7 +4,7 @@ Status: **planned, nothing built.** Decided 2026-10-23. Why: the app is meant to
 
 ## Goal
 
-Each user's photos and albums live in their own SQLite file with their own `rev` clock. The site database holds only accounts, sessions, jobs and share tokens. An existing v2 single-file install migrates without loss. `source_grant` (user-to-user library access) is retired and replaced by share links.
+Each user's photos and albums live in their own SQLite file with their own `rev` clock. The site database holds only accounts and jobs (share tokens come later, milestone 11). An existing v2 single-file install migrates without loss. `source_grant` (user-to-user library access) is retired. Sharing with other people returns as share links in milestone 11 (SaaS, deferred: pointless while self-hosted installs are not open to the internet).
 
 ## Layout
 
@@ -28,13 +28,13 @@ Each user's photos and albums live in their own SQLite file with their own `rev`
 
 "Sharing" means social-media style sharing: a link to an album that can be opened without signing in. It is not user-to-user library access.
 
-- A `share` table in the site DB: token, library id, album id, optional expiry, revoked flag.
+- (Milestone 11, not part of milestone 6.) A `share` table in the site DB: token, library id, album id, optional expiry, revoked flag.
 - A public, read-only route opens that library's DB and serves only that album's thumbnails and originals.
 - `source_grant` and its endpoints and UI are removed. Release notes must say user-to-user sharing is gone.
 
 ## Three PRs
 
-The migration runs at startup, so the API must already read from the library DBs once it has moved the rows. Plumbing and cutover therefore cannot be two shippable PRs; the split is foundations (no behaviour change), then one atomic cutover, then share links.
+The migration runs at startup, so the API must already read from the library DBs once it has moved the rows. Plumbing and cutover therefore cannot be two shippable PRs; the split is foundations (no behaviour change), then one atomic cutover. Share links were the planned third PR and are now milestone 11.
 
 1. **Foundations (no behaviour change)**
    - Two model sets (`SiteBase`, `LibraryBase`), two step lists and two `ensure_schema` tracks, with drift tests for both and `.cursor/rules/schema.mdc` updated.
@@ -43,11 +43,11 @@ The migration runs at startup, so the API must already read from the library DBs
 2. **Cutover**
    - Per-request site and library sessions; `ImportJobRunner`, Takeout, scan, thumbs and sync on the library DB.
    - Schema v3 migration with `library.db.pre-v2` first, count checks, rollback, and a migration report that lists skipped orphans.
-   - `source_grant` removed: table, `GET`/`PUT /sources/{id}/grants`, `granted_source_ids` in `/auth/status`, and the grants UI. User-to-user sharing is gone from this PR until PR 3.
+   - `source_grant` removed: table, `GET`/`PUT /sources/{id}/grants`, `granted_source_ids` in `/auth/status`, and the grants UI. Sharing is gone until milestone 11.
    - `config.py` data-folder moves cover `accounts/`; a library's root is computed, not rewritten.
    - `GET /sync/changes` treats `since_rev > server_rev` as a full pull.
    - Tried on a database made by a real v0.1.1 build, and on a multi-user database.
-3. **Share links**
+3. **Share links (moved to milestone 11, deferred)**
    - The `share` table in the site DB, the public read-only route, and the Share UI.
 ## Risks to check early
 
@@ -69,10 +69,10 @@ Models today: `user`, `local_credential`, `source`, `source_grant`, `job`, `job_
 | --- | --- | --- |
 | `user`, `local_credential` | site DB | Auth, `/auth`, `/users`, settings. No change in logic |
 | `job`, `job_event` | site DB | Progress is written by a runner thread. `job.user_id` stays a real foreign key (same file) |
-| `share` (new) | site DB | PR 3 |
+| `share` (new) | site DB | Milestone 11 |
 | `source` | library DB | One live row per library. `owner_user_id` becomes a plain id (no foreign key across files); `source.id` stays, since asset ids, album ids and URLs use it |
 | `asset`, `album`, `album_asset` | library DB | `library/albums.py`, `query.py`, `sync.py`, `takeout.py`, `thumbs.py` only touch these (plus `source`), never `user`, so they work unchanged on a library session |
-| `source_grant` | removed | Cannot work across files. Replaced by share links |
+| `source_grant` | removed | Cannot work across files. Share links (milestone 11) replace it later |
 | `schema_history` | both | One per file |
 
 ### Seams that need real work
