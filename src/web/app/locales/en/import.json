@@ -67,6 +67,7 @@
     "kind": {
       "takeout_import": "Takeout import",
       "thumb_batch": "Thumbs",
+      "site_backup": "Site backup",
       "unknown": "job"
     },
     "status": {

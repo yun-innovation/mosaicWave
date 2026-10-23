@@ -34,6 +34,7 @@
   "upload_still_running": "裝置上傳仍在進行中。請按「取消上傳」，再重新匯入。",
   "job_not_active": "該匯入不是目前執行中的工作。",
   "job_not_found": "找不到工作。",
+  "backup_not_found": "找不到這份備份。",
   "upload_interrupted": "上傳中斷。",
   "upload_rejected": "上傳遭拒：{{message}}",
   "upload_failed": "上傳失敗：{{message}}",

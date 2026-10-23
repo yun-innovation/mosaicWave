@@ -11,6 +11,7 @@ from mosaicwave.api.v1.auth import router as auth_router
 from mosaicwave.api.v1.health import router as health_router
 from mosaicwave.api.v1.fs import router as fs_router
 from mosaicwave.api.v1.library import router as library_router
+from mosaicwave.api.v1.backups import router as backups_router
 from mosaicwave.api.v1.settings import router as settings_router
 from mosaicwave.config import Settings, consume_restart_flag
 from mosaicwave.runtime import attach_runtime
@@ -60,6 +61,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(fs_router, prefix="/api/v1")
     app.include_router(library_router, prefix="/api/v1")
     app.include_router(settings_router, prefix="/api/v1")
+    app.include_router(backups_router, prefix="/api/v1")
     if settings.web_root is not None:
         _mount_web(app, settings.web_root)
     else:

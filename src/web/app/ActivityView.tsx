@@ -12,6 +12,7 @@ import { TakeoutImport } from "./useTakeoutImport";
 function jobKindLabel(kind: string | null): string {
   if (kind === "takeout_import") return i18n.t("import:jobs.kind.takeout_import");
   if (kind === "thumb_batch") return i18n.t("import:jobs.kind.thumb_batch");
+  if (kind === "site_backup") return i18n.t("import:jobs.kind.site_backup");
   return kind || i18n.t("import:jobs.kind.unknown");
 }
 

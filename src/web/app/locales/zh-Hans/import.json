@@ -60,6 +60,7 @@
     "kind": {
       "takeout_import": "Takeout 导入",
       "thumb_batch": "缩略图",
+      "site_backup": "整站备份",
       "unknown": "任务"
     },
     "status": {

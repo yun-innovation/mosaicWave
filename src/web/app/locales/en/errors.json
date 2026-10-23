@@ -34,6 +34,7 @@
   "upload_still_running": "A device upload is still running. Click Cancel upload, then Import again.",
   "job_not_active": "That import is not the active job.",
   "job_not_found": "Job not found.",
+  "backup_not_found": "Backup not found.",
   "upload_interrupted": "The upload was interrupted.",
   "upload_rejected": "The upload was rejected: {{message}}",
   "upload_failed": "The upload failed: {{message}}",

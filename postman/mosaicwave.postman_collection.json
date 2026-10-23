@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "mosaicWave /api/v1",
-    "description": "Hand-written Postman collection for mosaicWave. Not a generated client.\n\n**Import:** Postman → Import → `postman/mosaicwave.postman_collection.json` and an environment JSON from this folder. Create a Postman workspace if you want (File → New → Workspace); workspaces are not a file format.\n\n**Auth:** `POST /auth/login` sets httponly cookie `mw_session`. The collection copies it into variable `mw_session` and sends `Cookie` on later requests. You can also use Postman’s cookie jar.\n\n**Order that fills ids:** Login → List sources → List assets → List users. Then open thumb/file using `{{assetId}}` / `{{sourceId}}`. Share: owner **Set grants** with a member `userId` (`read` or `write`).\n\n**Share:** `PUT /sources/{id}/grants` is the owner’s replacement list. Grantee keeps their own library and also sees the shared one. Admin has no bypass.\n\n**Album sync:** Pull is `GET /sync/changes` (`since_rev`). Push is `/albums` with `base_rev` (the album `rev`, not `server_rev`). Folder **Sync replica** is create-`id`, membership `base_rev`, delete + tombstone pull. Do not POST the pull JSON back.\n\nHit FastAPI directly (`http://127.0.0.1:8000` debug, `:8090` MSI/QPKG), not the Next.js `:3000` proxy, unless you intend to test the rewrite.\n\nOpenAPI at `{{baseUrl}}/docs` stays the living spec; this collection is a snapshot for manual tests.",
+    "description": "Hand-written Postman collection for mosaicWave. Not a generated client.\n\n**Import:** Postman → Import → `postman/mosaicwave.postman_collection.json` and an environment JSON from this folder. Create a Postman workspace if you want (File → New → Workspace); workspaces are not a file format.\n\n**Auth:** `POST /auth/login` sets httponly cookie `mw_session`. The collection copies it into variable `mw_session` and sends `Cookie` on later requests. You can also use Postman’s cookie jar.\n\n**Order that fills ids:** Login → List sources → List assets → List users. Then open thumb/file using `{{assetId}}` / `{{sourceId}}`. Share: owner **Set grants** with a member `userId` (`read` or `write`).\n\n**Share:** `PUT /sources/{id}/grants` is the owner’s replacement list. Grantee keeps their own library and also sees the shared one. Admin has no bypass.\n\n**Album sync:** Pull is `GET /sync/changes` (`since_rev`). Push is `/albums` with `base_rev` (the album `rev`, not `server_rev`). Folder **Sync replica** is create-`id`, membership `base_rev`, delete + tombstone pull. Do not POST the pull JSON back.\n\nHit FastAPI directly (`http://127.0.0.1:8000` debug, `:8090` MSI/QPKG), not the Next.js `:3000` proxy, unless you intend to test the rewrite.\n\n**Backups (admin):** folder **Backups**. Start a site backup, poll the job in **Jobs**, then List backups saves `{{backupName}}` for Download / Delete. Restore is offline only (`python -m mosaicwave.restore`), not an API.\n\nOpenAPI at `{{baseUrl}}/docs` stays the living spec; this collection is a snapshot for manual tests.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -39,6 +39,10 @@
     },
     {
       "key": "jobId",
+      "value": ""
+    },
+    {
+      "key": "backupName",
       "value": ""
     },
     {
@@ -1627,6 +1631,90 @@
             "header": [],
             "url": "{{baseUrl}}/api/v1/jobs/{{jobId}}/events",
             "description": ""
+          }
+        }
+      ]
+    },
+    {
+      "name": "Backups",
+      "item": [
+        {
+          "name": "Start site backup",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/backups",
+            "description": "Admin only. Starts a job (kind site_backup) and saves {{jobId}}; poll GET /jobs/{{jobId}}. 409 if another job is running. Archive lands in the app folder's backups/. include_thumbs adds thumbnails (can be regenerated).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"include_thumbs\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const b = pm.response.json();",
+                  "  const id = b.id || (b.items && b.items[0] && b.items[0].id);",
+                  "  if (id) { pm.collectionVariables.set('jobId', id); }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List backups",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/backups",
+            "description": "Admin only. Newest first. Saves {{backupName}} from the first item."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const b = pm.response.json();",
+                  "  if (Array.isArray(b) && b[0]) { pm.collectionVariables.set('backupName', b[0].name); }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Download backup",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/backups/{{backupName}}",
+            "description": "Admin only. The zip contains password hashes and every user's originals; store it like the data folder. Use Send and Download in Postman."
+          }
+        },
+        {
+          "name": "Delete backup",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/backups/{{backupName}}",
+            "description": "Admin only. 404 backup_not_found if the name does not exist."
           }
         }
       ]

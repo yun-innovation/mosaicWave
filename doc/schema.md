@@ -272,7 +272,7 @@ The photos live in a second, independent track, the per-user library databases (
 
 A change to a library table (`source`, `asset`, `album`, `album_asset`) needs a step in `LIBRARY_STEPS` only (the site file no longer has these tables, but a pre-v3 file still builds them in steps 1-2, which are frozen). `tests/test_library_dbs.py::test_library_schema_matches_the_models` fails when the models and the library DDL drift.
 
-Restore from a backup archive (milestone 7) will run the same upgrade on the restored file. Milestone 6 split the single database into a site DB and one library DB per user, each with its own versions and `rev` clock ([per-library-db.md](per-library-db.md)). The table definitions below are unchanged; read them as "in the owner's library file" for `source`, `asset`, `album` and `album_asset`, and "in the site file" for the rest.
+A restored site backup runs the same upgrades when the API next starts ([backup.md](backup.md)). Milestone 6 split the single database into a site DB and one library DB per user, each with its own versions and `rev` clock ([per-library-db.md](per-library-db.md)). The table definitions below are unchanged; read them as "in the owner's library file" for `source`, `asset`, `album` and `album_asset`, and "in the site file" for the rest.
 
 ## Browse the live DB
 
@@ -323,7 +323,7 @@ Offline UI must not pretend a missing original is on disk; show “not downloade
 
 This is **replica sync**, not a backup. Pull/push copy **metadata** (ids, names, membership, `rev`, tombstones). Originals stay in FileStore. Do not replay sync JSON to restore a library.
 
-**Product backup / restore / export** is **Phase 9** ([roadmap.md](roadmap.md), [progress-todo.md](progress-todo.md)): an archive of the data dir (`library.db` + FileStore originals + BlobStore thumbs), plus restore of that archive, plus export (selected albums/assets as ordinary files). Stop the API or use SQLite backup APIs before copying the DB. Host-level copies of the data folder remain valid.
+**Product backup / restore / export** is milestone 7 ([roadmap.md](roadmap.md), [backup.md](backup.md)): an archive of the site database, every library database and the FileStore originals (BlobStore thumbs optional), plus restore of that archive, plus export (selected albums/assets as ordinary files, later). Stop the API or use SQLite backup APIs before copying the DB. Host-level copies of the data folder remain valid.
 
 ### `rev` handling
 
@@ -348,7 +348,7 @@ Also implemented (pytest; not required in that smoke test): `POST /albums` with 
 | Asset metadata-only push (rename/caption without a file) | After **share**, if a client needs it. Today: upload file or rescan |
 | `DELETE /assets` (tombstone from API, not only rescan) | After **share** or with a recycle-bin UI — not a backup restore |
 | Two-device merge / CRDT | **Not v1.** 409 + pull; no automatic merge |
-| Treat sync JSON as a library backup | **Never.** Use **backup / restore / export** (Phase 9): data dir archive, not this protocol |
+| Treat sync JSON as a library backup | **Never.** Use **backup / restore / export** (milestone 7): the site archive, not this protocol |
 
 Auth: same mosaicWave session as the rest of `/api/v1`. No anonymous sync. Do not use Google Photos APIs as a sync engine.
 

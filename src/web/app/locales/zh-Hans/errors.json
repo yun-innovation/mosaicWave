@@ -34,6 +34,7 @@
   "upload_still_running": "设备上传仍在进行中。请点击“取消上传”，然后重新导入。",
   "job_not_active": "该导入不是当前正在运行的任务。",
   "job_not_found": "找不到任务。",
+  "backup_not_found": "找不到这份备份。",
   "upload_interrupted": "上传已中断。",
   "upload_rejected": "上传被拒绝：{{message}}",
   "upload_failed": "上传失败：{{message}}",

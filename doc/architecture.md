@@ -170,6 +170,10 @@ Illustrative v1 surface (names can change; behavior should not):
 | GET | `/api/v1/jobs` | The caller's task runs; [workflow.md](workflow.md) |
 | GET | `/api/v1/jobs/{id}` | One job + progress / result (own jobs only) |
 | GET | `/api/v1/jobs/{id}/events` | Job audit log (own jobs only) |
+| POST | `/api/v1/backups` | **Admin.** Start a site backup job (`include_thumbs` optional); [backup.md](backup.md) |
+| GET | `/api/v1/backups` | **Admin.** List site archives in the app folder's `backups/` |
+| GET | `/api/v1/backups/{name}` | **Admin.** Download one archive |
+| DELETE | `/api/v1/backups/{name}` | **Admin.** Delete one archive |
 | GET | `/api/v1/sync/changes` | Metadata pull (`since_rev`, tombstones). Push is `/albums` + `base_rev`, not this URL. Covered vs later: [schema.md](schema.md) Sync protocol |
 | GET | `/api/v1/health` | Process / load balancer health |
 
@@ -191,7 +195,7 @@ CORS is only needed if the web origin and API origin differ (local `next dev`). 
 
 Photo **files** stay in a FileStore (v1: local folders / QNAP shares). The database holds **info about** those files: virtual path, dates, EXIF, album membership, scan state. That is a classic index plus relations — not a document store problem.
 
-**Choice: SQLite.** FastAPI talks to it through SQLAlchemy (or similar). One file in the **data directory** next to the blob root. Milestone 6 plans to split it into a site DB plus one library DB per user ([per-library-db.md](per-library-db.md)). Until the milestone 7 backup/restore/export feature ships, a backup is a copy of that data dir (stop the API or use the SQLite backup API). Do not restore from sync JSON.
+**Choice: SQLite.** FastAPI talks to it through SQLAlchemy (or similar). One file in the **data directory** next to the blob root. Milestone 6 split it into a site DB plus one library DB per user ([per-library-db.md](per-library-db.md)). Site backup and offline restore are in [backup.md](backup.md); a host-level copy of the data dir also works (stop the API or use the SQLite backup API). Do not restore from sync JSON.
 
 **Schema versions.** `library.db` records its schema version (`PRAGMA user_version`). At startup the server applies numbered upgrade steps in order, keeps a copy of the file from before the upgrade, and refuses a database newer than the app. See [schema.md § Schema versions](schema.md#schema-versions).
 
