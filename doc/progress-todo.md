@@ -18,7 +18,7 @@ Open items only. Roadmap: ordered milestones in [roadmap.md](roadmap.md). The ea
 - [ ] Share links for SaaS (`share` table, public read-only route, Share UI) (**milestone 11, deferred**: only useful when a host is open to the internet)
 - [ ] Maintenance mode (**milestone 12**, next, before milestone 7 PR 2): flag file, `503 maintenance` for non-admins, public status + full-page alert, simplified admin menu, `python -m mosaicwave.maintenance`
 - [ ] Backup / restore / export (**milestone 7**, four PRs; [backup.md](backup.md))
-  - [x] PR 1: site backup (`POST/GET/DELETE /backups`, `python -m mosaicwave.backup`), admin Backup page, offline restore (`python -m mosaicwave.restore`); Generate thumbs moved to Settings; one status bar for job progress on every view
+  - [x] PR 1: site backup (`POST/GET/DELETE /backups`, `python -m mosaicwave.backup`), admin Backup page, offline restore (`python -m mosaicwave.restore`); Generate thumbs moved to Settings; one status bar for job progress on every view; offline restore bumps `thumb_rev` when the archive has no thumbnails ([PR #40](https://github.com/yun-innovation/mosaicWave/pull/40))
   - [ ] PR 2: online site restore from the Backup page (needs milestone 12)
   - [ ] PR 3: per-user backup and online exact-swap restore of one library
   - [ ] PR 4: export selected albums/photos as ordinary files
