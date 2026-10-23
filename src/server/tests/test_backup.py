@@ -347,3 +347,48 @@ def test_backup_folder_follows_the_site_database(tmp_path: Path, monkeypatch: py
     monkeypatch.setenv('MOSAICWAVE_DATA_DIR', str(tmp_path / 'nas'))
     assert split.database_path == tmp_path / 'nas' / 'library.db'
     assert split.backup_dir == tmp_path / 'nas' / 'backups'
+
+
+def _thumb_revs(client: TestClient) -> dict[str, int]:
+    return {a["id"]: a["thumb_rev"] for a in client.get("/api/v1/assets").json()["items"]}
+
+
+def test_restore_without_thumbnails_gives_new_thumbnail_versions(tmp_path: Path) -> None:
+    """Thumbnail URLs carry thumb_rev and browsers cache them, so a restore must change it."""
+    src = _settings(tmp_path / "a")
+    client = _seed(src)
+    for asset_id in _thumb_revs(client):
+        assert client.get(f"/api/v1/assets/{asset_id}/thumb").status_code == 200
+    before = _thumb_revs(client)
+    assert set(before.values()) == {1}
+    archive = backup_site(src, tmp_path / "out").path
+
+    dst = _settings(tmp_path / "b")
+    restore_site(archive, dst)
+    restored = authed_client(dst)
+    after = _thumb_revs(restored)
+    assert set(after) == set(before)
+    assert all(rev > 1_000_000_000 for rev in after.values())
+    # the missing thumbnail is rebuilt on first request and moves the version on by one
+    asset_id = next(iter(after))
+    assert restored.get(f"/api/v1/assets/{asset_id}/thumb").status_code == 200
+    assert _thumb_revs(restored)[asset_id] == after[asset_id] + 1
+    client.close()
+
+
+def test_restore_with_thumbnails_keeps_thumbnail_versions(tmp_path: Path) -> None:
+    src = _settings(tmp_path / "a")
+    client = _seed(src)
+    for asset_id in _thumb_revs(client):
+        assert client.get(f"/api/v1/assets/{asset_id}/thumb").status_code == 200
+    before = _thumb_revs(client)
+    archive = backup_site(src, tmp_path / "out", include_thumbs=True).path
+
+    dst = _settings(tmp_path / "b")
+    restore_site(archive, dst)
+    restored = authed_client(dst)
+    assert _thumb_revs(restored) == before
+    asset_id = next(iter(before))
+    assert restored.get(f"/api/v1/assets/{asset_id}/thumb").status_code == 200
+    assert _thumb_revs(restored) == before  # served from the restored file, not rebuilt
+    client.close()

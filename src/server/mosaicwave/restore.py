@@ -165,8 +165,16 @@ def _prepare_site(staged: Path, manifest: dict) -> int | None:
     return found if found < schema.CURRENT_VERSION else None
 
 
-def _prepare_library(staged: Path, data_dir: Path, user_id: str, manifest: dict) -> int | None:
-    """Verify one library database and point its sources at ``data_dir``."""
+def _prepare_library(
+    staged: Path, data_dir: Path, user_id: str, manifest: dict, thumb_bump: int | None = None
+) -> int | None:
+    """Verify one library database and point its sources at ``data_dir``.
+
+    ``thumb_bump`` is added to every ``thumb_rev``. Thumbnail URLs carry the version and browsers keep
+    them for an hour, so without a bump a restored library (which has no thumbnail files) would keep
+    showing the old cached images under unchanged URLs. The server rebuilds a missing thumbnail on
+    its first request.
+    """
     con = _check_file(staged, label=f"library database of {user_id}")
     try:
         if not _NEEDS <= schema.library_tables(con):
@@ -179,6 +187,8 @@ def _prepare_library(staged: Path, data_dir: Path, user_id: str, manifest: dict)
                 rel = uri[len(DATA_PREFIX) :].split("/")
                 real = data_dir.joinpath(*rel).resolve()
                 con.execute("UPDATE source SET root_uri = ? WHERE id = ?", (str(real), source_id))
+        if thumb_bump:
+            con.execute("UPDATE asset SET thumb_rev = thumb_rev + ?", (thumb_bump,))
         con.commit()
         con.execute("PRAGMA journal_mode=DELETE")
         listed = manifest["libraries"].get(user_id, {})
@@ -233,8 +243,13 @@ def restore_site(archive: Path, settings: Settings, *, on_progress: Progress | N
         result = RestoreResult(manifest=manifest)
         result.site_upgrade_from = _prepare_site(app_stage / DB_ENTRY, manifest)
         older: list[int] = []
+        # No thumbnail files in the archive: give every asset a new thumbnail version so browsers refetch.
+        # With thumbnails the versions must keep matching the restored files.
+        thumb_bump = None if manifest.get("include_thumbs") else int(datetime.now(timezone.utc).timestamp())
         for user_id in manifest["user_ids"]:
-            was = _prepare_library(app_stage / account_entry(user_id), data_dir, user_id, manifest)
+            was = _prepare_library(
+                app_stage / account_entry(user_id), data_dir, user_id, manifest, thumb_bump
+            )
             if was is not None:
                 older.append(was)
         result.library_upgrade_from = min(older) if older else None

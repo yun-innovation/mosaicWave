@@ -45,7 +45,7 @@ The restore is an exact replacement of the site's data:
 
 An archive from an older app version is upgraded by the normal [schema steps](schema.md#schema-versions) the next time the API starts (site file at startup, each library when first opened, with the usual `library.db.pre-v{N}` copy).
 
-Nothing is deleted: remove the `*.before-restore-*` items yourself once you are satisfied. Thumbnails are not in the archive by default; start the API and use **Generate thumbs** in Settings. Sessions stay valid only if `session.key` is unchanged; users may have to sign in again.
+Nothing is deleted: remove the `*.before-restore-*` items yourself once you are satisfied. Thumbnails are not in the archive by default; the server rebuilds each one the first time it is requested, or start the API and use **Generate thumbs** in Settings. Thumbnail URLs carry `thumb_rev` and browsers cache them for an hour, so when the archive has no thumbnails the restore adds the current Unix time to every asset's `thumb_rev` (direct SQL; the library `rev` and `updated_at` do not change, so sync clients see no edit). Browsers then refetch instead of showing stale cached images. With `--include-thumbs` the versions are left alone because the restored files are named after them. Sessions stay valid only if `session.key` is unchanged; users may have to sign in again.
 
 ## Per-user backup and restore (next PR)
 
