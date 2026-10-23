@@ -15,7 +15,7 @@ Open items only. Roadmap: ordered milestones in [roadmap.md](roadmap.md). The ea
 - [ ] Per-library databases (**milestone 6**, [per-library-db.md](per-library-db.md))
   - [x] PR 1: foundations: two model sets and schema tracks, `accounts_dir`, library-DB manager (no behaviour change)
   - [x] PR 2: cutover: per-request site/library sessions, v2 to v3 migration, API/jobs/sync on the library DB, `source_grant` removed
-  - [ ] PR 3: share links (`share` table, public route, Share UI)
+- [ ] Share links for SaaS (`share` table, public read-only route, Share UI) (**milestone 11, deferred**: only useful when a host is open to the internet)
 - [ ] Backup / restore / export (site and per-user, exact-swap restore, export) (**milestone 7**, after 6)
 - [ ] ARM64 QPKG sideload on a QTS 5 ARM64 NAS (**milestone 10, frozen**: no ARM hardware)
 - [ ] Multilingual API: language code on requests; translated messages and locale-formatted date/time in responses; sync and ordering timestamps stay UTC; response language and switch target kept separate, tags normalized to canonical codes (**milestone 8**)

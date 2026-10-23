@@ -348,7 +348,7 @@ Publish: `scripts/publish-posix.ps1` (or `.sh`) → `dist/posix/mosaicWave/`. Pa
 
 ## Authorization
 
-**Decision:** Each user has **one private library** (`source.owner_user_id`). Login is not enough to see another user's photos. Each library is its **own SQLite file** (`accounts/{user_id}/library.db`), so there is no code path that can read another user's rows. **Admin has no bypass.** Sharing with other people is planned as **share links** (milestone 6, PR 3), not user-to-user grants. “Every logged-in user sees every source” is **rejected**. Admin may create **local** members on standalone only (not on QNAP).
+**Decision:** Each user has **one private library** (`source.owner_user_id`). Login is not enough to see another user's photos. Each library is its **own SQLite file** (`accounts/{user_id}/library.db`), so there is no code path that can read another user's rows. **Admin has no bypass.** Sharing with other people is planned as **share links** (milestone 11, deferred until SaaS), not user-to-user grants. “Every logged-in user sees every source” is **rejected**. Admin may create **local** members on standalone only (not on QNAP).
 
 The QPKG/uvicorn process is a **service account**. It cannot use the caller’s OS file ACL by default. Per-user access is therefore **in SQLite**, not `chmod`.
 
@@ -368,7 +368,7 @@ Rules:
 5. Jobs are filtered by `job.user_id`.
 6. First standalone user (or first QNAP admin to open the app) is **admin** and has only their own library, like everyone else.
 
-Phases 1–4 used an unauthenticated stub so import/scan/jobs could land. **Phase 5** enforced login. Grants were the Phase 5 access model, then private-library-only; milestone 6 removed grants for per-user library files, and share links will replace them.
+Phases 1–4 used an unauthenticated stub so import/scan/jobs could land. **Phase 5** enforced login. Grants were the Phase 5 access model, then private-library-only; milestone 6 removed grants for per-user library files, and share links (milestone 11) will replace them.
 
 ## Security (baseline)
 
