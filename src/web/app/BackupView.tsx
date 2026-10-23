@@ -1,105 +1,69 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { apiFetch, apiMediaUrl, errorText, HostSettings, readDetail } from "./api";
 import { formatBytes, formatDateTime } from "./format";
 import i18n from "./i18n";
-import { BackupItem, ImportJob, isAbortError, Notice } from "./types";
+import { BackupItem, isAbortError, Notice } from "./types";
+import type { TakeoutImport } from "./useTakeoutImport";
 
 const SAMPLE_NAME = "mosaicwave-site-YYYYMMDD-HHMMSS.zip";
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-/** Admin: site backup (start, progress, list, download, delete). Restore is offline; the page shows the command. */
-export function BackupView() {
+/**
+ * Admin: site backup (start, list, download, delete). Progress and the result of a running backup
+ * are in the status bar; this page reloads its list when one finishes. Restore is offline, so the
+ * page shows the command.
+ */
+export function BackupView({ importer }: { importer: TakeoutImport }) {
   const { t } = useTranslation(["backup", "common"]);
   const [items, setItems] = useState<BackupItem[] | null>(null);
   const [folder, setFolder] = useState<string | null>(null);
   const [withThumbs, setWithThumbs] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [progress, setProgress] = useState<string | null>(null);
+  const [working, setWorking] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
   const [confirming, setConfirming] = useState<string | null>(null);
-  const abort = useRef<AbortController | null>(null);
+  const { busy, finished, refreshJobs } = importer;
+  const disabled = busy || working;
+  const lastBackup = finished?.kind === "site_backup" ? finished.id : null;
 
   const loadList = useCallback(async (signal?: AbortSignal) => {
-    const res = await apiFetch("/api/v1/backups", { signal });
-    if (!res.ok) {
-      setItems([]);
-      setNotice({ text: await readDetail(res), ok: false });
-      return;
+    try {
+      const res = await apiFetch("/api/v1/backups", { signal });
+      if (!res.ok) {
+        setItems([]);
+        setNotice({ text: await readDetail(res), ok: false });
+        return;
+      }
+      setItems((await res.json()) as BackupItem[]);
+    } catch (err: unknown) {
+      if (isAbortError(err)) return;
+      setItems((prev) => prev ?? []);
+      setNotice({ text: err instanceof Error ? err.message : i18n.t("common:networkError"), ok: false });
     }
-    setItems((await res.json()) as BackupItem[]);
   }, []);
 
-  /** Poll a backup job until it ends, then refresh the list. */
-  const follow = useCallback(
-    async (first: ImportJob, signal: AbortSignal) => {
-      let job = first;
-      while (job.status === "running" || job.status === "queued") {
-        setProgress(
-          job.total
-            ? i18n.t("backup:progress", { processed: job.processed, total: job.total })
-            : i18n.t("backup:starting"),
-        );
-        await sleep(1000);
-        const res = await apiFetch(`/api/v1/jobs/${job.id}`, { signal });
-        if (!res.ok) {
-          setNotice({ text: await readDetail(res), ok: false });
-          return;
-        }
-        job = (await res.json()) as ImportJob;
-      }
-      if (job.status === "done") {
-        setNotice({ text: i18n.t("backup:done"), ok: true });
-      } else {
-        setNotice({ text: job.error || i18n.t("backup:failed"), ok: false });
-      }
-      await loadList(signal);
-    },
-    [loadList],
-  );
+  // On open, and again each time a backup finishes.
+  useEffect(() => {
+    const ctrl = new AbortController();
+    void loadList(ctrl.signal);
+    return () => ctrl.abort();
+  }, [loadList, lastBackup]);
 
   useEffect(() => {
     const ctrl = new AbortController();
-    abort.current = ctrl;
-    async function init() {
-      try {
-        await loadList(ctrl.signal);
-        const host = await apiFetch("/api/v1/settings", { signal: ctrl.signal });
-        if (host.ok) setFolder(((await host.json()) as HostSettings).backup_dir);
-        // A backup started earlier (or in another tab) keeps running: pick it up.
-        const jobs = await apiFetch("/api/v1/jobs?limit=1&kind=site_backup", { signal: ctrl.signal });
-        if (!jobs.ok) return;
-        const latest = ((await jobs.json()) as { items: ImportJob[] }).items[0];
-        if (latest && (latest.status === "running" || latest.status === "queued")) {
-          setBusy(true);
-          try {
-            await follow(latest, ctrl.signal);
-          } finally {
-            setBusy(false);
-            setProgress(null);
-          }
-        }
-      } catch (err: unknown) {
-        if (isAbortError(err)) return;
-        setItems((prev) => prev ?? []);
-        setNotice({ text: err instanceof Error ? err.message : i18n.t("common:networkError"), ok: false });
-      }
-    }
-    void init();
+    apiFetch("/api/v1/settings", { signal: ctrl.signal })
+      .then(async (res) => {
+        if (res.ok) setFolder(((await res.json()) as HostSettings).backup_dir);
+      })
+      .catch(() => undefined);
     return () => ctrl.abort();
-  }, [loadList, follow]);
+  }, []);
 
   async function start() {
-    const signal = abort.current?.signal ?? new AbortController().signal;
-    setBusy(true);
+    setWorking(true);
     setNotice(null);
-    setProgress(i18n.t("backup:starting"));
     try {
       const res = await apiFetch("/api/v1/backups", {
         method: "POST",
@@ -111,19 +75,17 @@ export function BackupView() {
         setNotice({ text: errorText(body, res.status), ok: false });
         return;
       }
-      await follow(body as ImportJob, signal);
+      refreshJobs();
     } catch (err: unknown) {
-      if (isAbortError(err)) return;
       setNotice({ text: err instanceof Error ? err.message : i18n.t("common:networkError"), ok: false });
     } finally {
-      setBusy(false);
-      setProgress(null);
+      setWorking(false);
     }
   }
 
   async function remove(name: string) {
     setConfirming(null);
-    setBusy(true);
+    setWorking(true);
     setNotice(null);
     try {
       const res = await apiFetch(`/api/v1/backups/${encodeURIComponent(name)}`, { method: "DELETE" });
@@ -134,10 +96,9 @@ export function BackupView() {
       }
       await loadList();
     } catch (err: unknown) {
-      if (isAbortError(err)) return;
       setNotice({ text: err instanceof Error ? err.message : i18n.t("common:networkError"), ok: false });
     } finally {
-      setBusy(false);
+      setWorking(false);
     }
   }
 
@@ -156,17 +117,16 @@ export function BackupView() {
           <input
             type="checkbox"
             checked={withThumbs}
-            disabled={busy}
+            disabled={disabled}
             onChange={(event) => setWithThumbs(event.target.checked)}
           />
           {t("backup:withThumbs")}
         </label>
         <div className="button-row">
-          <button type="button" disabled={busy} onClick={() => void start()}>
-            {busy ? t("common:working") : t("backup:start")}
+          <button type="button" disabled={disabled} onClick={() => void start()}>
+            {disabled ? t("common:working") : t("backup:start")}
           </button>
         </div>
-        {progress && <p className="detail import-progress">{progress}</p>}
         {notice && <p className={notice.ok ? "detail import-progress" : "status fail"}>{notice.text}</p>}
       </div>
 
@@ -197,7 +157,7 @@ export function BackupView() {
                 {confirming === item.name ? (
                   <>
                     <span className="detail">{t("backup:confirmDelete")}</span>
-                    <button type="button" disabled={busy} onClick={() => void remove(item.name)}>
+                    <button type="button" disabled={disabled} onClick={() => void remove(item.name)}>
                       {t("backup:confirmYes")}
                     </button>
                     <button type="button" onClick={() => setConfirming(null)}>
@@ -209,7 +169,7 @@ export function BackupView() {
                     <a className="button-link" href={apiMediaUrl(`/api/v1/backups/${encodeURIComponent(item.name)}`)} download>
                       {t("backup:download")}
                     </a>
-                    <button type="button" disabled={busy} onClick={() => setConfirming(item.name)}>
+                    <button type="button" disabled={disabled} onClick={() => setConfirming(item.name)}>
                       {t("backup:delete")}
                     </button>
                   </>

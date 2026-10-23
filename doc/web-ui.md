@@ -9,6 +9,7 @@ After sign-in the page is one shell (`app/AppShell.tsx`):
 - **Top bar** — menu button (phones only), the mosaicWave logo (links to Photos), a health warning shown only when `GET /api/v1/health` fails, the **Upload** button, and the account menu.
 - **Account menu** — the avatar opens it: display name, role, a **Language** quick switch (same logic as Settings, `LocaleSelect.tsx`), a **Settings** link, and **Sign out**. Escape or a press outside closes it.
 - **Sidebar** — Photos, Albums, Import, Activity, Backup (admin only), Settings. The current view has `aria-current="page"`.
+- **Status bar** — the first thing in the main area on every view while a background job runs (Takeout import, thumbnails, site backup): job name, `processed / total`, the current file and a progress bar, with a link to Activity. When the job ends it shows the result (successes clear after a few seconds, failures stay until dismissed). `StatusBar.tsx`.
 - **Main area** — one view at a time.
 
 On narrow screens (`max-width: 48rem`) the sidebar becomes a slide-over panel over a dimmed backdrop. The menu button opens it; Escape, a backdrop tap, or choosing a view closes it. Motion is off under `prefers-reduced-motion`.
@@ -40,7 +41,8 @@ The photo viewer (`AssetViewer.tsx`) is a dialog over the current view, not a UR
 `page.tsx` owns what must survive switching views:
 
 - Sign-in, health, and the locale effect.
-- `useTakeoutImport` (`app/useTakeoutImport.ts`): the Takeout form state, the browser-folder push, and job polling. A running import keeps polling when you leave Import, and resumes on page load.
+- `useTakeoutImport` (`app/useTakeoutImport.ts`): the Takeout form state and the browser-folder push. Its `message` is only the Import form's own result; job progress never goes through it.
+- `useActiveJob` (`app/useActiveJob.ts`, used by `useTakeoutImport`): follows the signed-in user's newest job through `GET /api/v1/jobs?limit=1` (every second while one runs, every few seconds otherwise) and feeds the status bar. It does not care what started the job, so a job started before a reload, a sign-out or in another tab is picked up again, and it stops polling while signed out. `busy` (buttons disabled everywhere) is true while the server runs any job. Limits: the server runs one job at a time for everyone, but the job list is per user, so a member's job blocks an admin's start (job-busy error) without showing in the admin's bar.
 - Two revision counters. `libraryRev` goes up when assets change (import done, upload, removal); timelines and Activity reload. `albumsRev` goes up when albums change; the album list reloads.
 
 Shared types and URL helpers (`thumbSrc`, `stillSrc`, `isVideo`) are in `app/types.ts`.

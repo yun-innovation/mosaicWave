@@ -7,14 +7,8 @@ import { apiFetch } from "./api";
 import { formatDateTime } from "./format";
 import i18n from "./i18n";
 import { ImportJob, ignoreAbort, isAbortError } from "./types";
+import { jobKindLabel } from "./useActiveJob";
 import { TakeoutImport } from "./useTakeoutImport";
-
-function jobKindLabel(kind: string | null): string {
-  if (kind === "takeout_import") return i18n.t("import:jobs.kind.takeout_import");
-  if (kind === "thumb_batch") return i18n.t("import:jobs.kind.thumb_batch");
-  if (kind === "site_backup") return i18n.t("import:jobs.kind.site_backup");
-  return kind || i18n.t("import:jobs.kind.unknown");
-}
 
 const JOB_STATUSES = ["idle", "queued", "running", "done", "error"] as const;
 
@@ -55,7 +49,6 @@ export function ActivityView({ importer, libraryRev }: Props) {
       <div className="gallery-head">
         <h2>{t("import:jobs.title")}</h2>
       </div>
-      {busy && importer.message && <p className="detail import-progress">{importer.message}</p>}
       {jobs === null && <p className="detail">{t("import:jobs.loading")}</p>}
       {jobs && jobs.length === 0 && <p className="detail">{t("import:jobs.empty")}</p>}
       {jobs && jobs.length > 0 && (

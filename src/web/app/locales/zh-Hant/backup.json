@@ -4,10 +4,6 @@
   "folder": "備份存放於 {{folder}}",
   "start": "立即備份",
   "withThumbs": "包含縮圖（備份較大；縮圖可重新產生）",
-  "starting": "正在開始備份…",
-  "progress": "備份中 {{processed}} / {{total}}",
-  "done": "備份完成。",
-  "failed": "備份失敗。",
   "list": {
     "title": "備份檔",
     "loading": "正在載入備份…",

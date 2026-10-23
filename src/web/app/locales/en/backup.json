@@ -4,10 +4,6 @@
   "folder": "Archives are stored in {{folder}}",
   "start": "Back up now",
   "withThumbs": "Include thumbnails (bigger archive; they can be regenerated)",
-  "starting": "Starting backup…",
-  "progress": "Backing up {{processed}} / {{total}}",
-  "done": "Backup finished.",
-  "failed": "Backup failed.",
   "list": {
     "title": "Archives",
     "loading": "Loading backups…",

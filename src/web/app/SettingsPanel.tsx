@@ -132,6 +132,7 @@ export function SettingsPanel({ me, platform, importer, onMe }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [thumbsError, setThumbsError] = useState<string | null>(null);
   const [newUser, setNewUser] = useState({ username: "", password: "", display_name: "" });
   const [memberFieldsLocked, setMemberFieldsLocked] = useState(true);
 
@@ -294,11 +295,18 @@ export function SettingsPanel({ me, platform, importer, onMe }: Props) {
         <label>{t("settings:thumbnails.label")}</label>
         <p className="detail">{t("settings:thumbnails.help")}</p>
         <div className="button-row">
-          <button type="button" disabled={importer.busy} onClick={() => void importer.generateThumbs()}>
+          <button
+            type="button"
+            disabled={importer.busy}
+            onClick={() => {
+              setThumbsError(null);
+              void importer.generateThumbs().then(setThumbsError);
+            }}
+          >
             {importer.busy ? t("common:working") : t("gallery:generateThumbs")}
           </button>
         </div>
-        {importer.message && <p className="detail import-progress">{importer.message}</p>}
+        {thumbsError && <p className="status fail">{thumbsError}</p>}
       </div>
       {error && <p className="status fail">{error}</p>}
       {notice && !error && <p className="detail">{notice}</p>}

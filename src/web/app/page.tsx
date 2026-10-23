@@ -165,7 +165,7 @@ export default function Home() {
       view = <ActivityView importer={importer} libraryRev={libraryRev} />;
       break;
     case "backup":
-      view = me.role === "admin" ? <BackupView /> : <SettingsPanel me={me} platform={platform} importer={importer} onMe={setMe} />;
+      view = me.role === "admin" ? <BackupView importer={importer} /> : <SettingsPanel me={me} platform={platform} importer={importer} onMe={setMe} />;
       break;
     case "settings":
       view = <SettingsPanel me={me} platform={platform} importer={importer} onMe={setMe} />;
@@ -192,6 +192,9 @@ export default function Home() {
       me={me}
       route={route}
       healthError={healthError}
+      job={importer.job}
+      finished={importer.finished}
+      onDismissFinished={importer.dismissFinished}
       onMe={setMe}
       onUpload={() => setUploadOpen(true)}
       onLogout={() => void onLogout()}

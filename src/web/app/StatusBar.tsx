@@ -1,0 +1,67 @@
+"use client";
+
+import { useEffect } from "react";
+import { useTranslation } from "react-i18next";
+
+import { formatNumber } from "./format";
+import { routeHash } from "./hashRoute";
+import { ImportJob } from "./types";
+import { FinishedJob, jobKindLabel } from "./useActiveJob";
+
+const DONE_VISIBLE_MS = 8000;
+
+type Props = {
+  job: ImportJob | null;
+  finished: FinishedJob | null;
+  onDismiss: () => void;
+};
+
+/**
+ * One place for background task progress, on every view: the running job (any kind) with its
+ * count, then the result of the last one. Successes clear themselves; failures stay until dismissed.
+ */
+export function StatusBar({ job, finished, onDismiss }: Props) {
+  const { t } = useTranslation(["jobbar", "common"]);
+  const clearAfter = !job && finished?.ok ? finished : null;
+
+  useEffect(() => {
+    if (!clearAfter) return;
+    const timer = window.setTimeout(onDismiss, DONE_VISIBLE_MS);
+    return () => window.clearTimeout(timer);
+  }, [clearAfter, onDismiss]);
+
+  const activity = routeHash({ view: "activity", albumId: null });
+
+  if (job) {
+    const known = job.total > 0;
+    return (
+      <div className="status-bar" role="status" aria-live="polite">
+        <span className="status-bar-label">{jobKindLabel(job.kind)}</span>
+        <span className="status-bar-count">
+          {known ? `${formatNumber(job.processed)} / ${formatNumber(job.total)}` : t("jobbar:starting")}
+        </span>
+        {job.current && <span className="status-bar-current">{job.current}</span>}
+        {known ? (
+          <progress className="status-bar-meter" max={job.total} value={Math.min(job.processed, job.total)} />
+        ) : (
+          <progress className="status-bar-meter" />
+        )}
+        <a href={activity}>{t("jobbar:viewActivity")}</a>
+      </div>
+    );
+  }
+
+  if (finished) {
+    return (
+      <div className={finished.ok ? "status-bar done" : "status-bar fail"} role="status" aria-live="polite">
+        <span className="status-bar-label">{jobKindLabel(finished.kind)}</span>
+        <span className="status-bar-current">{finished.text}</span>
+        <a href={activity}>{t("jobbar:viewActivity")}</a>
+        <button type="button" onClick={onDismiss}>
+          {t("jobbar:dismiss")}
+        </button>
+      </div>
+    );
+  }
+  return null;
+}

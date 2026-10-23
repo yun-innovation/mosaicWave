@@ -1067,3 +1067,66 @@ main.app-main {
   word-break: break-all;
   user-select: all;
 }
+
+.status-bar {
+  position: sticky;
+  top: 3.5rem;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+  padding: 0.6rem 1rem;
+  border-radius: 12px;
+  background: #24303a;
+  border: 1px solid #34465a;
+  font-size: 0.95rem;
+}
+
+.status-bar.done {
+  background: #213027;
+  border-color: #3d6b4f;
+}
+
+.status-bar.fail {
+  background: #392523;
+  border-color: #6b3d3a;
+}
+
+.status-bar-label {
+  font-weight: 600;
+}
+
+.status-bar-count {
+  font-variant-numeric: tabular-nums;
+}
+
+.status-bar-current {
+  flex: 1 1 8rem;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+}
+
+.status-bar-meter {
+  flex: 1 1 8rem;
+  min-width: 6rem;
+  height: 0.5rem;
+  accent-color: #6aa37a;
+}
+
+.status-bar a {
+  color: var(--fg);
+}
+
+.status-bar button {
+  padding: 0.25rem 0.7rem;
+  border: 0;
+  border-radius: 8px;
+  background: #3d4454;
+  color: var(--fg);
+  cursor: pointer;
+}

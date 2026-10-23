@@ -6,6 +6,9 @@ import { useTranslation } from "react-i18next";
 import { Me } from "./api";
 import { LocaleSelect } from "./LocaleSelect";
 import { Route, routeHash, View } from "./hashRoute";
+import { StatusBar } from "./StatusBar";
+import type { FinishedJob } from "./useActiveJob";
+import type { ImportJob } from "./types";
 
 const ICONS: Record<View | "upload" | "menu", ReactNode> = {
   photos: (
@@ -75,13 +78,28 @@ type Props = {
   route: Route;
   /** Set when the API health check failed; shown as a warning in the top bar. */
   healthError: string | null;
+  /** The running job and the last finished one, for the status bar. */
+  job: ImportJob | null;
+  finished: FinishedJob | null;
+  onDismissFinished: () => void;
   onMe: (me: Me) => void;
   onUpload: () => void;
   onLogout: () => void;
   children: ReactNode;
 };
 
-export function AppShell({ me, route, healthError, onMe, onUpload, onLogout, children }: Props) {
+export function AppShell({
+  me,
+  route,
+  healthError,
+  job,
+  finished,
+  onDismissFinished,
+  onMe,
+  onUpload,
+  onLogout,
+  children,
+}: Props) {
   const { t } = useTranslation(["common", "gallery", "settings"]);
   const [navOpen, setNavOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -180,7 +198,10 @@ export function AppShell({ me, route, healthError, onMe, onUpload, onLogout, chi
           </a>
         ))}
       </nav>
-      <main className="app-main">{children}</main>
+      <main className="app-main">
+        <StatusBar job={job} finished={finished} onDismiss={onDismissFinished} />
+        {children}
+      </main>
     </div>
   );
 }
