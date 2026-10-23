@@ -1,6 +1,6 @@
 # Status
 
-**Updated:** 2026-10-23  
+**Updated:** 2026-10-24  
 **Keep in sync with:** [`.cursor/rules/mosaicwave-status.mdc`](../.cursor/rules/mosaicwave-status.mdc) (same date, same next step).
 
 Short onboarding snapshot for agents. **Session start:** always read [index.md](index.md) first (For AI Agents + Planning). Names: [naming.md](naming.md).
@@ -9,11 +9,11 @@ Short onboarding snapshot for agents. **Session start:** always read [index.md](
 
 **v0.1.1 published** (GitHub pre-release with MSI, QPKG x86_64, posix tarball, `SHA256SUMS.txt`). Repo: https://github.com/yun-innovation/mosaicWave. License FSL-1.1-Apache-2.0. Never work on `main`: branch, push, PR, squash-merge ([process.md](process.md)). Roadmap uses **ordered milestones** ([roadmap.md](roadmap.md)); old Phase 0–9 plan: [roadmap-archive.md](roadmap-archive.md).
 
-**Milestone 1 — done.** **Milestone 2 — done** (packaging verify: MSI, QPKG x86_64, Linux + macOS posix tarballs). **Milestone 3 — done** (i18n and l10n: `en`, `zh-Hant`, `zh-Hans`; [i18n.md](i18n.md)). **Milestone 4 — done** (advanced UI: top bar, sidebar, hash-routed views; [web-ui.md](web-ui.md)). **Milestone 5 — done** (schema maintenance: `library.db` schema v2, ordered upgrade steps; [schema.md § Schema versions](schema.md#schema-versions)). New UI strings must follow `.cursor/rules/i18n.mdc`.
+**Milestone 1 — done.** **Milestone 2 — done** (packaging verify: MSI, QPKG x86_64, Linux + macOS posix tarballs). **Milestone 3 — done** (i18n and l10n: `en`, `zh-Hant`, `zh-Hans`; [i18n.md](i18n.md)). **Milestone 4 — done** (advanced UI: top bar, sidebar, hash-routed views; [web-ui.md](web-ui.md)). **Milestone 5 — done** (schema maintenance: `library.db` schema v2, ordered upgrade steps; [schema.md § Schema versions](schema.md#schema-versions)). **Milestone 6 — done** (per-library databases: one SQLite file per user in `accounts/{user_id}/library.db`, site schema v3, grants removed; [per-library-db.md](per-library-db.md)). New UI strings must follow `.cursor/rules/i18n.mdc`.
 
 ## Next
 
-**Milestone 6 — per-library databases** (both PRs merged: foundations #37, cutover #38; waiting for `milestone 6 done`). Then 7 backup / restore / export (builds on 6), 8 multilingual API (translated messages and locale date/time in responses), 9 gallery tools (select many, scrubber, search, light theme). 10 ARM64 QPKG is **frozen** (no ARM hardware) and 11 share links (SaaS) is **deferred** (pointless while self-hosting is not open to the internet); both are skipped.
+**Milestone 7 — backup / restore / export** (site and per-user backup, exact-swap restore, export; rebuild on the per-library layout, reference commit `3967fe1`). Then 8 multilingual API (translated messages and locale date/time in responses), 9 gallery tools (select many, scrubber, search, light theme). 10 ARM64 QPKG is **frozen** (no ARM hardware) and 11 share links (SaaS) is **deferred**; both are skipped.
 
 ## Constraints
 

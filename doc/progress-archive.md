@@ -147,6 +147,8 @@ Dated milestones and decisions. Day-to-day process notes: [process.md](process.m
 | 2026-10-21 | Milestone | **Milestone 5 — done** (schema maintenance, PR #27). Next is milestone 6 — backup / restore / export |
 | 2026-10-21 | Work | The 12 tests that always failed on Windows (11 macOS mount/keychain tests, 1 colon-filename test) are skipped on Windows with a reason; Windows now runs 0 failed. [testing.md](testing.md) lists them and how to reproduce and check them on macOS. Branch `fix/skip-platform-tests` |
 | 2026-10-23 | Work | Milestone 6 cutover built on eature/per-library-cutover: site schema v3, startup split into ccounts/{id}/library.db, per-request library sessions, jobs/sync on the library DB, grants removed ([per-library-db.md](per-library-db.md)). Share links (PR 3) next |
+| 2026-10-24 | Decision | Share links moved out of milestone 6 into new milestone 11 (SaaS, deferred): no value while self-hosted installs are not reachable from the internet |
+| 2026-10-24 | Milestone | **Milestone 6 — done** (per-library databases, PRs #37 and #38). Next is milestone 7 — backup / restore / export |
 | 2026-10-21 | Work | macOS check of `fix/skip-platform-tests` ([testing.md](testing.md) § Check on macOS): macOS 27.0.1, Python 3.14.7. Full suite 208 passed, 4 skipped (unrelated: 3 Windows-data-dir tests, 1 ffmpeg-not-on-PATH), 0 failed. All 12 previously-Windows-skipped tests run (not skipped) and pass individually. `npm run build` in `src/web` succeeds (`i18n-check` OK); `next-env.d.ts` restored after |
 
 
