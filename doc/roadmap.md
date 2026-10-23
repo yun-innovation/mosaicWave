@@ -36,6 +36,7 @@ A multi-platform photo/video library: Python API, static web UI, one `/api/v1`. 
 ## Known open items (not a milestone yet)
 
 - Packaged macOS: a Save-folder SMB mount can be torn down by macOS ([smb-paths.md](smb-paths.md))
+- Storage space checking (not scheduled): a shared module that reports free space for the app folder and the data folder and refuses or warns before a job that needs room. Today only the offline restore checks (`restore._require_space`, staging size vs free space); site backup, Takeout import, thumbnails and moving the data folder write until the disk is full. Candidates: a pre-flight estimate for backup (archive size vs free space in `backups/`), a Settings readout, a low-space warning in the status bar
 - Idea, not scheduled: the user's own cloud drive as a FileStore backend ([filestore-later.md](filestore-later.md))
 
 ## Intentionally later or never
