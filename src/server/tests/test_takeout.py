@@ -65,7 +65,7 @@ def test_takeout_dedup_and_reimport(tmp_path: Path) -> None:
     _write_takeout(takeout, _jpeg_bytes())
     settings = Settings(data_dir=tmp_path / "data", takeout_dir=takeout, source_dir=dest)
     app = create_app(settings)
-    factory: sessionmaker = app.state.session_factory
+    factory: sessionmaker = app.state.library_dbs.factory("u1")
 
     session = factory()
     try:
@@ -158,7 +158,7 @@ def test_live_photo_video_uses_heic_sidecar(tmp_path: Path) -> None:
     dest.mkdir()
     settings = Settings(data_dir=tmp_path / "data", takeout_dir=None, source_dir=dest)
     app = create_app(settings)
-    session = app.state.session_factory()
+    session = app.state.library_dbs.factory("u1")()
     try:
         import_takeout(session, takeout, dest_root=dest)
         session.commit()
@@ -370,7 +370,7 @@ def test_takeout_sanitizes_colon_filename(tmp_path: Path) -> None:
     (photos / "Photo from 2:15 PM.jpg").write_bytes(_jpeg_bytes(color=(10, 80, 200)))
     settings = Settings(data_dir=tmp_path / "data", takeout_dir=takeout, source_dir=dest)
     app = create_app(settings)
-    session = app.state.session_factory()
+    session = app.state.library_dbs.factory("u1")()
     try:
         import_takeout(session, takeout, dest_root=dest)
         session.commit()

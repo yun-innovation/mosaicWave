@@ -41,6 +41,11 @@ def me_id(client: TestClient) -> str:
     return client.get("/api/v1/me").json()["id"]
 
 
+def library_session(client: TestClient):  # type: ignore[no-untyped-def]
+    """A session on the signed-in user's own library database (close it when done)."""
+    return client.app.state.library_dbs.factory(me_id(client))()
+
+
 def library_dir(settings: Settings, client: TestClient) -> Path:
     path = (settings.data_dir / "libraries" / me_id(client)).resolve()
     path.mkdir(parents=True, exist_ok=True)

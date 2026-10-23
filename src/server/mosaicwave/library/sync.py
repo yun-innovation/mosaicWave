@@ -200,6 +200,10 @@ def pull_changes(
 ) -> SyncChangesOut:
     limit = max(1, min(limit, 500))
     since_rev = max(0, since_rev)
+    # Each library has its own clock. A client ahead of it (a replica of a library that was
+    # restored, rebuilt, or split out of the old shared database) must pull everything again.
+    if since_rev > max_sync_rev(session):
+        since_rev = 0
     if source_ids is not None and not source_ids:
         return SyncChangesOut(server_rev=since_rev)
     parsed: tuple[int, str, str] | None = None
@@ -226,7 +230,6 @@ def pull_changes(
     album_cond = Album.id.in_(select(AlbumAsset.album_id).where(AlbumAsset.asset_id.in_(visible)))
     if source_ids is not None:
         album_cond = or_(album_cond, Album.source_id.in_(source_ids))
-        album_cond = album_cond & (Album.source_id.is_(None) | Album.source_id.in_(source_ids))
     album_stmt = (
         select(Album)
         .where(

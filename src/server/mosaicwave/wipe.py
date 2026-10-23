@@ -26,14 +26,9 @@ STORAGE_DIR_NAMES = ("libraries", "blobs")
 EXPECTED_TABLES = frozenset(
     {
         "user",
-        "source",
-        "source_grant",
         "local_credential",
         "job",
         "job_event",
-        "asset",
-        "album",
-        "album_asset",
     }
 )
 
@@ -55,7 +50,17 @@ def table_names(db: Path) -> set[str]:
 
 
 def reset_library_db(db: Path) -> None:
-    for path in _sidecars(db):
+    # Every user's photos and albums live in accounts/{user_id}/library.db beside the site file.
+    accounts = db.parent / "accounts"
+    try:
+        shutil.rmtree(accounts)
+    except FileNotFoundError:
+        pass
+    except OSError as exc:
+        raise OSError(
+            f"cannot remove {accounts}; stop the API (scripts\\stop-api.cmd) and retry ({exc})"
+        ) from exc
+    for path in [*_sidecars(db), db.with_name("library.db.split-report.json")]:
         try:
             path.unlink(missing_ok=True)
         except OSError as exc:

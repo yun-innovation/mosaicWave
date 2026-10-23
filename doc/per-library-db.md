@@ -92,3 +92,27 @@ For each user: create `accounts/{id}/library.db` at the current library schema, 
 - **Orphans:** `album` rows with `source_id IS NULL` and `source` rows with no owner belong to nobody. Report them in the migration notes and do not copy them (they are not reachable through the albums API today).
 - **Existing `rev` values are kept.** A client that stored `since_rev` from the old global clock may now be ahead of its library's `server_rev`. `GET /sync/changes` must treat `since_rev > server_rev` as `0` (full pull).
 - **Open data-folder moves** must not run while the migration runs; it happens at startup, before the API serves.
+
+## Migration as built (cutover)
+
+`schema/split.py`, run by `make_engine` before the site engine opens: `migrate_site_database(site_db, accounts_dir)`. A fresh install or a v3 file is left alone.
+
+1. Bring the site file to v2 (usual upgrade and `pre-v` copy), so old and unversioned databases are handled first.
+2. For each user that owns a source, build `accounts/{id}/library.db.migrating` from the site tables (`ATTACH`), keep every `rev` and every tombstone, then check foreign keys, `integrity_check` and that the row counts add up across all users plus the skipped rows. Any mismatch raises `SplitError` and removes everything built.
+3. Rename the verified files into place, then apply site step 3, which drops `album_asset`, `album`, `asset`, `source_grant` and `source` (after the usual `library.db.pre-v2` copy).
+4. Write `library.db.split-report.json` next to the site database.
+
+Until step 3 commits, the site tables are the source of truth, so an interrupted run is simply redone and stale library files are rebuilt.
+
+Skipped rows (counted in the report, never copied): sources with no owner or an unknown owner, assets and albums under them, albums with no source, memberships of those, and memberships tying an album to another user's photo. An album cover that points at another user's photo is cleared. Live grants are counted as dropped.
+
+## Runtime as built (cutover)
+
+- `STEPS` has three steps; step 3 drops the moved tables and must only run after the split. `CURRENT_VERSION` is 3. A fresh site file is created from `SITE_TABLES` only.
+- `auth.deps.get_library_session` gives a route the caller's own library session (`app.state.library_dbs`); job routes keep the site `get_session`. `auth/access.py` is now "your own library" (`granted_source_ids`, `can_use_source`).
+- `ImportJobRunner(site_factory, blobs, library_dbs)`: `Job`/`JobEvent` rows are written to the site DB, imports and thumbnails to the owner's library DB (the job's `user_id`). Progress is committed to the site DB every 25 files.
+- `/auth/status` no longer returns `granted_source_ids` / `write_source_ids`; `GET`/`PUT /sources/{id}/grants`, the grants UI and the `share_rejected` error are removed.
+- Data-folder moves still rewrite `source.root_uri`, now in every `accounts/*/library.db` (`config._rewrite_library_root_uris`), after checkpointing each one. `wipe.py` also removes `accounts/`.
+- `GET /sync/changes`: `since_rev` above the library's own clock is a full pull; `Album.source_id IS NULL` rows are no longer visible.
+
+Checked on a database made by the real v0.1.1 code: 2 users, 3 assets, 2 albums, 1 membership and 1 grant moved or dropped as expected, with clean foreign-key checks.

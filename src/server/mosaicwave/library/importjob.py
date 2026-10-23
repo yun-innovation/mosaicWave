@@ -10,6 +10,7 @@ from typing import BinaryIO
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from mosaicwave.library.dbs import LibraryDbs
 from mosaicwave.library.dump import DumpWarning, TakeoutInspect, inspect_takeout_path
 from mosaicwave.library.takeout import import_takeout
 from mosaicwave.library.takeoutpush import safe_staging_file, staging_dir, write_upload
@@ -226,8 +227,13 @@ def list_job_events(session: Session, job_id: str) -> list[JobEvent]:
 
 
 class ImportJobRunner:
-    def __init__(self, factory: sessionmaker[Session], blobs: BlobStore) -> None:
+    def __init__(
+        self, factory: sessionmaker[Session], blobs: BlobStore, libraries: LibraryDbs
+    ) -> None:
+        # `factory` is the site database (jobs). Photos and albums live in the owner's own
+        # library database, opened through `libraries`.
         self._factory = factory
+        self._libraries = libraries
         self._blobs = blobs
         self._lock = threading.RLock()
         self._running_id: str | None = None
@@ -510,14 +516,18 @@ class ImportJobRunner:
             session = self._factory()
             try:
                 self._fail_if_busy(session)
-                total = int(
-                    session.scalar(
-                        select(func.count()).select_from(Asset).where(
-                            Asset.deleted_at.is_(None), Asset.source_id == source_id
+                lib = self._libraries.factory(user_id)()
+                try:
+                    total = int(
+                        lib.scalar(
+                            select(func.count()).select_from(Asset).where(
+                                Asset.deleted_at.is_(None), Asset.source_id == source_id
+                            )
                         )
+                        or 0
                     )
-                    or 0
-                )
+                finally:
+                    lib.close()
                 now = utcnow()
                 row = Job(
                     id=new_id(),
@@ -551,25 +561,32 @@ class ImportJobRunner:
 
     def _run(self, job_id: str, root: Path, dest_root: Path, cleanup: Path | None = None) -> None:
         session = self._factory()
+        lib: Session | None = None
         try:
             row = session.get(Job, job_id)
             if row is None:
                 return
+            if not row.user_id:
+                raise ValueError("import job has no owner")
+            lib = self._libraries.factory(row.user_id)()
 
             def on_progress(done: int, total: int, rel: str) -> None:
                 row.processed = done
                 row.total = total
                 row.current = rel
+                if done % 25 == 0:
+                    session.commit()
 
             source = import_takeout(
-                session,
+                lib,
                 root,
                 dest_root=dest_root,
                 owner_user_id=row.user_id,
                 on_progress=on_progress,
                 commit_every=25,
             )
-            assets, albums, memberships = _counts(session, source.id)
+            lib.commit()
+            assets, albums, memberships = _counts(lib, source.id)
             result = _parse_json(row.result_json)
             result.update(
                 {
@@ -596,6 +613,8 @@ class ImportJobRunner:
             session.commit()
         except Exception as exc:
             try:
+                if lib is not None:
+                    lib.rollback()
                 row = session.get(Job, job_id)
                 if row is not None:
                     row.status = "error"
@@ -613,6 +632,8 @@ class ImportJobRunner:
             except Exception:
                 session.rollback()
         finally:
+            if lib is not None:
+                lib.close()
             session.close()
             if cleanup is not None:
                 shutil.rmtree(cleanup, ignore_errors=True)
@@ -622,30 +643,36 @@ class ImportJobRunner:
 
     def _run_thumbs(self, job_id: str) -> None:
         session = self._factory()
+        lib: Session | None = None
         try:
             row = session.get(Job, job_id)
             if row is None:
                 return
+            if not row.user_id:
+                raise ValueError("thumbnail job has no owner")
+            lib = self._libraries.factory(row.user_id)()
             inp = _parse_json(row.input_json)
             source_id = inp.get("source_id")
             stmt = select(Asset).where(Asset.deleted_at.is_(None)).order_by(Asset.id)
             if source_id:
                 stmt = stmt.where(Asset.source_id == source_id)
-            assets = list(session.scalars(stmt))
+            assets = list(lib.scalars(stmt))
             row.total = len(assets)
             session.commit()
             clear_placeholder_skips()
             done = 0
             for asset in assets:
-                source = session.get(Source, asset.source_id)
+                source = lib.get(Source, asset.source_id)
                 if source is None or source.deleted_at is not None:
                     continue
-                ensure_thumb(session, self._blobs, asset, source)
+                ensure_thumb(lib, self._blobs, asset, source)
                 done += 1
                 row.processed = done
                 row.current = asset.relative_path
                 if done % 10 == 0:
+                    lib.commit()
                     session.commit()
+            lib.commit()
             row.status = "done"
             row.finished_at = utcnow()
             row.current = None
@@ -663,6 +690,8 @@ class ImportJobRunner:
             session.commit()
         except Exception as exc:
             try:
+                if lib is not None:
+                    lib.rollback()
                 row = session.get(Job, job_id)
                 if row is not None:
                     row.status = "error"
@@ -681,6 +710,8 @@ class ImportJobRunner:
             except Exception:
                 session.rollback()
         finally:
+            if lib is not None:
+                lib.close()
             session.close()
             with self._lock:
                 if self._running_id == job_id:

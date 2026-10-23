@@ -51,7 +51,6 @@
   "source_read_only": "此照片库为只读。",
   "library_exists": "每位用户已经有一个私人照片库。",
   "library_delete_forbidden": "无法删除你的照片库。",
-  "share_rejected": "无法更新共享设置：{{message}}",
 
   "album_not_found": "找不到相册。",
   "asset_not_in_album": "这张照片不在此相册中。",

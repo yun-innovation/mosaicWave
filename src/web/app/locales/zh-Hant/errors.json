@@ -51,7 +51,6 @@
   "source_read_only": "這個相片庫為唯讀。",
   "library_exists": "每位使用者已經有一個私人相片庫。",
   "library_delete_forbidden": "無法刪除你的相片庫。",
-  "share_rejected": "無法更新共享設定：{{message}}",
 
   "album_not_found": "找不到相簿。",
   "asset_not_in_album": "這張相片不在此相簿中。",

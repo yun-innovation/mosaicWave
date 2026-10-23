@@ -14,7 +14,7 @@ Open items only. Roadmap: ordered milestones in [roadmap.md](roadmap.md). The ea
 - [x] **Milestone 5** — schema maintenance: `PRAGMA user_version` + `schema_history`, ordered steps, pre-upgrade copy, newer database refused; [schema.md § Schema versions](schema.md#schema-versions), [PR #27](https://github.com/yun-innovation/mosaicWave/pull/27) — **done**
 - [ ] Per-library databases (**milestone 6**, [per-library-db.md](per-library-db.md))
   - [x] PR 1: foundations: two model sets and schema tracks, `accounts_dir`, library-DB manager (no behaviour change)
-  - [ ] PR 2: cutover: per-request site/library sessions, v2 to v3 migration, API/jobs/sync on the library DB, `source_grant` removed
+  - [x] PR 2: cutover: per-request site/library sessions, v2 to v3 migration, API/jobs/sync on the library DB, `source_grant` removed
   - [ ] PR 3: share links (`share` table, public route, Share UI)
 - [ ] Backup / restore / export (site and per-user, exact-swap restore, export) (**milestone 7**, after 6)
 - [ ] ARM64 QPKG sideload on a QTS 5 ARM64 NAS (**milestone 10, frozen**: no ARM hardware)

@@ -75,6 +75,17 @@ def _record(con: sqlite3.Connection, version: int, note: str) -> None:
     con.execute(f"PRAGMA user_version = {int(version)}")
 
 
+def record_version(con: sqlite3.Connection, version: int, note: str) -> None:
+    """Stamp a file built outside `ensure_schema` (a split-out library database)."""
+    con.execute("BEGIN IMMEDIATE")
+    try:
+        _record(con, version, note)
+        con.execute("COMMIT")
+    except BaseException:
+        con.execute("ROLLBACK")
+        raise
+
+
 def _in_transaction(con: sqlite3.Connection, work: Callable[[], None]) -> None:
     con.execute("BEGIN IMMEDIATE")
     try:

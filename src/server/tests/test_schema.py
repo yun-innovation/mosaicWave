@@ -125,7 +125,7 @@ def test_unversioned_v1_database_upgrades_and_keeps_rows(tmp_path: Path) -> None
     assert _query(db, "PRAGMA user_version")[0][0] == schema.CURRENT_VERSION
     assert _query(db, 'SELECT provider_subject, locale FROM "user"') == [("nasuser", None)]
     notes = _history(db)
-    assert [v for v, _ in notes] == [1, 2]
+    assert [v for v, _ in notes] == [1, 2, 3]
     assert "looked like v1" in notes[0][1]
     backup = db.with_name("library.db.pre-v1")
     assert _query(backup, "PRAGMA user_version")[0][0] == 0
@@ -137,12 +137,12 @@ def test_unversioned_v2_database_is_numbered(tmp_path: Path) -> None:
     db = settings.database_path
 
     def build(con: sqlite3.Connection) -> None:
-        for step in STEPS:
+        for step in STEPS[:2]:
             step.apply(con)
 
     _write_db(db, build)
     _open(settings)
-    assert _query(db, "PRAGMA user_version")[0][0] == 2
+    assert _query(db, "PRAGMA user_version")[0][0] == schema.CURRENT_VERSION
     assert "looked like v2" in _history(db)[0][1]
     assert db.with_name("library.db.pre-v2").is_file()
 
@@ -196,18 +196,18 @@ def test_failed_step_rolls_back(tmp_path: Path) -> None:
     db = _open(_settings(tmp_path))
 
     def broken(con: sqlite3.Connection) -> None:
-        con.execute("ALTER TABLE asset ADD COLUMN rating INTEGER")
+        con.execute("ALTER TABLE job ADD COLUMN rating INTEGER")
         raise RuntimeError("step failed")
 
     con = sqlite3.connect(db)
     try:
         with pytest.raises(RuntimeError, match="step failed"):
-            schema.ensure_schema(con, db, lambda: None, [*STEPS, Step(3, "rating", broken)])
-        assert schema.stored_version(con) == 2
-        assert "rating" not in column_names(con, "asset")
+            schema.ensure_schema(con, db, lambda: None, [*STEPS, Step(4, "rating", broken)])
+        assert schema.stored_version(con) == 3
+        assert "rating" not in column_names(con, "job")
     finally:
         con.close()
-    assert [v for v, _ in _history(db)] == [2]
+    assert [v for v, _ in _history(db)] == [3]
 
 
 def test_rebuild_step_keeps_rows_and_foreign_keys(tmp_path: Path) -> None:

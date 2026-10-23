@@ -7,8 +7,6 @@ export type Me = {
   role: string;
   provider: string;
   locale: string | null;
-  granted_source_ids: string[] | null;
-  write_source_ids: string[] | null;
 };
 
 export type AuthStatus = {
@@ -47,13 +45,6 @@ export type HostSettings = {
   schema_version: number;
   restarting?: boolean;
   notice?: string | null;
-};
-
-export type Grant = {
-  user_id: string;
-  username: string;
-  display_name: string;
-  perm: string;
 };
 
 export function apiFetch(input: string, init: RequestInit = {}) {

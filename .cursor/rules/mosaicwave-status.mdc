@@ -9,7 +9,7 @@ alwaysApply: true
 
 **Milestone 1 — done.** **Milestone 2 — done** (packaging verify: MSI, QPKG x86_64, Linux + macOS posix tarballs). **Milestone 3 — done** (i18n and l10n: `en`, `zh-Hant`, `zh-Hans`; `doc/i18n.md`). **Milestone 4 — done** (advanced UI: top bar, sidebar, hash-routed views; `doc/web-ui.md`). **Milestone 5 — done** (schema maintenance: `library.db` schema v2, ordered upgrade steps; `doc/schema.md` § Schema versions). New UI strings must follow `.cursor/rules/i18n.mdc`.
 
-**Next:** **Milestone 6 — per-library databases** (each user's photos and albums in their own SQLite file with their own `rev` clock; share links replace `source_grant`; three PRs, `doc/per-library-db.md`). Then 7 backup / restore / export (builds on 6), 8 multilingual API (translated messages and locale date/time in responses), 9 gallery tools (select many, scrubber, search, light theme). 10 ARM64 QPKG is **frozen** (no ARM hardware) and skipped.
+**Next:** **Milestone 6 — per-library databases** (foundations and cutover done on `feature/per-library-cutover`; PR 3 share links next; each user's photos and albums in their own SQLite file with their own `rev` clock; share links replace `source_grant`; three PRs, `doc/per-library-db.md`). Then 7 backup / restore / export (builds on 6), 8 multilingual API (translated messages and locale date/time in responses), 9 gallery tools (select many, scrubber, search, light theme). 10 ARM64 QPKG is **frozen** (no ARM hardware) and skipped.
 
 ## Session start (mandatory)
 
@@ -29,7 +29,7 @@ alwaysApply: true
 - One **`/api/v1`** for web and mobile
 - Originals via **FileStore**; thumbs via **BlobStore** (`doc/storage.md`). Windows MSI: `%PROGRAMDATA%\mosaicWave`. Local debug: `%PROGRAMDATA%\mosaicWave-dev`. QNAP: `{volume}/.mosaicWave` (survives Remove). Linux packaged: `~/.local/share/mosaicWave`. Linux debug: `~/.local/share/mosaicWave-dev`. macOS packaged: `/Library/Application Support/mosaicWave`. macOS debug: `/Library/Application Support/mosaicWave-dev`. Admin Settings can move it (`config.json`); `MOSAICWAVE_DATA_DIR` wins. No Google Photos API library dump
 - **Auth:** QNAP users on QTS; local users on standalone (not a password table on the QNAP profile)
-- **Authorization:** one private library per user — others only via **share** (`source_grant`; no admin bypass) (`doc/architecture.md`)
+- **Authorization:** one private library per user — each in its own SQLite file; no admin bypass; sharing will be share links (`doc/architecture.md`)
 - **Takeout:** one-shot ingest into the caller’s library (SHA-256 dedup); dump may be deleted (`doc/takeout.md`)
 - Server SQLite is canonical; clients may **replicate** metadata for offline (`doc/schema.md`) — originals stay in FileStore. Sync pull is in; album **push** is `POST`/`PATCH`/`DELETE /albums` with `base_rev`
 - **Milestone complete:** only **`milestone N done`**. Wrap-up (`mosaic done`) must not mark a milestone done

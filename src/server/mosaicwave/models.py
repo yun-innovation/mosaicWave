@@ -32,8 +32,6 @@ class User(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    grants: Mapped[list[SourceGrant]] = relationship(back_populates="user")
-
 
 class Source(Base):
     __tablename__ = "source"
@@ -47,7 +45,7 @@ class Source(Base):
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
-    owner_user_id: Mapped[str | None] = mapped_column(ForeignKey("user.id"), nullable=True, index=True)
+    owner_user_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
     backend: Mapped[str] = mapped_column(String(32), nullable=False, default="local")
     root_uri: Mapped[str] = mapped_column(Text, nullable=False)
     kind: Mapped[str] = mapped_column(String(32), nullable=False)
@@ -58,23 +56,6 @@ class Source(Base):
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     assets: Mapped[list[Asset]] = relationship(back_populates="source")
-    grants: Mapped[list[SourceGrant]] = relationship(back_populates="source")
-
-
-class SourceGrant(Base):
-    __tablename__ = "source_grant"
-    __table_args__ = (UniqueConstraint("user_id", "source_id", name="uq_grant_user_source"),)
-
-    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
-    user_id: Mapped[str] = mapped_column(ForeignKey("user.id"), nullable=False)
-    source_id: Mapped[str] = mapped_column(ForeignKey("source.id"), nullable=False)
-    perm: Mapped[str] = mapped_column(String(16), nullable=False, default="read")
-    rev: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
-    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-
-    user: Mapped[User] = relationship(back_populates="grants")
-    source: Mapped[Source] = relationship(back_populates="grants")
 
 
 class LocalCredential(Base):
@@ -167,8 +148,7 @@ class AlbumAsset(Base):
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
-# Which database each table belongs to once milestone 6 (doc/per-library-db.md) cuts over.
-# Until then everything still lives in the single library.db. `source_grant` is removed at
-# the cutover, so it only has a place in the site list for now.
-SITE_TABLES = frozenset({"user", "local_credential", "job", "job_event", "source_grant"})
+# Which database each table lives in (milestone 6, doc/per-library-db.md): the site database
+# holds accounts and jobs; every user's photos and albums are in accounts/{user_id}/library.db.
+SITE_TABLES = frozenset({"user", "local_credential", "job", "job_event"})
 LIBRARY_TABLES = frozenset({"source", "asset", "album", "album_asset"})

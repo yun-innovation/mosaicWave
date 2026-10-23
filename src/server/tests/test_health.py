@@ -44,7 +44,7 @@ def test_openapi_docs(client: TestClient) -> None:
     assert paths["/api/v1/auth/setup"]["post"]
     assert paths["/api/v1/me"]["get"]
     assert paths["/api/v1/assets"]["post"]
-    assert paths["/api/v1/sources/{source_id}/grants"]["put"]
+    assert "/api/v1/sources/{source_id}/grants" not in paths
     assert paths["/api/v1/sync/changes"]["get"]
     assert paths["/api/v1/settings"]["get"]
     assert paths["/api/v1/settings"]["put"]

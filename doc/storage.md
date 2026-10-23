@@ -42,7 +42,7 @@ Everything below is **in scope for the design**. v1 **implements** the local bac
 | P2 | Portable **data directory** for SQLite + FileStore libraries + BlobStore: QNAP `{volume}/.mosaicWave` (survives App Center Remove); Windows **MSI** `%PROGRAMDATA%\mosaicWave`; Windows **debug** `%PROGRAMDATA%\mosaicWave-dev`; Linux packaged `~/.local/share/mosaicWave`; Linux debug `~/.local/share/mosaicWave-dev`; macOS **packaged** `/Library/Application Support/mosaicWave`; macOS **debug** `/Library/Application Support/mosaicWave-dev`. Override: `MOSAICWAVE_DATA_DIR` (wins), else admin Settings (`config.json` next to the platform default) | Yes |
 | P3 | **Config + env** (`MOSAICWAVE_DATA_DIR`, bind host/port, platform, storage backends). Admin **Settings** can change the data folder when env is unset. QPKG start sets `MOSAICWAVE_DATA_DIR`, so that UI is read-only on QNAP | Yes |
 | P4 | **Auth provider** interface: QNAP accounts on QTS; **local hashed users** on standalone. Public contract stays `/api/v1/auth/*` | Phase 5 |
-| P5 | **Authorization:** one private library per user (`source.owner_user_id`) plus owner `source_grant` (`read`/`write`). Admin does not see other libraries without a grant. | Enforced |
+| P5 | **Authorization:** one private library per user (`source.owner_user_id`) in its own SQLite file. Admin does not see other libraries. | Enforced |
 | P6 | **Packaging:** QPKG remains. Standalone = documented `uvicorn` / Python package **and** Windows MSI (`publish-msi` / `pack-msi`, service via WinSW) **and** Linux/macOS tarball (`publish-posix` / `pack-posix`, optional systemd user unit or launchd). Docker is optional, not the product | QPKG Phase 6; MSI + posix pack Phase 8; standalone docs with Phase 1 run |
 | P7 | One **Python process** on every host (API + workers). No Node runtime for the product UI on QNAP, Windows, or Linux | Yes |
 | P8 | **Scan** is portable: **polling / explicit scan** first. inotify / `ReadDirectoryChanges` are optional later, behind the same “scan this FileStore” API | Yes (poll/scan) |
@@ -185,7 +185,7 @@ On **QPKG / QTS:** identity is still **QNAP accounts**. FastAPI does not keep a 
 
 On **standalone:** there is no QTS. Phase 5 ships a **local auth provider** (hashed passwords in `local_credential`). That store is **profile-gated** — it is not used when `platform=qnap`.
 
-**Authorization** is app-level on every profile: each user has one private library; others see it only via `source_grant`. Details: [architecture.md](architecture.md) Authentication and Authorization.
+**Authorization** is app-level on every profile: each user has one private library; no one else can open it. Details: [architecture.md](architecture.md) Authentication and Authorization.
 
 Phases 1–4 may keep a documented **stub admin** on every platform.
 

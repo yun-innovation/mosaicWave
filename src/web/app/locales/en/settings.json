@@ -12,21 +12,6 @@
     "summary_one": "Your library · {{count, number}} asset",
     "summary_other": "Your library · {{count, number}} assets"
   },
-  "share": {
-    "label": "Share this library",
-    "help": "Read: timeline, thumbs, originals, albums, sync. Write: also upload and edit albums. They keep their own library. Admin still cannot see yours unless you share.",
-    "grant": "{{name}} · {{perm}}",
-    "qnapHint": "The other person must sign in with their QNAP account once before you can share.",
-    "localHint": "Create a member below, then share with them here.",
-    "choose": "Choose a person…",
-    "chooseFirst": "Choose a person to share with",
-    "permLabel": "Share permission",
-    "submit": "Share"
-  },
-  "perm": {
-    "read": "Read",
-    "write": "Write"
-  },
   "appDir": {
     "label": "App folder",
     "help": "Config, session key, SQLite, and packaged Python stay here. This is not the photo library. On a packaged Mac install it is /Library/Application Support/mosaicWave. Local debug uses /Library/Application Support/mosaicWave-dev.",

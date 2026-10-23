@@ -13,7 +13,7 @@ Short onboarding snapshot for agents. **Session start:** always read [index.md](
 
 ## Next
 
-**Milestone 6 — per-library databases** (each user's photos and albums in their own SQLite file with their own `rev` clock; share links replace `source_grant`; three PRs, [per-library-db.md](per-library-db.md)). Then 7 backup / restore / export (builds on 6), 8 multilingual API (translated messages and locale date/time in responses), 9 gallery tools (select many, scrubber, search, light theme). 10 ARM64 QPKG is **frozen** (no ARM hardware) and skipped.
+**Milestone 6 — per-library databases** (foundations and cutover done; share links next; each user's photos and albums in their own SQLite file with their own `rev` clock; share links replace `source_grant`; three PRs, [per-library-db.md](per-library-db.md)). Then 7 backup / restore / export (builds on 6), 8 multilingual API (translated messages and locale date/time in responses), 9 gallery tools (select many, scrubber, search, light theme). 10 ARM64 QPKG is **frozen** (no ARM hardware) and skipped.
 
 ## Constraints
 
@@ -24,7 +24,7 @@ Short onboarding snapshot for agents. **Session start:** always read [index.md](
 - One **`/api/v1`** for web and mobile
 - Originals via **FileStore**; thumbs via **BlobStore**. On Windows MSI: `%PROGRAMDATA%\mosaicWave`; local debug: `%PROGRAMDATA%\mosaicWave-dev`. QNAP `{volume}/.mosaicWave` (survives QPKG Remove); Linux packaged `~/.local/share/mosaicWave`; Linux debug `~/.local/share/mosaicWave-dev`; macOS packaged `/Library/Application Support/mosaicWave`; macOS debug `/Library/Application Support/mosaicWave-dev`. Admin Settings can move the folder (`config.json`). `MOSAICWAVE_DATA_DIR` wins (QPKG sets it). No Google Photos Library/Picker full-library sync
 - **Auth:** QNAP users on QTS; local hashed users on standalone (`local_credential`)
-- **Authorization:** one private library per user (`source.owner_user_id`) plus owner `source_grant`. Admin does not see others’ photos without a grant
+- **Authorization:** one private library per user (`source.owner_user_id`) in its own SQLite file (`accounts/{user_id}/library.db`). Admin does not see others’ photos; sharing returns as share links (milestone 6, PR 3)
 - **Takeout:** ingest unique files into the caller’s library (`{data_dir}/libraries/{user_id}`); dump may be deleted after import
 - Client **offline** = replica of metadata/thumbs; originals stay in FileStore; sync **pull** is `GET /api/v1/sync/changes`. Album **push** is `POST`/`PATCH`/`DELETE /albums` with `base_rev`
 - **Milestone complete:** only **`milestone N done`**. Wrap-up (`mosaic done`) does not mark a milestone done
