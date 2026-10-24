@@ -92,11 +92,10 @@
       "confirmYes": "確定取代"
     },
     "keepNote": "還原會取代你目前的相簿，並在還原成功後將它刪除。若之後可能想回復，請先備份你的相簿。",
-    "upload": {
-      "label": "這部裝置上的備份 zip",
-      "hint": "選擇由這個或其他 mosaicWave 產生的 mosaicwave-library-….zip。它會上傳到上方清單，再從那裡還原。",
-      "button": "上傳備份檔"
-    },
-    "uploaded": "備份已上傳，列在上方清單中。"
+    "source": {
+      "title": "從檔案還原",
+      "pathPlaceholder": "伺服器上 mosaicwave-library-….zip 的路徑",
+      "deviceHint": "選擇由這個或其他 mosaicWave 產生的 mosaicwave-library-….zip。它會先上傳（保留在上方清單中），所以大型備份需要一些時間。"
+    }
   }
 }

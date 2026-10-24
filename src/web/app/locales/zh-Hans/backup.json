@@ -92,11 +92,10 @@
       "confirmYes": "确定替换"
     },
     "keepNote": "还原会替换你当前的相册，并在还原成功后将其删除。若之后可能想恢复，请先备份你的相册。",
-    "upload": {
-      "label": "这台设备上的备份 zip",
-      "hint": "选择由这个或其他 mosaicWave 生成的 mosaicwave-library-….zip。它会上传到上方列表，再从那里还原。",
-      "button": "上传备份文件"
-    },
-    "uploaded": "备份已上传，列在上方列表中。"
+    "source": {
+      "title": "从文件还原",
+      "pathPlaceholder": "服务器上 mosaicwave-library-….zip 的路径",
+      "deviceHint": "选择由这个或其他 mosaicWave 生成的 mosaicwave-library-….zip。它会先上传（保留在上方列表中），所以大型备份需要一些时间。"
+    }
   }
 }

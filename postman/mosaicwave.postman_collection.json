@@ -1928,6 +1928,44 @@
           }
         },
         {
+          "name": "Restore my library from a server path",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/me/backups/restore",
+            "description": "Admin only (403 admin_only for members). Body {path}: a library backup .zip anywhere on the server; restored from there, nothing is copied. 400 backup_path_required, backup_not_a_file, backup_wrong_kind (a site backup) or backup_invalid start no job; 403 folder_not_allowed for a path under another user's library or archive folder. Then a library_restore job as for Restore my library. Saves {{jobId}}.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"path\": \"/share/backups/mosaicwave-library-20261021-093000.zip\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const b = pm.response.json();",
+                  "  const id = b.id || (b.items && b.items[0] && b.items[0].id);",
+                  "  if (id) { pm.collectionVariables.set('jobId', id); }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Restore my library",
           "request": {
             "method": "POST",

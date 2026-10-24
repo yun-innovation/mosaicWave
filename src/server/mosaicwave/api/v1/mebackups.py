@@ -15,11 +15,11 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from mosaicwave import restore
-from mosaicwave.api.errors import ApiError
+from mosaicwave.api.errors import ApiError, wrapped
 from mosaicwave.api.v1.archiveupload import UPLOAD_BODY, check_error, receive_archive
 from mosaicwave.api.v1.library import ImportOut, _busy_error, _job_out
 from mosaicwave.api.v1.maintenance import job_running
-from mosaicwave.archive import LIBRARY_NAME, ArchiveError, read_manifest
+from mosaicwave.archive import LIBRARIES, LIBRARY_NAME, ArchiveError, read_manifest
 from mosaicwave.auth.deps import require_user, require_user_brief
 from mosaicwave.libbackup import check_library_archive, user_backup_dir
 from mosaicwave.library.importjob import ImportBusy, ImportJobRunner
@@ -114,6 +114,63 @@ async def upload_my_backup(request: Request, user: User = Depends(require_user_b
     if info is None:
         raise ApiError(400, "backup_invalid", "The archive could not be read", {"message": "unreadable"})
     return info
+
+
+class RestoreFromPathIn(BaseModel):
+    path: str = Field(default="", max_length=4096, description="A library backup .zip on the server")
+
+
+def _is_under(path: Path, parent: Path) -> bool:
+    try:
+        path.relative_to(parent.resolve())
+        return True
+    except ValueError:
+        return False
+
+
+def _refuse_foreign(request: Request, user: User, path: Path) -> None:
+    """Never restore from another user's library folder or archive folder (their photos)."""
+    settings = request.app.state.settings
+    for shared, own in (
+        (settings.data_dir / LIBRARIES, settings.data_dir / LIBRARIES / user.id),
+        (user_backup_dir(settings, user.id).parent, user_backup_dir(settings, user.id)),
+    ):
+        if _is_under(path, shared) and not _is_under(path, own):
+            raise ApiError(403, "folder_not_allowed", "not allowed")
+
+
+@router.post("/me/backups/restore", response_model=ImportOut)
+def restore_my_backup_from_path(
+    body: RestoreFromPathIn, request: Request, user: User = Depends(require_user)
+) -> ImportOut:
+    """Replace your library with a zip anywhere on the server (a share, a USB drive). Admins only.
+
+    Ordinary users restore from the device (upload) or from their own archive list: letting them name
+    any server path would let them read other people's backups. Nothing is copied.
+    """
+    if user.role != "admin":
+        raise ApiError(403, "admin_only", "admin only")
+    text = body.path.strip()
+    if not text:
+        raise ApiError(400, "backup_path_required", "Choose the backup zip on the server")
+    try:
+        path = Path(text).expanduser().resolve()
+        is_file = path.is_file()
+    except OSError as exc:
+        raise wrapped(400, "backup_invalid", exc) from exc
+    if not is_file:
+        raise ApiError(400, "backup_not_a_file", "That path is not a file", {"path": text})
+    _refuse_foreign(request, user, path)
+    try:
+        check_library_archive(path)
+    except (ArchiveError, OSError) as exc:
+        raise check_error(exc) from exc
+    runner: ImportJobRunner = request.app.state.import_jobs
+    try:
+        job = runner.start_library_restore(user_id=user.id, archive=path)
+    except ImportBusy as exc:
+        raise _busy_error(exc) from exc
+    return _job_out(job)
 
 
 @router.post("/me/backups/{name}/restore", response_model=ImportOut)

@@ -159,7 +159,7 @@ Illustrative v1 surface (names can change; behavior should not):
 | GET | `/api/v1/assets/{id}/file` | Original (so the player can skip in time) |
 | POST | `/api/v1/thumbs/generate` | Start `thumb_batch` job (one in-process job at a time) |
 | POST | `/api/v1/assets` | Upload into the caller's library |
-| GET | `/api/v1/fs/list` | Host folder picker. `kind=backup` (admin only) lists any `.zip` file for choosing a backup to restore. Other users' `{data_dir}/libraries/{id}` dirs are hidden. Optional `warning` when this process cannot list a folder (does not retry as the Mac GUI user). `smb://` and UNC: [smb-paths.md](smb-paths.md) |
+| GET | `/api/v1/fs/list` | Host folder picker. `kind=backup` (admin only) lists any `.zip` file for choosing a backup to restore. Other users' `{data_dir}/libraries/{id}` and `backups/users/{id}` dirs are hidden. Optional `warning` when this process cannot list a folder (does not retry as the Mac GUI user). `smb://` and UNC: [smb-paths.md](smb-paths.md) |
 | POST | `/api/v1/import/takeout/inspect` | Verify Takeout download/extract (missing zips, oversized files) |
 | POST | `/api/v1/import/takeout` | Start deduping Takeout import from a **host path** into the caller's library (`dest` ignored); [takeout-dump.md](takeout-dump.md) |
 | POST | `/api/v1/import/takeout/push` | Start a **client upload** session (mobile / this device / cloud Files). Dump is not a server folder |
@@ -187,6 +187,7 @@ Illustrative v1 surface (names can change; behavior should not):
 | GET | `/api/v1/me/backups/{name}` | Download one of your archives |
 | DELETE | `/api/v1/me/backups/{name}` | Delete one of your archives |
 | PUT | `/api/v1/me/backups/upload` | Raw zip body from the browser; `400 backup_wrong_kind` for a site archive |
+| POST | `/api/v1/me/backups/restore` | **Admin.** `{path}`: replace your library from a zip anywhere on the server; refuses other users' library and archive folders (`403 folder_not_allowed`) |
 | POST | `/api/v1/me/backups/{name}/restore` | Replace your library with this archive while the server runs (job `library_restore`: stage, then swap; no maintenance mode, other users unaffected, `503 library_restoring` for your own requests during the swap) |
 | GET | `/api/v1/maintenance` | **Public.** `{state: off\|draining\|on, reason, since}`; [maintenance.md](maintenance.md) |
 | PUT | `/api/v1/maintenance` | **Admin.** `{enabled, reason}`: switch maintenance mode. While it is on, everyone but an admin gets `503 maintenance` |

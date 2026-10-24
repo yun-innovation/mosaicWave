@@ -839,6 +839,14 @@ OpenAPI at `{{baseUrl}}/docs` stays the living spec; this collection is a snapsh
                     file_body=True,
                 ),
                 req(
+                    "Restore my library from a server path",
+                    "POST",
+                    "/api/v1/me/backups/restore",
+                    description="Admin only (403 admin_only for members). Body {path}: a library backup .zip anywhere on the server; restored from there, nothing is copied. 400 backup_path_required, backup_not_a_file, backup_wrong_kind (a site backup) or backup_invalid start no job; 403 folder_not_allowed for a path under another user's library or archive folder. Then a library_restore job as for Restore my library. Saves {{jobId}}.",
+                    body="{\n  \"path\": \"/share/backups/mosaicwave-library-20261021-093000.zip\"\n}",
+                    tests=SAVE_JOB,
+                ),
+                req(
                     "Restore my library",
                     "POST",
                     "/api/v1/me/backups/{{libraryBackupName}}/restore",

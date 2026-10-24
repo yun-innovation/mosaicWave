@@ -1,14 +1,14 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { apiFetch, apiMediaUrl, errorText, readDetail } from "./api";
 import { formatBytes, formatDateTime } from "./format";
 import i18n from "./i18n";
+import { RestoreSourceForm } from "./RestoreSourceForm";
 import { isAbortError, LibraryBackupItem, Notice } from "./types";
 import type { TakeoutImport } from "./useTakeoutImport";
-import { BackupUpload, uploadBackup } from "./uploadBackup";
 
 type Confirm = { name: string; kind: "delete" | "restore" };
 
@@ -17,15 +17,12 @@ type Confirm = { name: string; kind: "delete" | "restore" };
  * the server under this user's name; Restore… replaces this library with it while the server runs and
  * leaves everyone else alone. Progress and the result of a running job are in the status bar.
  */
-export function LibraryBackupPanel({ importer }: { importer: TakeoutImport }) {
+export function LibraryBackupPanel({ importer, isAdmin }: { importer: TakeoutImport; isAdmin: boolean }) {
   const { t } = useTranslation(["backup", "common"]);
   const [items, setItems] = useState<LibraryBackupItem[] | null>(null);
   const [working, setWorking] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
   const [confirming, setConfirming] = useState<Confirm | null>(null);
-  const [file, setFile] = useState<File | null>(null);
-  const [sent, setSent] = useState<{ sent: number; total: number } | null>(null);
-  const upload = useRef<BackupUpload<LibraryBackupItem> | null>(null);
   const { busy, finished, refreshJobs } = importer;
   const disabled = busy || working;
   const lastFinished =
@@ -92,34 +89,6 @@ export function LibraryBackupPanel({ importer }: { importer: TakeoutImport }) {
       setWorking(false);
     }
   }
-
-  async function onUpload(event: FormEvent) {
-    event.preventDefault();
-    if (!file || disabled) return;
-    const sending = uploadBackup<LibraryBackupItem>(file, (done, total) => setSent({ sent: done, total }), "/api/v1/me/backups/upload");
-    upload.current = sending;
-    setSent({ sent: 0, total: file.size });
-    setWorking(true);
-    setNotice(null);
-    try {
-      await sending.done;
-      setFile(null);
-      setNotice({ text: i18n.t("backup:library.uploaded"), ok: true });
-      await loadList();
-    } catch (err: unknown) {
-      setNotice(
-        isAbortError(err)
-          ? { text: i18n.t("backup:restore.source.uploadCancelled"), ok: true }
-          : { text: err instanceof Error ? err.message : i18n.t("common:networkError"), ok: false },
-      );
-    } finally {
-      upload.current = null;
-      setSent(null);
-      setWorking(false);
-    }
-  }
-
-  const percent = sent && sent.total > 0 ? Math.min(100, Math.floor((sent.sent / sent.total) * 100)) : 0;
 
   return (
     <div className="import library-backup">
@@ -194,37 +163,18 @@ export function LibraryBackupPanel({ importer }: { importer: TakeoutImport }) {
       )}
       <p className="detail">{t("backup:library.keepNote")}</p>
 
-      <form className="import" onSubmit={(e) => void onUpload(e)}>
-        <label htmlFor="library-backup-file">{t("backup:library.upload.label")}</label>
-        <input
-          id="library-backup-file"
-          type="file"
-          accept=".zip,application/zip"
-          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-          disabled={disabled}
-        />
-        <p className="detail">
-          {file
-            ? t("backup:restore.source.deviceSelected", { name: file.name, size: formatBytes(file.size) })
-            : t("backup:library.upload.hint")}
-        </p>
-        {sent && (
-          <p className="detail import-progress">
-            <progress className="status-bar-meter" max={sent.total} value={sent.sent} />{" "}
-            {t("backup:restore.source.uploading", { percent })}
-          </p>
-        )}
-        <div className="button-row">
-          <button type="submit" disabled={disabled || !file}>
-            {t("backup:library.upload.button")}
-          </button>
-          {sent && (
-            <button type="button" onClick={() => upload.current?.cancel()}>
-              {t("backup:restore.source.cancelUpload")}
-            </button>
-          )}
-        </div>
-      </form>
+      <h3 className="backup-heading">{t("backup:library.source.title")}</h3>
+      <RestoreSourceForm
+        scope="library"
+        serverEnabled={isAdmin}
+        maintenanceOn
+        blocked={disabled}
+        onNotice={setNotice}
+        onStarted={() => {
+          refreshJobs();
+          void loadList();
+        }}
+      />
     </div>
   );
 }

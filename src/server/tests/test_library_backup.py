@@ -459,3 +459,74 @@ def test_an_empty_library_backs_up_and_restore_needs_a_free_server(tmp_path: Pat
     assert busy.status_code == 409 and busy.json()["code"] == "job_running"
     gate.release.set()
     _until(admin, running["id"], {"done", "error"})
+
+
+def _archive_copy(settings: Settings, client: TestClient, name: str, dest: Path) -> Path:
+    dest.mkdir(parents=True, exist_ok=True)
+    out = dest / "from-the-nas.zip"
+    out.write_bytes((settings.backup_dir / "users" / me_id(client) / name).read_bytes())
+    return out
+
+
+def test_an_admin_can_restore_from_a_path_on_the_server(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    admin = _seed(settings)
+    name = _backup(admin)
+    elsewhere = _archive_copy(settings, admin, name, tmp_path / "nas")
+    _add_photo(settings, admin)
+    assert _assets(admin) == 3
+
+    res = admin.post("/api/v1/me/backups/restore", json={"path": str(elsewhere)})
+    assert res.status_code == 200, res.text
+    assert _until(admin, res.json()["id"], {"done", "error", "cancelled"})["status"] == "done"
+    assert _assets(admin) == 2
+    assert elsewhere.is_file()  # restored from where it is; nothing is moved or deleted
+    assert [b["name"] for b in admin.get("/api/v1/me/backups").json()] == [name]  # and nothing is copied
+
+
+def test_server_path_restore_is_admin_only_and_checks_the_file(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    admin = _seed(settings)
+    member = _member_with_photo(admin, settings)
+    name = _backup(admin)
+    elsewhere = _archive_copy(settings, admin, name, tmp_path / "nas")
+
+    denied = member.post("/api/v1/me/backups/restore", json={"path": str(elsewhere)})
+    assert denied.status_code == 403 and denied.json()["code"] == "admin_only"
+    assert _assets(member) == 1
+
+    def code(body: dict) -> tuple[int, str]:
+        res = admin.post("/api/v1/me/backups/restore", json=body)
+        return res.status_code, res.json()["code"]
+
+    assert code({"path": ""}) == (400, "backup_path_required")
+    assert code({"path": str(tmp_path / "nope.zip")}) == (400, "backup_not_a_file")
+    site = backup_site(settings, tmp_path / "site-out").path
+    assert code({"path": str(site)}) == (400, "backup_wrong_kind")
+    junk = tmp_path / "nas" / "junk.zip"
+    junk.write_bytes(b"not a zip")
+    assert code({"path": str(junk)}) == (400, "backup_invalid")
+    assert _assets(admin) == 2
+
+
+def test_an_admin_cannot_restore_from_another_users_files(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    admin = _seed(settings)
+    member = _member_with_photo(admin, settings)
+    name = _backup(member)
+    theirs = settings.backup_dir / "users" / me_id(member) / name
+    inside_library = library_dir(settings, member) / "stash.zip"
+    inside_library.write_bytes(theirs.read_bytes())
+
+    for path in (theirs, inside_library):
+        res = admin.post("/api/v1/me/backups/restore", json={"path": str(path)})
+        assert res.status_code == 403 and res.json()["code"] == "folder_not_allowed", (path, res.text)
+    assert _assets(admin) == 2
+
+    # the picker does not list them either
+    listing = admin.get("/api/v1/fs/list", params={"path": str(settings.backup_dir / "users"), "kind": "backup"})
+    assert listing.status_code == 200 and [e["name"] for e in listing.json()["entries"]] == []
+    blocked = admin.get("/api/v1/fs/list", params={"path": str(theirs.parent), "kind": "backup"})
+    assert blocked.status_code == 403 and blocked.json()["code"] == "folder_not_allowed"
+    # a member cannot use the picker for archives at all
+    assert member.get("/api/v1/fs/list", params={"kind": "backup"}).status_code == 403

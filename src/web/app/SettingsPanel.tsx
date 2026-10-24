@@ -74,7 +74,7 @@ export function SettingsPanel({ me, importer, onMe }: Props) {
         </div>
         {thumbsError && <p className="status fail">{thumbsError}</p>}
       </div>
-      <LibraryBackupPanel importer={importer} />
+      <LibraryBackupPanel importer={importer} isAdmin={me.role === "admin"} />
       {error && <p className="status fail">{error}</p>}
       {sources === null && !error && <p className="detail">{t("common:loading")}</p>}
       {library && (

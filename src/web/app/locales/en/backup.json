@@ -92,11 +92,10 @@
       "confirmYes": "Yes, replace it"
     },
     "keepNote": "Restoring replaces your current library and deletes it when the restore succeeds. Back up your library first if you may want to go back.",
-    "upload": {
-      "label": "Backup zip on this device",
-      "hint": "Choose a mosaicwave-library-….zip made by this or another mosaicWave. It is uploaded to the list above; restore it from there.",
-      "button": "Upload archive"
-    },
-    "uploaded": "The backup was uploaded and is in the list above."
+    "source": {
+      "title": "Restore from a file",
+      "pathPlaceholder": "Path to a mosaicwave-library-….zip on the server",
+      "deviceHint": "Choose a mosaicwave-library-….zip made by this or another mosaicWave. It is uploaded first (it stays in the list above), so large backups take a while."
+    }
   }
 }
