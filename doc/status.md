@@ -22,7 +22,7 @@ Short onboarding snapshot for agents. **Session start:** always read [index.md](
 - Next.js **static export**; TypeScript compiles on the build machine
 - **SQLite** for index and later albums
 - One **`/api/v1`** for web and mobile
-- Originals via **FileStore**; thumbs via **BlobStore**. On Windows MSI: `%PROGRAMDATA%\mosaicWave`; local debug: `%PROGRAMDATA%\mosaicWave-dev`. QNAP `{volume}/.mosaicWave` (survives QPKG Remove); Linux packaged `~/.local/share/mosaicWave`; Linux debug `~/.local/share/mosaicWave-dev`; macOS packaged `/Library/Application Support/mosaicWave`; macOS debug `/Library/Application Support/mosaicWave-dev`. Admin Settings can move the folder (`config.json`). `MOSAICWAVE_DATA_DIR` wins (QPKG sets it). No Google Photos Library/Picker full-library sync
+- Originals via **FileStore**; thumbs via **BlobStore**. On Windows MSI: `%PROGRAMDATA%\mosaicWave`; local debug: `%PROGRAMDATA%\mosaicWave-dev`. QNAP `{volume}/.mosaicWave` (survives QPKG Remove); Linux packaged `~/.local/share/mosaicWave`; Linux debug `~/.local/share/mosaicWave-dev`; macOS packaged `/Library/Application Support/mosaicWave`; macOS debug `/Library/Application Support/mosaicWave-dev`. The admin Server page can move the folder (`config.json`). `MOSAICWAVE_DATA_DIR` wins (QPKG sets it). No Google Photos Library/Picker full-library sync
 - **Auth:** QNAP users on QTS; local hashed users on standalone (`local_credential`)
 - **Authorization:** one private library per user (`source.owner_user_id`) in its own SQLite file (`accounts/{user_id}/library.db`). Admin does not see others’ photos; sharing returns as share links (milestone 11, deferred)
 - **Takeout:** ingest unique files into the caller’s library (`{data_dir}/libraries/{user_id}`); dump may be deleted after import

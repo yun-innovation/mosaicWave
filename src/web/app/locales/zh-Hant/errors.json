@@ -16,7 +16,7 @@
   "invalid_locale": "不支援的語言：{{locale}}",
 
   "data_dir_rejected": "無法使用該資料夾：{{message}}",
-  "data_dir_env_locked": "已設定 MOSAICWAVE_DATA_DIR，因此無法在「設定」中變更資料夾。",
+  "data_dir_env_locked": "已設定 MOSAICWAVE_DATA_DIR，因此無法在「伺服器」頁變更資料夾。",
   "data_dir_occupied": "該目的地已經有 mosaicWave 相片庫。",
   "data_dir_job_running": "有工作正在執行時無法搬移相片庫。",
 

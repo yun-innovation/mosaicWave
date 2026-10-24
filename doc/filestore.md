@@ -4,7 +4,7 @@
 
 Thumbs and other derived bytes are **BlobStore**, not FileStore — [storage.md](storage.md). SQLite holds pointers only — [schema.md](schema.md).
 
-Code: `src/server/mosaicwave/storage/filestore.py` (`FileStore` protocol, `LocalFileStore`, `MemoryFileStore`). Takeout downloads: `takeoutzip.py` (`TakeoutZipStore` reads `takeout-*.zip` plus loose oversized files). Path rules: `paths.py`. Errors: `errors.py`. Host `smb://` / UNC in Settings and Browse: [smb-paths.md](smb-paths.md).
+Code: `src/server/mosaicwave/storage/filestore.py` (`FileStore` protocol, `LocalFileStore`, `MemoryFileStore`). Takeout downloads: `takeoutzip.py` (`TakeoutZipStore` reads `takeout-*.zip` plus loose oversized files). Path rules: `paths.py`. Errors: `errors.py`. Host `smb://` / UNC on the Server page and Browse: [smb-paths.md](smb-paths.md).
 
 ## Role
 

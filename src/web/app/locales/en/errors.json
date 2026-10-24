@@ -16,7 +16,7 @@
   "invalid_locale": "Unsupported language: {{locale}}",
 
   "data_dir_rejected": "Could not use that folder: {{message}}",
-  "data_dir_env_locked": "MOSAICWAVE_DATA_DIR is set, so the folder cannot be changed in Settings.",
+  "data_dir_env_locked": "MOSAICWAVE_DATA_DIR is set, so the folder cannot be changed on the Server page.",
   "data_dir_occupied": "That destination already has a mosaicWave library.",
   "data_dir_job_running": "Cannot move the library while a job is running.",
 

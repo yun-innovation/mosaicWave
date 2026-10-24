@@ -16,7 +16,7 @@ Related: [filestore.md](filestore.md), [storage.md](storage.md), [takeout.md](ta
 | Linux debug | `~/.local/share/mosaicWave-dev/library.db` (`scripts/start.sh`) |
 | macOS packaged | `/Library/Application Support/mosaicWave/library.db` |
 | macOS debug | `/Library/Application Support/mosaicWave-dev/library.db` (`scripts/start.sh`) |
-| Admin Settings | Path in `{bootstrap}/config.json` (`data_dir`, plus `data_dir_smb` / `data_dir_mount` when on a share). Photos/thumbs follow `{data_dir}`; SQLite stays at `{bootstrap}/library.db`. UNC / `smb://`: [smb-paths.md](smb-paths.md) |
+| Admin Server page | Path in `{bootstrap}/config.json` (`data_dir`, plus `data_dir_smb` / `data_dir_mount` when on a share). Photos/thumbs follow `{data_dir}`; SQLite stays at `{bootstrap}/library.db`. UNC / `smb://`: [smb-paths.md](smb-paths.md) |
 | Override | `$MOSAICWAVE_DATA_DIR/library.db` when that env is set (QPKG). Wins over Settings. |
 | QNAP | `{volume}/.mosaicWave/library.db` (example `/share/CACHEDEV1_DATA/.mosaicWave`; `MOSAICWAVE_DATA_DIR`; survives QPKG Remove) |
 
@@ -256,7 +256,7 @@ Databases from before schema versions have `user_version = 0`. They run every st
 
 An old app (v0.1.1 or earlier) cannot refuse a newer database; it ignores columns it does not know.
 
-The upgrade copies stay next to `library.db` until `wipe --db`. Admin Settings shows the version ("Database schema: v2", `schema_version` on `GET /api/v1/settings`).
+The upgrade copies stay next to `library.db` until `wipe --db`. The admin Server page shows the version ("Database schema: v2", `schema_version` on `GET /api/v1/settings`).
 
 ### Adding a step
 

@@ -78,7 +78,7 @@ Google **Takeout** import (extracted folders + JSON sidecars) is a **Phase 2** f
 1. **One process on the host:** Python (uvicorn/FastAPI). QPKG start/stop is shell; standalone is the same process with a data dir.
 2. **UI is files:** `next build` with `output: 'export'` on a developer machine; the host only serves the built assets plus `/api`.
 3. **API first:** Any UI feature that needs data goes through the HTTP API so mobile can follow.
-4. **Files stay files** on FileStore. On Windows, MSI uses `%PROGRAMDATA%\mosaicWave`; local debug uses `%PROGRAMDATA%\mosaicWave-dev`. Admin Settings can move that folder. Takeout is a **one-shot ingest** into the caller’s private library; then the dump can be deleted.
+4. **Files stay files** on FileStore. On Windows, MSI uses `%PROGRAMDATA%\mosaicWave`; local debug uses `%PROGRAMDATA%\mosaicWave-dev`. The admin Server page can move that folder. Takeout is a **one-shot ingest** into the caller’s private library; then the dump can be deleted.
 5. **Host-friendly:** Prefer modest RAM; no Node; no Docker requirement. QPKG remains native.
 6. **Storage is virtual:** originals and thumbs go through FileStore/BlobStore ([storage.md](storage.md)).
 

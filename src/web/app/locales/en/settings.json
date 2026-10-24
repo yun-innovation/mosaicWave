@@ -77,5 +77,9 @@
   "thumbnails": {
     "label": "Thumbnails",
     "help": "Create small previews for photos that do not have one yet, for example after an import or a restore. Progress also shows in Activity."
+  },
+  "server": {
+    "title": "Server",
+    "intro": "Options for the whole server: where the app and the library are stored, and who can sign in. Your own options (language, thumbnails, backing up your library) are in Settings."
   }
 }

@@ -23,6 +23,7 @@
     "activity": "Activity",
     "settings": "Settings",
     "backup": "Backup",
+    "server": "Server",
     "maintenance": "Maintenance"
   },
   "account": {
@@ -39,7 +40,7 @@
   },
   "picker": {
     "title": "Select folder on the server",
-    "intro": "Folders on the mosaicWave host (this NAS or PC), not the browser computer. Choosing a folder only fills the path box — Save folder in Settings is what moves the library.",
+    "intro": "Folders on the mosaicWave host (this NAS or PC), not the browser computer. Choosing a folder only fills the path box — Save folder on the Server page is what moves the library.",
     "places": "Places",
     "notSignedIn": "Not signed in. Reload the page and sign in. Do not Create admin if a NAS move just failed.",
     "openedParent": "{{detail}} — opened parent of {{path}}",

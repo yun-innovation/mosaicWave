@@ -38,6 +38,13 @@ const ICONS: Record<View | "upload" | "menu", ReactNode> = {
       <path d="M12 7v5l3 2" />
     </>
   ),
+  server: (
+    <>
+      <rect x="3" y="4" width="18" height="7" rx="2" />
+      <rect x="3" y="13" width="18" height="7" rx="2" />
+      <path d="M7 7.5h.01M7 16.5h.01" />
+    </>
+  ),
   backup: (
     <>
       <ellipse cx="12" cy="6" rx="8" ry="3" />
@@ -75,10 +82,10 @@ function Icon({ name }: { name: keyof typeof ICONS }) {
   );
 }
 
-const NAV: View[] = ["photos", "albums", "import", "activity", "backup", "maintenance", "settings"];
+const NAV: View[] = ["photos", "albums", "import", "activity", "server", "backup", "maintenance", "settings"];
 
 /** Views only an admin sees. */
-const ADMIN_ONLY: View[] = ["backup", "maintenance"];
+const ADMIN_ONLY: View[] = ["server", "backup", "maintenance"];
 
 /** While maintenance is on an admin gets only these (see `maintenanceRoute` in page.tsx). */
 export const MAINTENANCE_VIEWS: View[] = ["backup", "maintenance", "activity"];
