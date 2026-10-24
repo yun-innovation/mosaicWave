@@ -59,6 +59,13 @@ export type ImportJob = {
 
 export type Notice = { text: string; ok: boolean };
 
+/** `GET /api/v1/maintenance`: `draining` = on, but a running job is still finishing. */
+export type MaintenanceStatus = {
+  state: "off" | "draining" | "on";
+  reason: string;
+  since: string | null;
+};
+
 export type BackupItem = {
   name: string;
   size: number;

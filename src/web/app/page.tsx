@@ -7,21 +7,27 @@ import { ActivityView } from "./ActivityView";
 import { BackupView } from "./BackupView";
 import { AlbumsView } from "./AlbumsView";
 import { apiFetch, apiMediaUrl, AuthStatus, Me } from "./api";
-import { AppShell } from "./AppShell";
+import { AppShell, MAINTENANCE_VIEWS } from "./AppShell";
 import { AuthScreen } from "./AuthScreen";
 import { BrandLockup } from "./BrandLockup";
 import i18n, { applyLocale, isLocale, rememberLocale, resolveLocale } from "./i18n";
 import { ImportView } from "./ImportView";
+import { MaintenanceScreen } from "./MaintenanceScreen";
+import { MaintenanceView } from "./MaintenanceView";
 import { useRoute } from "./hashRoute";
 import { SettingsPanel } from "./SettingsPanel";
 import { TimelineView } from "./TimelineView";
 import { ignoreAbort, isAbortError, LibraryAlbum } from "./types";
 import { UploadDialog } from "./UploadDialog";
+import { useMaintenance } from "./useMaintenance";
 import { useTakeoutImport } from "./useTakeoutImport";
 
 export default function Home() {
   const { t } = useTranslation(["common"]);
   const [route, go] = useRoute();
+  const maintenance = useMaintenance();
+  const [adminLogin, setAdminLogin] = useState(false);
+  const locked = maintenance.status.state !== "off";
   const [healthError, setHealthError] = useState<string | null>(null);
   const [me, setMe] = useState<Me | null>(null);
   const [authReady, setAuthReady] = useState(false);
@@ -31,6 +37,10 @@ export default function Home() {
   const [libraryRev, setLibraryRev] = useState(0);
   const [albumsRev, setAlbumsRev] = useState(0);
   const [uploadOpen, setUploadOpen] = useState(false);
+
+  useEffect(() => {
+    if (!locked) setAdminLogin(false);
+  }, [locked]);
 
   const savedLocale = me?.locale ?? null;
   useEffect(() => {
@@ -129,7 +139,7 @@ export default function Home() {
     setNeedsSetup(false);
   }
 
-  if (!authReady) {
+  if (!authReady || !maintenance.ready) {
     return (
       <main>
         <BrandLockup lede={t("common:lede")} />
@@ -140,12 +150,37 @@ export default function Home() {
     );
   }
 
-  if (!me) {
-    return <AuthScreen mode={needsSetup ? "setup" : "login"} platform={platform} onAuthed={onAuthed} />;
+  // Maintenance: everyone but an admin gets the alert page, which checks again by itself.
+  if (locked && me && me.role !== "admin") {
+    return <MaintenanceScreen status={maintenance.status} me={me} onAdminSignIn={() => undefined} onLogout={() => void onLogout()} />;
   }
 
+  if (!me) {
+    if (locked && !adminLogin) {
+      return (
+        <MaintenanceScreen
+          status={maintenance.status}
+          me={null}
+          onAdminSignIn={() => setAdminLogin(true)}
+          onLogout={() => undefined}
+        />
+      );
+    }
+    return (
+      <AuthScreen
+        mode={needsSetup ? "setup" : "login"}
+        platform={platform}
+        onAuthed={onAuthed}
+        onBack={locked ? () => setAdminLogin(false) : undefined}
+      />
+    );
+  }
+
+  // An admin sees only Backup, Maintenance and Activity while maintenance is on.
+  const shownView = locked && !MAINTENANCE_VIEWS.includes(route.view) ? "backup" : route.view;
+
   let view;
-  switch (route.view) {
+  switch (shownView) {
     case "albums":
       view = (
         <AlbumsView
@@ -166,6 +201,14 @@ export default function Home() {
       break;
     case "backup":
       view = me.role === "admin" ? <BackupView importer={importer} /> : <SettingsPanel me={me} platform={platform} importer={importer} onMe={setMe} />;
+      break;
+    case "maintenance":
+      view =
+        me.role === "admin" ? (
+          <MaintenanceView status={maintenance.status} onChanged={maintenance.set} />
+        ) : (
+          <SettingsPanel me={me} platform={platform} importer={importer} onMe={setMe} />
+        );
       break;
     case "settings":
       view = <SettingsPanel me={me} platform={platform} importer={importer} onMe={setMe} />;
@@ -190,8 +233,9 @@ export default function Home() {
   return (
     <AppShell
       me={me}
-      route={route}
+      route={{ ...route, view: shownView }}
       healthError={healthError}
+      maintenance={maintenance.status}
       job={importer.job}
       finished={importer.finished}
       onDismissFinished={importer.dismissFinished}

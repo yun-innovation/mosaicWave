@@ -1,0 +1,32 @@
+{
+  "title": "Maintenance",
+  "intro": "Maintenance mode locks everyone out except administrators, so you can back up or restore without anyone changing the data. A job that is already running finishes first. The setting survives a restart.",
+  "state": {
+    "off": "Maintenance mode is off.",
+    "draining": "Waiting for the running job to finish. Everyone else is already locked out.",
+    "on": "Maintenance mode is on. Only administrators can use the server."
+  },
+  "since": "Since {{time}}",
+  "reasonLabel": "Message for users (optional)",
+  "reasonPlaceholder": "For example: Restoring a backup, back in about an hour",
+  "turnOn": "Turn on maintenance mode",
+  "confirmOn": "This locks out every other user now. Continue?",
+  "confirmYes": "Yes, turn on",
+  "update": "Update message",
+  "turnOff": "Turn off maintenance mode",
+  "saved": "Maintenance mode updated.",
+  "cli": "On the host, with the API running or stopped: python -m mosaicwave.maintenance on, off or status.",
+  "banner": {
+    "on": "Maintenance mode is on. Only administrators can use mosaicWave.",
+    "draining": "Maintenance mode is starting. Waiting for the running job to finish.",
+    "manage": "Manage"
+  },
+  "screen": {
+    "title": "Down for maintenance",
+    "lede": "mosaicWave is being looked after and will be back soon.",
+    "noReason": "The administrator has not given a reason.",
+    "retrying": "Checking again automatically.",
+    "adminSignIn": "Administrator sign in",
+    "back": "Back"
+  }
+}

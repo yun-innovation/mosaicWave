@@ -1,0 +1,32 @@
+{
+  "title": "维护",
+  "intro": "维护模式会锁定管理员以外的所有人，让你可以在没人改动数据的情况下备份或还原。正在运行的任务会先完成。此设置在重启后仍然有效。",
+  "state": {
+    "off": "维护模式已关闭。",
+    "draining": "正在等待运行中的任务完成。其他人已被锁定。",
+    "on": "维护模式已开启。只有管理员可以使用服务器。"
+  },
+  "since": "自 {{time}} 起",
+  "reasonLabel": "给用户的消息（选填）",
+  "reasonPlaceholder": "例如：正在还原备份，约一小时后恢复",
+  "turnOn": "开启维护模式",
+  "confirmOn": "这会立即锁定所有其他用户。要继续吗？",
+  "confirmYes": "是，开启",
+  "update": "更新消息",
+  "turnOff": "关闭维护模式",
+  "saved": "维护模式已更新。",
+  "cli": "在主机上，无论 API 是否运行，都可以使用：python -m mosaicwave.maintenance on、off 或 status。",
+  "banner": {
+    "on": "维护模式已开启。只有管理员可以使用 mosaicWave。",
+    "draining": "维护模式即将开始。正在等待运行中的任务完成。",
+    "manage": "管理"
+  },
+  "screen": {
+    "title": "系统维护中",
+    "lede": "mosaicWave 正在维护，很快就会恢复。",
+    "noReason": "管理员没有说明原因。",
+    "retrying": "会自动重新检查。",
+    "adminSignIn": "管理员登录",
+    "back": "返回"
+  }
+}

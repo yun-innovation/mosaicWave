@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from mosaicwave.api.errors import ApiError, wrapped
+from mosaicwave.api.v1.maintenance import refuse_non_admin
 from mosaicwave.auth.deps import optional_user, require_admin, require_user
 from mosaicwave.auth.passwords import hash_password
 from mosaicwave.auth.providers import (
@@ -237,6 +238,7 @@ def auth_login(
             subject=subject,
             display_name=subject,
         )
+    refuse_non_admin(settings, user)
     _set_session_cookie(request, response, user)
     return _me_out(request, user)
 

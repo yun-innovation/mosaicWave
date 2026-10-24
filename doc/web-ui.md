@@ -8,7 +8,7 @@ After sign-in the page is one shell (`app/AppShell.tsx`):
 
 - **Top bar** — menu button (phones only), the mosaicWave logo (links to Photos), a health warning shown only when `GET /api/v1/health` fails, the **Upload** button, and the account menu.
 - **Account menu** — the avatar opens it: display name, role, a **Language** quick switch (same logic as Settings, `LocaleSelect.tsx`), a **Settings** link, and **Sign out**. Escape or a press outside closes it.
-- **Sidebar** — Photos, Albums, Import, Activity, Backup (admin only), Settings. The current view has `aria-current="page"`.
+- **Sidebar** — Photos, Albums, Import, Activity, Backup and Maintenance (admin only), Settings. While maintenance mode is on an admin sees only Backup, Maintenance and Activity under a banner; everyone else gets a full-page alert ([maintenance.md](maintenance.md)). The current view has `aria-current="page"`.
 - **Status bar** — the first thing in the main area on every view while a background job runs (Takeout import, thumbnails, site backup): job name, `processed / total`, the current file and a progress bar, with a link to Activity. When the job ends it shows the result (successes clear after a few seconds, failures stay until dismissed). `StatusBar.tsx`.
 - **Main area** — one view at a time.
 
@@ -27,6 +27,7 @@ Each view has a hash URL, so links, reload and Back / Forward work without a ser
 | `#/albums/{id}` | One album: back to all albums, Delete album, the album timeline | `AlbumsView.tsx` + `TimelineView.tsx` |
 | `#/import` | Google Takeout: folder path or browser folder, Check folder, Start import | `ImportView.tsx` |
 | `#/activity` | Job list (import, push, thumbs, site backup); read-only | `ActivityView.tsx` |
+| `#/maintenance` | **Admin only.** The maintenance switch, the message shown to users and the current state ([maintenance.md](maintenance.md)) | `MaintenanceView.tsx` (alert page: `MaintenanceScreen.tsx`) |
 | `#/backup` | **Admin only.** Back up now (optional thumbnails), progress, archive list with download and delete, and the offline restore command ([backup.md](backup.md)) | `BackupView.tsx` |
 | `#/settings` | Language, **Generate thumbs**, data folder, shares, users and permissions (admin parts as before) | `SettingsPanel.tsx` |
 

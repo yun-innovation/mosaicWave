@@ -2,7 +2,7 @@
 
 import { useCallback, useSyncExternalStore } from "react";
 
-export const VIEWS = ["photos", "albums", "import", "activity", "backup", "settings"] as const;
+export const VIEWS = ["photos", "albums", "import", "activity", "backup", "maintenance", "settings"] as const;
 export type View = (typeof VIEWS)[number];
 
 export type Route = { view: View; albumId: string | null };

@@ -8,6 +8,7 @@ import enErrors from "./locales/en/errors.json";
 import enGallery from "./locales/en/gallery.json";
 import enImport from "./locales/en/import.json";
 import enJobbar from "./locales/en/jobbar.json";
+import enMaintenance from "./locales/en/maintenance.json";
 import enSettings from "./locales/en/settings.json";
 import hansAuth from "./locales/zh-Hans/auth.json";
 import hansBackup from "./locales/zh-Hans/backup.json";
@@ -16,6 +17,7 @@ import hansErrors from "./locales/zh-Hans/errors.json";
 import hansGallery from "./locales/zh-Hans/gallery.json";
 import hansImport from "./locales/zh-Hans/import.json";
 import hansJobbar from "./locales/zh-Hans/jobbar.json";
+import hansMaintenance from "./locales/zh-Hans/maintenance.json";
 import hansSettings from "./locales/zh-Hans/settings.json";
 import hantAuth from "./locales/zh-Hant/auth.json";
 import hantBackup from "./locales/zh-Hant/backup.json";
@@ -24,6 +26,7 @@ import hantErrors from "./locales/zh-Hant/errors.json";
 import hantGallery from "./locales/zh-Hant/gallery.json";
 import hantImport from "./locales/zh-Hant/import.json";
 import hantJobbar from "./locales/zh-Hant/jobbar.json";
+import hantMaintenance from "./locales/zh-Hant/maintenance.json";
 import hantSettings from "./locales/zh-Hant/settings.json";
 
 export const LOCALES = ["en", "zh-Hant", "zh-Hans"] as const;
@@ -46,6 +49,7 @@ export const resources = {
     gallery: enGallery,
     import: enImport,
     jobbar: enJobbar,
+    maintenance: enMaintenance,
     settings: enSettings,
     errors: enErrors,
   },
@@ -56,6 +60,7 @@ export const resources = {
     gallery: hantGallery,
     import: hantImport,
     jobbar: hantJobbar,
+    maintenance: hantMaintenance,
     settings: hantSettings,
     errors: hantErrors,
   },
@@ -66,6 +71,7 @@ export const resources = {
     gallery: hansGallery,
     import: hansImport,
     jobbar: hansJobbar,
+    maintenance: hansMaintenance,
     settings: hansSettings,
     errors: hansErrors,
   },

@@ -174,6 +174,8 @@ Illustrative v1 surface (names can change; behavior should not):
 | GET | `/api/v1/backups` | **Admin.** List site archives in the app folder's `backups/` |
 | GET | `/api/v1/backups/{name}` | **Admin.** Download one archive |
 | DELETE | `/api/v1/backups/{name}` | **Admin.** Delete one archive |
+| GET | `/api/v1/maintenance` | **Public.** `{state: off\|draining\|on, reason, since}`; [maintenance.md](maintenance.md) |
+| PUT | `/api/v1/maintenance` | **Admin.** `{enabled, reason}`: switch maintenance mode. While it is on, everyone but an admin gets `503 maintenance` |
 | GET | `/api/v1/sync/changes` | Metadata pull (`since_rev`, tombstones). Push is `/albums` + `base_rev`, not this URL. Covered vs later: [schema.md](schema.md) Sync protocol |
 | GET | `/api/v1/health` | Process / load balancer health |
 

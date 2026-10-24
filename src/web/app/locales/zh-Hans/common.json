@@ -22,7 +22,8 @@
     "import": "导入",
     "activity": "活动",
     "settings": "设置",
-    "backup": "备份"
+    "backup": "备份",
+    "maintenance": "维护"
   },
   "account": {
     "menu": "{{name}} 的账号菜单"

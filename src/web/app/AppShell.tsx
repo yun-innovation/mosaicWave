@@ -8,7 +8,7 @@ import { LocaleSelect } from "./LocaleSelect";
 import { Route, routeHash, View } from "./hashRoute";
 import { StatusBar } from "./StatusBar";
 import type { FinishedJob } from "./useActiveJob";
-import type { ImportJob } from "./types";
+import type { ImportJob, MaintenanceStatus } from "./types";
 
 const ICONS: Record<View | "upload" | "menu", ReactNode> = {
   photos: (
@@ -44,6 +44,12 @@ const ICONS: Record<View | "upload" | "menu", ReactNode> = {
       <path d="M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6" />
     </>
   ),
+  maintenance: (
+    <>
+      <rect x="6" y="4" width="4" height="16" rx="1" />
+      <rect x="14" y="4" width="4" height="16" rx="1" />
+    </>
+  ),
   settings: (
     <>
       <circle cx="12" cy="12" r="3" />
@@ -68,16 +74,21 @@ function Icon({ name }: { name: keyof typeof ICONS }) {
   );
 }
 
-const NAV: View[] = ["photos", "albums", "import", "activity", "backup", "settings"];
+const NAV: View[] = ["photos", "albums", "import", "activity", "backup", "maintenance", "settings"];
 
 /** Views only an admin sees. */
-const ADMIN_ONLY: View[] = ["backup"];
+const ADMIN_ONLY: View[] = ["backup", "maintenance"];
+
+/** While maintenance is on an admin gets only these (see `maintenanceRoute` in page.tsx). */
+export const MAINTENANCE_VIEWS: View[] = ["backup", "maintenance", "activity"];
 
 type Props = {
   me: Me;
   route: Route;
   /** Set when the API health check failed; shown as a warning in the top bar. */
   healthError: string | null;
+  /** Maintenance mode: an admin sees a banner and the short menu. */
+  maintenance: MaintenanceStatus;
   /** The running job and the last finished one, for the status bar. */
   job: ImportJob | null;
   finished: FinishedJob | null;
@@ -92,6 +103,7 @@ export function AppShell({
   me,
   route,
   healthError,
+  maintenance,
   job,
   finished,
   onDismissFinished,
@@ -100,7 +112,8 @@ export function AppShell({
   onLogout,
   children,
 }: Props) {
-  const { t } = useTranslation(["common", "gallery", "settings"]);
+  const { t } = useTranslation(["common", "gallery", "settings", "maintenance"]);
+  const locked = maintenance.state !== "off";
   const [navOpen, setNavOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -154,10 +167,12 @@ export function AppShell({
           </span>
         )}
         <div className="top-actions">
-          <button type="button" className="top-button" onClick={onUpload}>
-            <Icon name="upload" />
-            <span className="top-button-text">{t("gallery:upload.submit")}</span>
-          </button>
+          {!locked && (
+            <button type="button" className="top-button" onClick={onUpload}>
+              <Icon name="upload" />
+              <span className="top-button-text">{t("gallery:upload.submit")}</span>
+            </button>
+          )}
           <div className="account" ref={menuRef}>
             <button
               type="button"
@@ -175,7 +190,7 @@ export function AppShell({
                 <p className="detail">{role}</p>
                 <label htmlFor="menu_locale">{t("settings:language.label")}</label>
                 <LocaleSelect id="menu_locale" me={me} onMe={onMe} />
-                <a href={routeHash({ view: "settings", albumId: null })}>{t("common:session.settings")}</a>
+                {!locked && <a href={routeHash({ view: "settings", albumId: null })}>{t("common:session.settings")}</a>}
                 <button type="button" onClick={onLogout}>
                   {t("common:session.signOut")}
                 </button>
@@ -186,7 +201,9 @@ export function AppShell({
       </header>
       <div className="nav-backdrop" onClick={() => setNavOpen(false)} role="presentation" />
       <nav id="app-sidebar" className="sidebar" aria-label={t("common:nav.label")}>
-        {NAV.filter((view) => me.role === "admin" || !ADMIN_ONLY.includes(view)).map((view) => (
+        {NAV.filter((view) =>
+          locked ? MAINTENANCE_VIEWS.includes(view) : me.role === "admin" || !ADMIN_ONLY.includes(view),
+        ).map((view) => (
           <a
             key={view}
             href={routeHash({ view, albumId: null })}
@@ -199,6 +216,15 @@ export function AppShell({
         ))}
       </nav>
       <main className="app-main">
+        {locked && (
+          <div className="maintenance-banner" role="status" aria-live="polite">
+            <span>
+              {maintenance.state === "draining" ? t("maintenance:banner.draining") : t("maintenance:banner.on")}
+            </span>
+            {maintenance.reason && <span className="maintenance-banner-reason">{maintenance.reason}</span>}
+            <a href={routeHash({ view: "maintenance", albumId: null })}>{t("maintenance:banner.manage")}</a>
+          </div>
+        )}
         <StatusBar job={job} finished={finished} onDismiss={onDismissFinished} />
         {children}
       </main>

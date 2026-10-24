@@ -48,8 +48,23 @@ export type HostSettings = {
   notice?: string | null;
 };
 
-export function apiFetch(input: string, init: RequestInit = {}) {
-  return fetch(apiUrl(input, init.body), { ...init, credentials: "include" });
+/** Fired when any API call answers `503 maintenance`, so the page can look at the status at once. */
+export const MAINTENANCE_EVENT = "mosaicwave:maintenance";
+
+export async function apiFetch(input: string, init: RequestInit = {}) {
+  const res = await fetch(apiUrl(input, init.body), { ...init, credentials: "include" });
+  if (res.status === 503 && typeof window !== "undefined") {
+    void res
+      .clone()
+      .json()
+      .then((body: unknown) => {
+        if (typeof body === "object" && body && (body as { code?: unknown }).code === "maintenance") {
+          window.dispatchEvent(new Event(MAINTENANCE_EVENT));
+        }
+      })
+      .catch(() => undefined);
+  }
+  return res;
 }
 
 export function assetFileUrl(assetId: string, download = false): string {

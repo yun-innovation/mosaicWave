@@ -1,7 +1,7 @@
 from pathlib import Path
 import sys
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -12,8 +12,10 @@ from mosaicwave.api.v1.health import router as health_router
 from mosaicwave.api.v1.fs import router as fs_router
 from mosaicwave.api.v1.library import router as library_router
 from mosaicwave.api.v1.backups import router as backups_router
+from mosaicwave.api.v1.maintenance import maintenance_guard, router as maintenance_router
 from mosaicwave.api.v1.settings import router as settings_router
 from mosaicwave.config import Settings, consume_restart_flag
+from mosaicwave.maintenance import start_from_env
 from mosaicwave.runtime import attach_runtime
 
 DEV_ORIGINS = (
@@ -45,7 +47,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         consume_restart_flag()
         settings = Settings.from_env()
 
-    app = FastAPI(title="mosaicWave", version="0.1.1")
+    app = FastAPI(title="mosaicWave", version="0.1.1", dependencies=[Depends(maintenance_guard)])
+    start_from_env(settings)
     attach_runtime(app, settings, recover=True)
     install_error_handlers(app)
     app.add_middleware(
@@ -62,6 +65,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(library_router, prefix="/api/v1")
     app.include_router(settings_router, prefix="/api/v1")
     app.include_router(backups_router, prefix="/api/v1")
+    app.include_router(maintenance_router, prefix="/api/v1")
     if settings.web_root is not None:
         _mount_web(app, settings.web_root)
     else:
