@@ -5,6 +5,8 @@ from typing import Any
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 
+from mosaicwave.library.dbs import LibraryLocked
+
 
 class ApiError(HTTPException):
     """HTTP error with a stable ``code`` the web UI translates as ``errors:{code}``.
@@ -41,5 +43,19 @@ async def _api_error_handler(_request: Request, exc: Exception) -> JSONResponse:
     )
 
 
+async def _library_locked_handler(_request: Request, _exc: Exception) -> JSONResponse:
+    # The user's library is being swapped by a restore; the web UI retries shortly.
+    return JSONResponse(
+        status_code=503,
+        content={
+            "detail": "your library is being restored; try again in a moment",
+            "code": "library_restoring",
+            "params": {},
+        },
+        headers={"Retry-After": "2"},
+    )
+
+
 def install_error_handlers(app: FastAPI) -> None:
     app.add_exception_handler(ApiError, _api_error_handler)
+    app.add_exception_handler(LibraryLocked, _library_locked_handler)

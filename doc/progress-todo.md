@@ -20,7 +20,7 @@ Open items only. Roadmap: ordered milestones in [roadmap.md](roadmap.md). The ea
 - [ ] Backup / restore / export (**milestone 7**, four PRs; [backup.md](backup.md))
   - [x] PR 1: site backup (`POST/GET/DELETE /backups`, `python -m mosaicwave.backup`), admin Backup page, offline restore (`python -m mosaicwave.restore`); Generate thumbs moved to Settings; one status bar for job progress on every view; offline restore bumps `thumb_rev` when the archive has no thumbnails ([PR #40](https://github.com/yun-innovation/mosaicWave/pull/40))
   - [x] PR 2: online site restore from the Backup page: stage as a cancellable `site_restore` job, then Restart and apply swaps it in at start-up (`restore-pending.json`, `restore-result.json`); needs maintenance mode
-  - [ ] PR 3: per-user backup and online exact-swap restore of one library
+  - [x] PR 3: per-user backup and online exact-swap restore of one library: Settings → My library backup (`library_backup` / `library_restore` jobs, `/me/backups`), restore into any account, previous library kept aside, sync clients re-pull everything; journal recovery at start
   - [ ] PR 4: export selected albums/photos as ordinary files
 - [ ] ARM64 QPKG sideload on a QTS 5 ARM64 NAS (**milestone 10, frozen**: no ARM hardware)
 - [ ] Multilingual API: language code on requests; translated messages and locale-formatted date/time in responses; sync and ordering timestamps stay UTC; response language and switch target kept separate, tags normalized to canonical codes (**milestone 8**)

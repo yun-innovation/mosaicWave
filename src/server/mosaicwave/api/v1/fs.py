@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from mosaicwave.api.errors import ApiError, wrapped
 from mosaicwave.auth.deps import get_library_session, require_user
+from mosaicwave.libbackup import user_backup_dir
 from mosaicwave.library.fsbrowse import list_host_dir
 from mosaicwave.library.ownership import library_root, user_library
 from mosaicwave.models import User
@@ -48,7 +49,8 @@ def fs_list(
     """Browse host folders. Listing does not move the library or write config.
 
     ``kind=takeout`` (default) shows Takeout zips; ``kind=backup`` shows any zip and is admin only
-    (it is how the admin picks a site backup to restore).
+    (it is how the admin picks a site or library backup to restore). Other users' library folders and
+    backup folders are never listed.
     """
     if kind == "backup" and user.role != "admin":
         raise ApiError(403, "admin_only", "admin only")
@@ -65,14 +67,20 @@ def fs_list(
     except OSError as exc:
         raise wrapped(400, "folder_unreadable", exc) from exc
     current = Path(listing.path).resolve() if listing.path else None
-    if current is not None and mine is not None:
-        under_libs = _is_under(current, libraries)
-        own = current == mine or _is_under(current, mine)
-        if under_libs and current != libraries and not own:
-            raise ApiError(403, "folder_not_allowed", "not allowed")
+    own_backups = user_backup_dir(settings, user.id).resolve()
+    shared = ((libraries, mine), (own_backups.parent, own_backups))
+    if current is not None:
+        for parent, own_dir in shared:
+            if own_dir is None and parent == libraries:
+                continue  # no library of one's own yet: nothing to be allowed into
+            inside = own_dir is not None and (current == own_dir or _is_under(current, own_dir))
+            if _is_under(current, parent) and current != parent and not inside:
+                raise ApiError(403, "folder_not_allowed", "not allowed")
     entries = listing.entries
-    if current is not None and mine is not None and current == libraries:
-        entries = [e for e in entries if Path(e.path).resolve() == mine]
+    if current is not None:
+        for parent, own_dir in shared:
+            if current == parent and own_dir is not None:
+                entries = [e for e in entries if Path(e.path).resolve() == own_dir]
     return FsListOut(
         path=listing.path,
         parent=listing.parent,

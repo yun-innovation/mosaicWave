@@ -13,7 +13,7 @@ Short onboarding snapshot for agents. **Session start:** always read [index.md](
 
 ## Next
 
-**Milestone 7** PR 3 per-user backup + online restore of one library, then PR 4 export (milestone 7 PR 1, site backup + admin Backup page + offline restore, and PR 2, online site restore staged from the Backup page and applied at restart, are built; [backup.md](backup.md); it needs maintenance mode, **milestone 12**, built: [maintenance.md](maintenance.md)). Then 8 multilingual API (translated messages and locale date/time in responses), 9 gallery tools (select many, scrubber, search, light theme). 10 ARM64 QPKG is **frozen** (no ARM hardware) and 11 share links (SaaS) is **deferred**; both are skipped.
+**Milestone 7** PR 4 export of selected albums/photos (milestone 7 PR 1, site backup + admin Backup page + offline restore, PR 2, online site restore staged from the Backup page and applied at restart, and PR 3, per-user library backup + online exact-swap restore in Settings, are built; [backup.md](backup.md); it needs maintenance mode, **milestone 12**, built: [maintenance.md](maintenance.md)). Then 8 multilingual API (translated messages and locale date/time in responses), 9 gallery tools (select many, scrubber, search, light theme). 10 ARM64 QPKG is **frozen** (no ARM hardware) and 11 share links (SaaS) is **deferred**; both are skipped.
 
 ## Constraints
 
@@ -22,7 +22,7 @@ Short onboarding snapshot for agents. **Session start:** always read [index.md](
 - Next.js **static export**; TypeScript compiles on the build machine
 - **SQLite** for index and later albums
 - One **`/api/v1`** for web and mobile
-- Originals via **FileStore**; thumbs via **BlobStore**. On Windows MSI: `%PROGRAMDATA%\mosaicWave`; local debug: `%PROGRAMDATA%\mosaicWave-dev`. QNAP `{volume}/.mosaicWave` (survives QPKG Remove); Linux packaged `~/.local/share/mosaicWave`; Linux debug `~/.local/share/mosaicWave-dev`; macOS packaged `/Library/Application Support/mosaicWave`; macOS debug `/Library/Application Support/mosaicWave-dev`. Admin Settings can move the folder (`config.json`). `MOSAICWAVE_DATA_DIR` wins (QPKG sets it). No Google Photos Library/Picker full-library sync
+- Originals via **FileStore**; thumbs via **BlobStore**. On Windows MSI: `%PROGRAMDATA%\mosaicWave`; local debug: `%PROGRAMDATA%\mosaicWave-dev`. QNAP `{volume}/.mosaicWave` (survives QPKG Remove); Linux packaged `~/.local/share/mosaicWave`; Linux debug `~/.local/share/mosaicWave-dev`; macOS packaged `/Library/Application Support/mosaicWave`; macOS debug `/Library/Application Support/mosaicWave-dev`. The admin Server page can move the folder (`config.json`). `MOSAICWAVE_DATA_DIR` wins (QPKG sets it). No Google Photos Library/Picker full-library sync
 - **Auth:** QNAP users on QTS; local hashed users on standalone (`local_credential`)
 - **Authorization:** one private library per user (`source.owner_user_id`) in its own SQLite file (`accounts/{user_id}/library.db`). Admin does not see others’ photos; sharing returns as share links (milestone 11, deferred)
 - **Takeout:** ingest unique files into the caller’s library (`{data_dir}/libraries/{user_id}`); dump may be deleted after import

@@ -2,20 +2,25 @@ import { apiMediaUrl, errorText } from "./api";
 import i18n from "./i18n";
 import { BackupItem } from "./types";
 
-export type BackupUpload = {
+export type BackupUpload<T = BackupItem> = {
   /** Resolves with the archive as listed. Rejects with an `AbortError` when cancelled. */
-  done: Promise<BackupItem>;
+  done: Promise<T>;
   cancel: () => void;
 };
 
 /**
- * Send a site backup zip to `PUT /api/v1/backups/upload` as a raw body. `fetch` cannot report upload
- * progress, so this uses XMLHttpRequest. The server streams it to disk and checks the manifest.
+ * Send a backup zip as a raw body: a site backup to `PUT /api/v1/backups/upload` (admin), or a
+ * library backup to `PUT /api/v1/me/backups/upload`. `fetch` cannot report upload progress, so this
+ * uses XMLHttpRequest. The server streams it to disk and checks the manifest.
  */
-export function uploadBackup(file: File, onProgress: (sent: number, total: number) => void): BackupUpload {
+export function uploadBackup<T = BackupItem>(
+  file: File,
+  onProgress: (sent: number, total: number) => void,
+  url = "/api/v1/backups/upload",
+): BackupUpload<T> {
   const xhr = new XMLHttpRequest();
-  const done = new Promise<BackupItem>((resolve, reject) => {
-    xhr.open("PUT", apiMediaUrl("/api/v1/backups/upload"));
+  const done = new Promise<T>((resolve, reject) => {
+    xhr.open("PUT", apiMediaUrl(url));
     xhr.withCredentials = true;
     xhr.setRequestHeader("Content-Type", "application/octet-stream");
     xhr.upload.onprogress = (event) => {
@@ -28,7 +33,7 @@ export function uploadBackup(file: File, onProgress: (sent: number, total: numbe
       } catch {
         body = null;
       }
-      if (xhr.status >= 200 && xhr.status < 300) resolve(body as BackupItem);
+      if (xhr.status >= 200 && xhr.status < 300) resolve(body as T);
       else reject(new Error(errorText(body, xhr.status)));
     };
     xhr.onerror = () => reject(new Error(i18n.t("common:networkError")));

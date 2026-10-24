@@ -17,8 +17,12 @@
       "thumb_batch": "已產生的縮圖會保留。",
       "site_backup": "不會保留任何封存檔。",
       "other": "已完成的部分會保留。",
-      "site_restore": "不會保留任何內容，你的相簿維持原樣。"
+      "site_restore": "不會保留任何內容，你的相簿維持原樣。",
+      "library_backup": "不會保留任何封存檔。",
+      "library_restore": "不會變更任何內容，你的相簿維持原樣。一旦開始取代你的相簿，就無法中止。"
     }
   },
-  "restoreStaged": "還原已就緒，可以套用。"
+  "restoreStaged": "還原已就緒，可以套用。",
+  "libraryBackupDone": "相簿備份完成。",
+  "libraryRestored": "相簿已還原。"
 }

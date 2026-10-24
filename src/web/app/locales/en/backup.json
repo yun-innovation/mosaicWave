@@ -35,7 +35,7 @@
     "pending": {
       "title": "Ready to apply",
       "summary": "{{archive}}: {{summary}}.",
-      "warn": "Applying restarts the server and replaces all data on it with this backup. Anything changed since the backup is gone from the server. Your current data is kept beside it as *.before-restore-<time> until you delete it.",
+      "warn": "Applying restarts the server and replaces all data on it with this backup. Anything changed since the backup is gone from the server. Your current data is deleted once the restore succeeds, so make a backup first if you want to keep it.",
       "upgrade": "This backup is from an older mosaicWave; its databases are upgraded when the server starts.",
       "apply": "Restart and apply",
       "discard": "Discard"
@@ -77,6 +77,25 @@
       "cancelUpload": "Cancel upload",
       "uploadCancelled": "Upload cancelled.",
       "uploadedKept": "The backup was uploaded and is in the list above, but the restore did not start: {{message}}"
+    }
+  },
+  "library": {
+    "title": "My library backup",
+    "intro": "Back up only your own library (your photos, albums and their details) as one zip you can download. Restoring replaces your library with a backup; other people are not affected. Thumbnails are not included; they are rebuilt when photos are first viewed.",
+    "start": "Back up my library",
+    "list": {
+      "title": "Your library backups",
+      "empty": "No library backups yet."
+    },
+    "restore": {
+      "confirm": "Replace your library with this backup? Your current library is deleted once the restore succeeds, so back it up first if you want to keep it.",
+      "confirmYes": "Yes, replace it"
+    },
+    "keepNote": "Restoring replaces your current library and deletes it when the restore succeeds. Back up your library first if you may want to go back.",
+    "source": {
+      "title": "Restore from a file",
+      "pathPlaceholder": "Path to a mosaicwave-library-….zip on the server",
+      "deviceHint": "Choose a mosaicwave-library-….zip made by this or another mosaicWave. It is uploaded first (it stays in the list above), so large backups take a while."
     }
   }
 }

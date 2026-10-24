@@ -38,6 +38,8 @@ export function jobKindLabel(kind: string | null): string {
   if (kind === "thumb_batch") return i18n.t("import:jobs.kind.thumb_batch");
   if (kind === "site_backup") return i18n.t("import:jobs.kind.site_backup");
   if (kind === "site_restore") return i18n.t("import:jobs.kind.site_restore");
+  if (kind === "library_backup") return i18n.t("import:jobs.kind.library_backup");
+  if (kind === "library_restore") return i18n.t("import:jobs.kind.library_restore");
   return kind || i18n.t("import:jobs.kind.unknown");
 }
 
@@ -61,6 +63,12 @@ function summary(job: ImportJob): FinishedJob {
   }
   if (job.kind === "site_restore") {
     return { id, kind: job.kind, ok: true, text: i18n.t("jobbar:restoreStaged") };
+  }
+  if (job.kind === "library_backup") {
+    return { id, kind: job.kind, ok: true, text: i18n.t("jobbar:libraryBackupDone") };
+  }
+  if (job.kind === "library_restore") {
+    return { id, kind: job.kind, ok: true, text: i18n.t("jobbar:libraryRestored") };
   }
   const counts = {
     assets: i18n.t("import:result.assets", { count: job.assets }),

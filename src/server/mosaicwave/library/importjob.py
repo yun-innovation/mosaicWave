@@ -12,7 +12,8 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from mosaicwave.backup import backup_site
 from mosaicwave.config import Settings
-from mosaicwave.library.dbs import LibraryDbs
+from mosaicwave.libbackup import backup_library, stage_library, swap_library, user_backup_dir
+from mosaicwave.library.dbs import LibraryDbs, LibraryLocked
 from mosaicwave.restore import pending_exists, stage_site, write_pending
 from mosaicwave.library.dump import DumpWarning, TakeoutInspect, inspect_takeout_path
 from mosaicwave.library.takeout import import_takeout
@@ -26,6 +27,8 @@ KIND_TAKEOUT = "takeout_import"
 KIND_THUMB = "thumb_batch"
 KIND_BACKUP = "site_backup"
 KIND_RESTORE = "site_restore"
+KIND_LIBRARY_BACKUP = "library_backup"
+KIND_LIBRARY_RESTORE = "library_restore"
 INTERRUPTED = "interrupted (process stopped)"
 
 
@@ -842,6 +845,169 @@ class ImportJobRunner:
                 self._cancels.pop(job_id, None)
                 if self._running_id == job_id:
                     self._running_id = None
+
+    # --- one user's library: backup and restore (doc/backup.md) ---
+
+    def _begin(self, kind: str, user_id: str, inp: dict, message: str) -> tuple[str, dict]:
+        """Create the running job row for a one-user job. Caller holds no lock."""
+        with self._lock:
+            session = self._factory()
+            try:
+                self._fail_if_busy(session)
+                now = utcnow()
+                row = Job(
+                    id=new_id(),
+                    kind=kind,
+                    status="running",
+                    created_at=now,
+                    started_at=now,
+                    user_id=user_id,
+                    input_json=json.dumps(inp, sort_keys=True),
+                    result_json="{}",
+                )
+                session.add(row)
+                session.add(JobEvent(id=new_id(), job_id=row.id, level="info", message=message))
+                session.commit()
+                job_id = row.id
+                view = job_view(row)
+            finally:
+                session.close()
+            self._running_id = job_id
+        return job_id, view
+
+    def _finish(self, session: Session, job_id: str, result: dict, message: str) -> None:
+        row = session.get(Job, job_id)
+        if row is None:
+            return
+        row.status = "done"
+        row.finished_at = utcnow()
+        row.current = None
+        row.processed = row.total
+        row.error = None
+        row.result_json = json.dumps(result, sort_keys=True)
+        session.add(JobEvent(id=new_id(), job_id=row.id, level="info", message=message))
+        session.commit()
+
+    def _fail(self, session: Session, job_id: str, exc: BaseException) -> None:
+        try:
+            session.rollback()
+            row = session.get(Job, job_id)
+            if row is not None:
+                row.status = "error"
+                row.error = str(exc)
+                row.finished_at = utcnow()
+                row.current = None
+                session.add(JobEvent(id=new_id(), job_id=row.id, level="error", message=str(exc)))
+            session.commit()
+        except Exception:
+            session.rollback()
+
+    def _release(self, job_id: str) -> None:
+        with self._lock:
+            self._cancels.pop(job_id, None)
+            if self._running_id == job_id:
+                self._running_id = None
+
+    def _progress(self, session: Session, job_id: str):  # type: ignore[no-untyped-def]
+        row = session.get(Job, job_id)
+
+        def on_progress(done: int, total: int, _rel: str) -> None:
+            # No file names: this job is listed to admins too, and photo paths are the owner's business.
+            if row is not None:
+                row.processed = done
+                row.total = total
+                if done % 25 == 0:
+                    session.commit()
+            self._check_cancel(job_id)
+
+        return on_progress
+
+    def start_library_backup(self, *, user_id: str) -> dict:
+        if self._settings is None:
+            raise RuntimeError("backup needs the app settings")
+        job_id, view = self._begin(KIND_LIBRARY_BACKUP, user_id, {}, "Library backup started")
+        threading.Thread(target=self._run_library_backup, args=(job_id, user_id), daemon=True).start()
+        return view
+
+    def _run_library_backup(self, job_id: str, user_id: str) -> None:
+        assert self._settings is not None
+        session = self._factory()
+        try:
+            result = backup_library(
+                self._settings,
+                user_id,
+                user_backup_dir(self._settings, user_id),
+                on_progress=self._progress(session, job_id),
+            )
+            manifest = result.manifest
+            self._finish(
+                session,
+                job_id,
+                {"backup": result.path.name, "assets": manifest["assets"], "albums": manifest["albums"]},
+                f"Backup {result.path.name}: {manifest['assets']} assets, {manifest['file_count']} files",
+            )
+            for warning in manifest["warnings"]:
+                session.add(JobEvent(id=new_id(), job_id=job_id, level="info", message=warning))
+            session.commit()
+        except JobCancelled:
+            try:
+                self._mark_cancelled(session, job_id, "no archive was written")
+            except Exception:
+                session.rollback()
+        except Exception as exc:  # ArchiveError, OSError, sqlite errors: all end the job the same way
+            self._fail(session, job_id, exc)
+        finally:
+            session.close()
+            self._release(job_id)
+
+    def start_library_restore(self, *, user_id: str, archive: Path) -> dict:
+        """Replace ``user_id``'s library with the archive, while the server runs (stage, then swap)."""
+        if self._settings is None:
+            raise RuntimeError("restore needs the app settings")
+        job_id, view = self._begin(
+            KIND_LIBRARY_RESTORE, user_id, {"archive": archive.name}, f"Restore of {archive.name} started"
+        )
+        threading.Thread(target=self._run_library_restore, args=(job_id, user_id, archive), daemon=True).start()
+        return view
+
+    def _run_library_restore(self, job_id: str, user_id: str, archive: Path) -> None:
+        assert self._settings is not None
+        session = self._factory()
+        try:
+            staged = stage_library(
+                archive, self._settings, user_id, on_progress=self._progress(session, job_id)
+            )
+            try:
+                self._check_cancel(job_id)  # the last point where cancelling is still free
+                swap_library(staged, self._settings, self._libraries)
+            finally:
+                shutil.rmtree(staged.db_stage, ignore_errors=True)
+                shutil.rmtree(staged.data_stage, ignore_errors=True)
+            manifest = staged.manifest
+            self._finish(
+                session,
+                job_id,
+                {
+                    "archive": archive.name,
+                    "assets": manifest["assets"],
+                    "albums": manifest["albums"],
+                    "upgrade": staged.upgrade_from is not None,
+                    "thumbs_missing": True,
+                },
+                f"Library restored from {archive.name}: {manifest['assets']} assets, {manifest['albums']} albums",
+            )
+        except JobCancelled:
+            try:
+                self._mark_cancelled(session, job_id, "nothing was changed; the library is as it was")
+            except Exception:
+                session.rollback()
+        except LibraryLocked:
+            self._fail(session, job_id, RuntimeError("the library is busy; try again"))
+        except Exception as exc:  # ArchiveError, OSError, sqlite errors: all end the job the same way
+            self._fail(session, job_id, exc)
+        finally:
+            session.close()
+            self._release(job_id)
 
     def _run(self, job_id: str, root: Path, dest_root: Path, cleanup: Path | None = None) -> None:
         session = self._factory()

@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useEffect, useRef, useState } from "react";
+import { Fragment, ReactNode, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Me } from "./api";
@@ -36,6 +36,13 @@ const ICONS: Record<View | "upload" | "menu", ReactNode> = {
     <>
       <circle cx="12" cy="12" r="9" />
       <path d="M12 7v5l3 2" />
+    </>
+  ),
+  server: (
+    <>
+      <rect x="3" y="4" width="18" height="7" rx="2" />
+      <rect x="3" y="13" width="18" height="7" rx="2" />
+      <path d="M7 7.5h.01M7 16.5h.01" />
     </>
   ),
   backup: (
@@ -75,10 +82,11 @@ function Icon({ name }: { name: keyof typeof ICONS }) {
   );
 }
 
-const NAV: View[] = ["photos", "albums", "import", "activity", "backup", "maintenance", "settings"];
+/** Everyone's views: the upper part of the sidebar. */
+const NAV_MAIN: View[] = ["photos", "albums", "import", "activity", "settings"];
 
-/** Views only an admin sees. */
-const ADMIN_ONLY: View[] = ["backup", "maintenance"];
+/** Views only an admin sees: the lower part of the sidebar, below a separator. */
+const NAV_ADMIN: View[] = ["server", "backup", "maintenance"];
 
 /** While maintenance is on an admin gets only these (see `maintenanceRoute` in page.tsx). */
 export const MAINTENANCE_VIEWS: View[] = ["backup", "maintenance", "activity"];
@@ -120,6 +128,11 @@ export function AppShell({
 }: Props) {
   const { t } = useTranslation(["common", "gallery", "settings", "maintenance"]);
   const locked = maintenance.state !== "off";
+  // Two groups with a separator between them; a member has only the first, so no separator.
+  const navGroups = [
+    NAV_MAIN.filter((view) => !locked || MAINTENANCE_VIEWS.includes(view)),
+    me.role === "admin" ? NAV_ADMIN.filter((view) => !locked || MAINTENANCE_VIEWS.includes(view)) : [],
+  ].filter((group) => group.length > 0);
   const [navOpen, setNavOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -207,18 +220,21 @@ export function AppShell({
       </header>
       <div className="nav-backdrop" onClick={() => setNavOpen(false)} role="presentation" />
       <nav id="app-sidebar" className="sidebar" aria-label={t("common:nav.label")}>
-        {NAV.filter((view) =>
-          locked ? MAINTENANCE_VIEWS.includes(view) : me.role === "admin" || !ADMIN_ONLY.includes(view),
-        ).map((view) => (
-          <a
-            key={view}
-            href={routeHash({ view, albumId: null })}
-            aria-current={route.view === view ? "page" : undefined}
-            onClick={() => setNavOpen(false)}
-          >
-            <Icon name={view} />
-            <span>{t(`common:nav.${view}`)}</span>
-          </a>
+        {navGroups.map((group, index) => (
+          <Fragment key={index}>
+            {index > 0 && <hr className="sidebar-sep" />}
+            {group.map((view) => (
+              <a
+                key={view}
+                href={routeHash({ view, albumId: null })}
+                aria-current={route.view === view ? "page" : undefined}
+                onClick={() => setNavOpen(false)}
+              >
+                <Icon name={view} />
+                <span>{t(`common:nav.${view}`)}</span>
+              </a>
+            ))}
+          </Fragment>
         ))}
       </nav>
       <main className="app-main">

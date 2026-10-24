@@ -8,7 +8,7 @@ After sign-in the page is one shell (`app/AppShell.tsx`):
 
 - **Top bar** — menu button (phones only), the mosaicWave logo (links to Photos), a health warning shown only when `GET /api/v1/health` fails, the **Upload** button, and the account menu.
 - **Account menu** — the avatar opens it: display name, role, a **Language** quick switch (same logic as Settings, `LocaleSelect.tsx`), a **Settings** link, and **Sign out**. Escape or a press outside closes it.
-- **Sidebar** — Photos, Albums, Import, Activity, Backup and Maintenance (admin only), Settings. While maintenance mode is on an admin sees only Backup, Maintenance and Activity under a banner; everyone else gets a full-page alert ([maintenance.md](maintenance.md)). The current view has `aria-current="page"`.
+- **Sidebar** — two groups with a separator between them. Upper, for everyone: Photos, Albums, Import, Activity, Settings. Lower, admin only: Server, Backup, Maintenance (members have no lower group, so no separator). Settings is personal and the same for everyone; options for the whole server are on the admin Server page. While maintenance mode is on an admin sees only Backup, Maintenance and Activity under a banner; everyone else gets a full-page alert ([maintenance.md](maintenance.md)). The current view has `aria-current="page"`.
 - **Status bar** — the first thing in the main area on every view while a background job runs (Takeout import, thumbnails, site backup): job name, `processed / total`, the current file and a progress bar, with a link to Activity and a **Cancel job** button (one confirmation that says what stays; also on running rows in Activity and on the Maintenance page). When the job ends it shows the result (successes clear after a few seconds, failures stay until dismissed). `StatusBar.tsx`.
 - **Main area** — one view at a time.
 
@@ -29,7 +29,8 @@ Each view has a hash URL, so links, reload and Back / Forward work without a ser
 | `#/activity` | Job list (import, push, thumbs, site backup); read-only | `ActivityView.tsx` |
 | `#/maintenance` | **Admin only.** The maintenance switch, the message shown to users and the current state ([maintenance.md](maintenance.md)) | `MaintenanceView.tsx` (alert page: `MaintenanceScreen.tsx`) |
 | `#/backup` | **Admin only.** Back up now (optional thumbnails), progress, archive list with download, **Restore…** and delete, the restore source form (on the server with Browse, or upload from this device), the staged-restore box (Restart and apply / Discard), the last restore result, and the offline restore command ([backup.md](backup.md)) | `BackupView.tsx` |
-| `#/settings` | Language, **Generate thumbs**, data folder, shares, users and permissions (admin parts as before) | `SettingsPanel.tsx` |
+| `#/server` | **Admin only.** Options for the whole server: app folder, current library folder, **Move library** (local folder, SMB or NAS, Save folder), and users (add a member). Not shown during maintenance | `ServerView.tsx` |
+| `#/settings` | **Personal, the same for everyone (admins included):** language, **Generate thumbs**, **My library backup** (back up, list with download / **Restore…** / delete, **Restore from a file**: on this device, or on the server for admins, with a confirmation first; `LibraryBackupPanel.tsx`, `RestoreSourceForm.tsx`) and a one-line library summary | `SettingsPanel.tsx` |
 
 An empty or unknown hash shows Photos. Routing is `app/hashRoute.ts`: `useRoute()` reads `location.hash` with `useSyncExternalStore` on `hashchange`, and navigation sets `location.hash` (one history entry per view). The file is not called `route.ts` because that name is reserved by the Next App Router.
 

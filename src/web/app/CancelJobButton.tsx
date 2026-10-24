@@ -15,10 +15,22 @@ type Props = {
   onRequested?: () => void;
 };
 
-type Keeps = "takeout_import" | "thumb_batch" | "site_backup" | "site_restore" | "other";
+type Keeps =
+  | "takeout_import"
+  | "thumb_batch"
+  | "site_backup"
+  | "site_restore"
+  | "library_backup"
+  | "library_restore"
+  | "other";
 
 function keepsKey(kind: string | null): Keeps {
-  return kind === "takeout_import" || kind === "thumb_batch" || kind === "site_backup" || kind === "site_restore"
+  return kind === "takeout_import" ||
+    kind === "thumb_batch" ||
+    kind === "site_backup" ||
+    kind === "site_restore" ||
+    kind === "library_backup" ||
+    kind === "library_restore"
     ? kind
     : "other";
 }

@@ -16,7 +16,7 @@
   "invalid_locale": "Unsupported language: {{locale}}",
 
   "data_dir_rejected": "Could not use that folder: {{message}}",
-  "data_dir_env_locked": "MOSAICWAVE_DATA_DIR is set, so the folder cannot be changed in Settings.",
+  "data_dir_env_locked": "MOSAICWAVE_DATA_DIR is set, so the folder cannot be changed on the Server page.",
   "data_dir_occupied": "That destination already has a mosaicWave library.",
   "data_dir_job_running": "Cannot move the library while a job is running.",
 
@@ -85,5 +85,7 @@
   "backup_path_required": "Enter or browse to the backup zip on the server.",
   "backup_not_a_file": "That path is not a file: {{path}}",
   "upload_too_large": "That file is too large (the limit is {{max_gb}} GB).",
-  "backup_no_space": "Not enough free space for that file: it needs about {{need_mb}} MB and {{free_mb}} MB is free."
+  "backup_no_space": "Not enough free space for that file: it needs about {{need_mb}} MB and {{free_mb}} MB is free.",
+  "library_restoring": "Your library is being restored. Try again in a moment.",
+  "backup_wrong_kind": "That is the wrong kind of backup: use a site backup on the admin Backup page and a library backup in Settings."
 }

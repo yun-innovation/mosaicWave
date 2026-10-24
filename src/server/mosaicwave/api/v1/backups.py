@@ -2,20 +2,17 @@
 
 from __future__ import annotations
 
-import os
-import shutil
 import zipfile
-from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, Request
-from starlette.requests import ClientDisconnect
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from mosaicwave import maintenance, restore
 from mosaicwave.api.errors import ApiError, wrapped
+from mosaicwave.api.v1.archiveupload import UPLOAD_BODY, check_error, receive_archive
 from mosaicwave.api.v1.library import ImportOut, _busy_error, _job_out
 from mosaicwave.api.v1.maintenance import job_running
 from mosaicwave.archive import SITE_NAME, ArchiveError, read_manifest
@@ -23,8 +20,7 @@ from mosaicwave.auth.deps import require_admin, require_user_brief
 from mosaicwave.config import schedule_api_restart
 from mosaicwave.db import get_session
 from mosaicwave.library.importjob import ImportBusy, ImportJobRunner
-from mosaicwave.library.takeoutpush import MAX_PUSH_BYTES, write_upload_async
-from mosaicwave.models import User, new_id
+from mosaicwave.models import User
 
 router = APIRouter()
 
@@ -129,7 +125,7 @@ class RestoreResultOut(BaseModel):
     archive: str
     finished_at: str
     summary: RestoreSummary
-    kept: list[str] = Field(default_factory=list, description="Where the previous data was kept")
+    kept: list[str] = Field(default_factory=list, description="Where the previous data was kept (empty: an online restore deletes it)")
     upgrade: bool = False
     thumbs_missing: bool = False
     message: str | None = None
@@ -234,7 +230,7 @@ def post_restore_from_path(
     try:
         restore.check_archive(path)
     except (ArchiveError, OSError) as exc:
-        raise wrapped(400, "backup_invalid", exc) from exc
+        raise check_error(exc) from exc
     runner: ImportJobRunner = request.app.state.import_jobs
     try:
         job = runner.start_restore(user_id=admin.id, archive=path)
@@ -243,27 +239,7 @@ def post_restore_from_path(
     return _job_out(job)
 
 
-_UPLOAD_BODY = {
-    "requestBody": {
-        "required": True,
-        "content": {"application/octet-stream": {"schema": {"type": "string", "format": "binary"}}},
-    }
-}
-
-
-def _archive_name(manifest: dict) -> str:
-    """The standard name for an uploaded archive, from the time inside it (so a renamed file works)."""
-    try:
-        stamp = datetime.fromisoformat(str(manifest["created_at"]))
-        if stamp.tzinfo is None:
-            stamp = stamp.replace(tzinfo=timezone.utc)
-        stamp = stamp.astimezone(timezone.utc)
-    except (KeyError, ValueError):
-        stamp = datetime.now(timezone.utc)
-    return f"mosaicwave-site-{stamp:%Y%m%d-%H%M%S}.zip"
-
-
-@router.put("/backups/upload", response_model=BackupOut, openapi_extra=_UPLOAD_BODY)
+@router.put("/backups/upload", response_model=BackupOut, openapi_extra=UPLOAD_BODY)
 async def upload_backup(request: Request, user: User = Depends(require_user_brief)) -> BackupOut:
     """Receive a site backup zip from the browser into ``backups/`` (raw body, streamed to disk)."""
     if user.role != "admin":
@@ -277,48 +253,9 @@ async def upload_backup(request: Request, user: User = Depends(require_user_brie
             raise ApiError(409, "job_running", "Another job is already running")
     finally:
         session.close()
-
-    folder = settings.backup_dir
-    folder.mkdir(parents=True, exist_ok=True)
-    raw = request.headers.get("content-length")
-    declared = int(raw) if raw and raw.isdigit() else None
-    if declared is not None:
-        if declared > MAX_PUSH_BYTES:
-            raise ApiError(413, "upload_too_large", "That file is too large", {"max_gb": MAX_PUSH_BYTES >> 30})
-        free = shutil.disk_usage(folder).free
-        if free < declared + declared // 20:
-            raise ApiError(
-                507,
-                "backup_no_space",
-                "Not enough free space for that file",
-                {"need_mb": declared >> 20, "free_mb": free >> 20},
-            )
-
-    received = folder / f".upload-{new_id()}.zip"
-    try:
-        try:
-            await write_upload_async(received, request.stream())
-        except ClientDisconnect as exc:
-            raise ApiError(400, "upload_interrupted", "upload interrupted") from exc
-        except ValueError as exc:
-            raise ApiError(413, "upload_too_large", str(exc), {"max_gb": MAX_PUSH_BYTES >> 30}) from exc
-        except OSError as exc:
-            raise wrapped(400, "upload_failed", exc) from exc
-        try:
-            manifest = restore.check_archive(received)
-        except (ArchiveError, OSError) as exc:
-            raise wrapped(400, "backup_invalid", exc) from exc
-        final = folder / _archive_name(manifest)
-        size = received.stat().st_size
-        while final.exists():
-            if final.stat().st_size == size:  # the same file again
-                break
-            stamp = datetime.strptime(final.name[len("mosaicwave-site-") : -len(".zip")], "%Y%m%d-%H%M%S")
-            final = folder / f"mosaicwave-site-{stamp + timedelta(seconds=1):%Y%m%d-%H%M%S}.zip"
-        if not final.exists():
-            os.replace(received, final)
-    finally:
-        received.unlink(missing_ok=True)
+    final = await receive_archive(
+        request, settings.backup_dir, prefix="mosaicwave-site", check=restore.check_archive
+    )
     info = _describe(final)
     if info is None:
         raise ApiError(400, "backup_invalid", "The archive could not be read", {"message": "unreadable"})

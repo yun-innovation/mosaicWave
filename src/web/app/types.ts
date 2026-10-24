@@ -94,6 +94,19 @@ export type BackupItem = {
   warnings: string[];
 };
 
+export type LibraryBackupItem = {
+  name: string;
+  size: number;
+  created_at: string;
+  app_version: string;
+  library_schema_version: number;
+  assets: number;
+  albums: number;
+  file_count: number;
+  total_bytes: number;
+  warnings: string[];
+};
+
 export type RestoreSummary = {
   created_at: string | null;
   app_version: string | null;

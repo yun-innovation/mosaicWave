@@ -15,6 +15,7 @@ import { ImportView } from "./ImportView";
 import { MaintenanceScreen } from "./MaintenanceScreen";
 import { MaintenanceView } from "./MaintenanceView";
 import { useRoute } from "./hashRoute";
+import { ServerView } from "./ServerView";
 import { SettingsPanel } from "./SettingsPanel";
 import { TimelineView } from "./TimelineView";
 import { ignoreAbort, isAbortError, LibraryAlbum } from "./types";
@@ -202,18 +203,26 @@ export default function Home() {
       view = <ActivityView importer={importer} libraryRev={libraryRev} />;
       break;
     case "backup":
-      view = me.role === "admin" ? <BackupView importer={importer} maintenance={maintenance.status} /> : <SettingsPanel me={me} platform={platform} importer={importer} onMe={setMe} />;
+      view = me.role === "admin" ? <BackupView importer={importer} maintenance={maintenance.status} /> : <SettingsPanel me={me} importer={importer} onMe={setMe} />;
       break;
     case "maintenance":
       view =
         me.role === "admin" ? (
           <MaintenanceView status={maintenance.status} running={waitingFor} onChanged={maintenance.set} />
         ) : (
-          <SettingsPanel me={me} platform={platform} importer={importer} onMe={setMe} />
+          <SettingsPanel me={me} importer={importer} onMe={setMe} />
+        );
+      break;
+    case "server":
+      view =
+        me.role === "admin" ? (
+          <ServerView me={me} platform={platform} />
+        ) : (
+          <SettingsPanel me={me} importer={importer} onMe={setMe} />
         );
       break;
     case "settings":
-      view = <SettingsPanel me={me} platform={platform} importer={importer} onMe={setMe} />;
+      view = <SettingsPanel me={me} importer={importer} onMe={setMe} />;
       break;
     default:
       view = (

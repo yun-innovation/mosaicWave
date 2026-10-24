@@ -19,6 +19,7 @@ from mosaicwave.schema.split import SPLIT_VERSION
 
 FORMAT = 1
 KIND_SITE = "site"
+KIND_LIBRARY = "library"
 MANIFEST = "manifest.json"
 DB_ENTRY = "library.db"
 ACCOUNTS = "accounts"
@@ -30,6 +31,7 @@ BLOBS = "blobs"
 DATA_PREFIX = "mw-data:"
 
 SITE_NAME = re.compile(r"^mosaicwave-site-\d{8}-\d{6}\.zip$")
+LIBRARY_NAME = re.compile(r"^mosaicwave-library-\d{8}-\d{6}\.zip$")
 
 _SKIP_NAMES = {".DS_Store", ".localized", "Thumbs.db", "desktop.ini"}
 _DRIVE = re.compile(r"^[A-Za-z]:")
@@ -37,6 +39,10 @@ _DRIVE = re.compile(r"^[A-Za-z]:")
 
 class ArchiveError(ValueError):
     """The archive (or the request to make or restore one) cannot be used. English text."""
+
+
+class WrongKind(ArchiveError):
+    """A site archive where a library archive is needed, or the other way round."""
 
 
 def account_entry(user_id: str) -> str:
@@ -103,7 +109,7 @@ def check_manifest(manifest: dict, site_supported: int, library_supported: int) 
     if fmt != FORMAT:
         raise ArchiveError(f"archive format {fmt!r} is not supported (this app reads format {FORMAT})")
     if manifest.get("kind") != KIND_SITE:
-        raise ArchiveError(f"archive kind {manifest.get('kind')!r} is not a site backup")
+        raise WrongKind(f"archive kind {manifest.get('kind')!r} is not a site backup")
     site = manifest.get("schema_version")
     if not isinstance(site, int) or site < SPLIT_VERSION:
         raise ArchiveError("manifest has no valid schema_version")
@@ -119,3 +125,27 @@ def check_manifest(manifest: dict, site_supported: int, library_supported: int) 
     users = manifest.get("user_ids")
     if not isinstance(users, list) or not all(isinstance(u, str) and USER_ID.match(u) for u in users):
         raise ArchiveError("manifest has no valid user_ids")
+
+
+def check_library_manifest(manifest: dict, library_supported: int) -> None:
+    """Manifest of a single-library archive (``kind: library``)."""
+    fmt = manifest.get("format")
+    if fmt != FORMAT:
+        raise ArchiveError(f"archive format {fmt!r} is not supported (this app reads format {FORMAT})")
+    if manifest.get("kind") != KIND_LIBRARY:
+        raise WrongKind(f"archive kind {manifest.get('kind')!r} is not a library backup")
+    library = manifest.get("library_schema_version")
+    if not isinstance(library, int) or library < 1:
+        raise ArchiveError("manifest has no valid library_schema_version")
+    if library > library_supported:
+        raise ArchiveError(
+            f"archive library database is schema v{library}; this mosaicWave supports up to "
+            f"v{library_supported}. Install a newer mosaicWave to restore it."
+        )
+    user = manifest.get("user_id")
+    if not isinstance(user, str) or not USER_ID.match(user):
+        raise ArchiveError("manifest has no valid user_id")
+    for key in ("assets", "albums", "file_count"):
+        if not isinstance(manifest.get(key), int):
+            raise ArchiveError(f"manifest has no valid {key}")
+

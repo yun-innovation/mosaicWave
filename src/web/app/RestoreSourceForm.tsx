@@ -11,6 +11,10 @@ import { isAbortError, Notice } from "./types";
 import { BackupUpload, uploadBackup } from "./uploadBackup";
 
 type Props = {
+  /** `site`: the admin's site restore (staged, applied at restart). `library`: replace your own library. */
+  scope?: "site" | "library";
+  /** Offer "On the server" (needs a server path; admins only for a library restore). */
+  serverEnabled?: boolean;
   /** Restore needs maintenance mode; without it the form is shown but cannot start. */
   maintenanceOn: boolean;
   /** Something else is running (a job, a pending restart), so nothing can start. */
@@ -27,9 +31,21 @@ type From = "server" | "device";
  * (browse for it; nothing is copied) or one on this device (uploaded first, kept in the archive list).
  * Either way the result is the same staging job as Restore… on a listed archive.
  */
-export function RestoreSourceForm({ maintenanceOn, blocked, onStarted, onNotice }: Props) {
+export function RestoreSourceForm({
+  scope = "site",
+  serverEnabled = true,
+  maintenanceOn,
+  blocked,
+  onStarted,
+  onNotice,
+}: Props) {
   const { t } = useTranslation(["backup", "common"]);
-  const [from, setFrom] = useState<From>("server");
+  const library = scope === "library";
+  const urls = library
+    ? { path: "/api/v1/me/backups/restore", upload: "/api/v1/me/backups/upload", byName: "/api/v1/me/backups" }
+    : { path: "/api/v1/backups/restore", upload: "/api/v1/backups/upload", byName: "/api/v1/backups" };
+  const [from, setFrom] = useState<From>(serverEnabled ? "server" : "device");
+  const [confirming, setConfirming] = useState(false);
   const [path, setPath] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -51,13 +67,13 @@ export function RestoreSourceForm({ maintenanceOn, blocked, onStarted, onNotice 
   }
 
   async function fromServer() {
-    const failure = await postRestore("/api/v1/backups/restore", { path: path.trim() });
+    const failure = await postRestore(urls.path, { path: path.trim() });
     if (failure) onNotice({ text: failure, ok: false });
     else onStarted();
   }
 
   async function fromDevice(chosen: File) {
-    const sending = uploadBackup(chosen, (done, total) => setSent({ sent: done, total }));
+    const sending = uploadBackup(chosen, (done, total) => setSent({ sent: done, total }), urls.upload);
     upload.current = sending;
     setSent({ sent: 0, total: chosen.size });
     let name: string;
@@ -75,15 +91,23 @@ export function RestoreSourceForm({ maintenanceOn, blocked, onStarted, onNotice 
       setSent(null);
     }
     // It is in the archive list now, whatever happens next.
-    const failure = await postRestore(`/api/v1/backups/${encodeURIComponent(name)}/restore`);
+    const failure = await postRestore(`${urls.byName}/${encodeURIComponent(name)}/restore`);
     if (failure) {
       onNotice({ text: i18n.t("backup:restore.source.uploadedKept", { message: failure }), ok: false });
     }
     onStarted();
   }
 
-  async function onSubmit(event: FormEvent) {
+  function onSubmit(event: FormEvent) {
     event.preventDefault();
+    if (!ready) return;
+    // Replacing your own library cannot be undone, so ask first (a site restore is applied later).
+    if (library) setConfirming(true);
+    else void run();
+  }
+
+  async function run() {
+    setConfirming(false);
     if (!ready) return;
     setWorking(true);
     onNotice(null);
@@ -101,18 +125,20 @@ export function RestoreSourceForm({ maintenanceOn, blocked, onStarted, onNotice 
 
   return (
     <>
-      <form className="import restore-source" onSubmit={(e) => void onSubmit(e)}>
+      <form className="import restore-source" onSubmit={onSubmit}>
         <div className="choice-col">
-          <label>
-            <input
-              type="radio"
-              name="restore-from"
-              checked={from === "server"}
-              onChange={() => setFrom("server")}
-              disabled={!idle}
-            />
-            {t("backup:restore.source.server")}
-          </label>
+          {serverEnabled && (
+            <label>
+              <input
+                type="radio"
+                name="restore-from"
+                checked={from === "server"}
+                onChange={() => setFrom("server")}
+                disabled={!idle}
+              />
+              {t("backup:restore.source.server")}
+            </label>
+          )}
           <label>
             <input
               type="radio"
@@ -132,7 +158,7 @@ export function RestoreSourceForm({ maintenanceOn, blocked, onStarted, onNotice 
                 id="restore-path"
                 value={path}
                 onChange={(e) => setPath(e.target.value)}
-                placeholder={t("backup:restore.source.pathPlaceholder")}
+                placeholder={t(library ? "backup:library.source.pathPlaceholder" : "backup:restore.source.pathPlaceholder")}
                 autoComplete="off"
                 disabled={!idle}
               />
@@ -154,7 +180,7 @@ export function RestoreSourceForm({ maintenanceOn, blocked, onStarted, onNotice 
             <p className="detail">
               {file
                 ? t("backup:restore.source.deviceSelected", { name: file.name, size: formatBytes(file.size) })
-                : t("backup:restore.source.deviceHint")}
+                : t(library ? "backup:library.source.deviceHint" : "backup:restore.source.deviceHint")}
             </p>
           </>
         )}
@@ -164,14 +190,26 @@ export function RestoreSourceForm({ maintenanceOn, blocked, onStarted, onNotice 
             {t("backup:restore.source.uploading", { percent })}
           </p>
         )}
+        {confirming && <p className="detail">{t("backup:library.restore.confirm")}</p>}
         <div className="button-row">
-          <button type="submit" disabled={!ready}>
-            {working
-              ? t("common:working")
-              : from === "server"
-                ? t("backup:restore.source.restore")
-                : t("backup:restore.source.upload")}
-          </button>
+          {confirming ? (
+            <>
+              <button type="button" onClick={() => void run()}>
+                {t("backup:library.restore.confirmYes")}
+              </button>
+              <button type="button" onClick={() => setConfirming(false)}>
+                {t("common:cancel")}
+              </button>
+            </>
+          ) : (
+            <button type="submit" disabled={!ready}>
+              {working
+                ? t("common:working")
+                : from === "server"
+                  ? t("backup:restore.source.restore")
+                  : t("backup:restore.source.upload")}
+            </button>
+          )}
           {sent && (
             <button type="button" onClick={() => upload.current?.cancel()}>
               {t("backup:restore.source.cancelUpload")}
