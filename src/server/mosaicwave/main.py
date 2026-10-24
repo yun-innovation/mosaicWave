@@ -16,6 +16,7 @@ from mosaicwave.api.v1.maintenance import maintenance_guard, router as maintenan
 from mosaicwave.api.v1.settings import router as settings_router
 from mosaicwave.config import Settings, consume_restart_flag
 from mosaicwave.maintenance import start_from_env
+from mosaicwave.restore import apply_pending
 from mosaicwave.runtime import attach_runtime
 
 DEV_ORIGINS = (
@@ -49,6 +50,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app = FastAPI(title="mosaicWave", version="0.1.1", dependencies=[Depends(maintenance_guard)])
     start_from_env(settings)
+    # A restore staged from the Backup page is swapped in now, before any database is opened.
+    apply_pending(settings)
     attach_runtime(app, settings, recover=True)
     install_error_handlers(app)
     app.add_middleware(

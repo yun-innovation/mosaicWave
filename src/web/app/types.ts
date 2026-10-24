@@ -94,6 +94,39 @@ export type BackupItem = {
   warnings: string[];
 };
 
+export type RestoreSummary = {
+  created_at: string | null;
+  app_version: string | null;
+  schema_version: number | null;
+  include_thumbs: boolean;
+  users: number;
+  assets: number;
+  albums: number;
+  file_count: number;
+};
+
+/** A restore unpacked and checked, waiting for the admin to apply it. */
+export type RestorePending = {
+  archive: string;
+  staged_at: string;
+  summary: RestoreSummary;
+  upgrade: boolean;
+};
+
+/** What the last start-up swap did. */
+export type RestoreResult = {
+  status: "done" | "error";
+  archive: string;
+  finished_at: string;
+  summary: RestoreSummary;
+  kept: string[];
+  upgrade: boolean;
+  thumbs_missing: boolean;
+  message: string | null;
+};
+
+export type RestoreState = { pending: RestorePending | null; result: RestoreResult | null };
+
 export function isAbortError(err: unknown): boolean {
   return typeof err === "object" && err !== null && "name" in err && (err as { name: string }).name === "AbortError";
 }

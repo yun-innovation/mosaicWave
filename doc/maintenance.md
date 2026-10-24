@@ -15,7 +15,7 @@ Milestone 12. An admin locks everyone else out of the server so a backup or rest
 
 - **Guard:** while the flag exists, only an admin may call `/api/v1/*`. Everyone else, signed in or not, gets `503` with code `maintenance`, `params` `{reason, since}` and a `Retry-After: 10` header. Open to everybody: `GET /health`, `/maintenance`, `/auth/status`, `/auth/login`, `/auth/logout`, and the static web files.
 - **Sign-in:** `POST /auth/login` checks the password first. A non-admin who is right then gets `503 maintenance` (a wrong password is still `401`), so nobody learns more than they could from `/maintenance`. Sessions that already exist stay valid and work again when maintenance ends.
-- **Not covered yet:** an admin can still use their own library through the API. The web UI hides it. Milestone 7 PR 2 makes the restore itself wait for or lock it.
+- **The admin's own library:** an admin can still use it through the API; the web UI hides it. The online restore does not lock it: it stages first and swaps at restart, and anything the admin changes in between is lost (the Backup page says so). A stricter lock is not planned.
 
 ## Switching it
 

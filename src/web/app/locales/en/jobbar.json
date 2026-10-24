@@ -16,7 +16,9 @@
       "takeout_import": "Items already imported stay. Import again to continue.",
       "thumb_batch": "Thumbnails already made stay.",
       "site_backup": "No archive is kept.",
-      "other": "Work already done stays."
+      "other": "Work already done stays.",
+      "site_restore": "Nothing is kept; your library stays as it is."
     }
-  }
+  },
+  "restoreStaged": "Restore is ready to apply."
 }

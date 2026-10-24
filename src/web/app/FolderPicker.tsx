@@ -25,6 +25,9 @@ type Props = {
   onSelect: (path: string) => void;
   onClose: () => void;
   title?: string;
+  /** `takeout` (default): choose a folder. `backup`: choose a zip file; any zip is listed (admin only). */
+  kind?: "takeout" | "backup";
+  intro?: string;
 };
 
 function parentPath(path: string): string {
@@ -36,7 +39,8 @@ function parentPath(path: string): string {
   return unix.slice(0, idx);
 }
 
-export function FolderPicker({ startPath, onSelect, onClose, title }: Props) {
+export function FolderPicker({ startPath, onSelect, onClose, title, kind = "takeout", intro }: Props) {
+  const pickFile = kind === "backup";
   const { t } = useTranslation("common");
   const [current, setCurrent] = useState(startPath);
   const [listing, setListing] = useState<FsList | null>(null);
@@ -50,7 +54,10 @@ export function FolderPicker({ startPath, onSelect, onClose, title }: Props) {
     let note: string | null = null;
     try {
       for (;;) {
-        const qs = next ? `?path=${encodeURIComponent(next)}` : "";
+        const params = new URLSearchParams();
+        if (next) params.set("path", next);
+        if (pickFile) params.set("kind", "backup");
+        const qs = params.size > 0 ? `?${params.toString()}` : "";
         const res = await apiFetch(`/api/v1/fs/list${qs}`);
         const body: unknown = await res.json().catch(() => null);
         const detail = errorText(body, res.status);
@@ -80,7 +87,7 @@ export function FolderPicker({ startPath, onSelect, onClose, title }: Props) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [pickFile]);
 
   useEffect(() => {
     void load(startPath);
@@ -99,7 +106,7 @@ export function FolderPicker({ startPath, onSelect, onClose, title }: Props) {
         onClick={(e) => e.stopPropagation()}
       >
         <h2 id="picker-title">{title ?? t("picker.title")}</h2>
-        <p className="detail">{t("picker.intro")}</p>
+        <p className="detail">{intro ?? t("picker.intro")}</p>
         <p className="picker-path">{listing ? listing.path || t("picker.places") : current || ""}</p>
         {error && <p className="status fail">{error}</p>}
         {loading && <p className="detail">{t("loading")}</p>}
@@ -127,8 +134,14 @@ export function FolderPicker({ startPath, onSelect, onClose, title }: Props) {
               </li>
             ))}
             {zips.map((entry) => (
-              <li key={entry.path} className="picker-file">
-                {entry.name}
+              <li key={entry.path} className={pickFile ? undefined : "picker-file"}>
+                {pickFile ? (
+                  <button type="button" className="picker-item" onClick={() => onSelect(entry.path)}>
+                    {entry.name}
+                  </button>
+                ) : (
+                  entry.name
+                )}
               </li>
             ))}
             {!dirs.length && !zips.length && (
@@ -136,13 +149,15 @@ export function FolderPicker({ startPath, onSelect, onClose, title }: Props) {
             )}
           </ul>
         )}
-        {listing && listing.takeout_zip_count > 0 && (
+        {listing && !pickFile && listing.takeout_zip_count > 0 && (
           <p className="detail">{t("picker.zipCount", { count: listing.takeout_zip_count })}</p>
         )}
         <div className="button-row">
-          <button type="button" disabled={!usable} onClick={() => usable && onSelect(usable)}>
-            {t("picker.use")}
-          </button>
+          {!pickFile && (
+            <button type="button" disabled={!usable} onClick={() => usable && onSelect(usable)}>
+              {t("picker.use")}
+            </button>
+          )}
           <button type="button" onClick={onClose}>
             {t("cancel")}
           </button>

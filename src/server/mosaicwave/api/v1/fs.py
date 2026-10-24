@@ -41,16 +41,23 @@ def _is_under(path: Path, parent: Path) -> bool:
 def fs_list(
     request: Request,
     path: str | None = Query(default=None),
+    kind: str = Query(default="takeout", pattern="^(takeout|backup)$"),
     session: Session = Depends(get_library_session),
     user: User = Depends(require_user),
 ) -> FsListOut:
-    """Browse host folders. Listing does not move the library or write config."""
+    """Browse host folders. Listing does not move the library or write config.
+
+    ``kind=takeout`` (default) shows Takeout zips; ``kind=backup`` shows any zip and is admin only
+    (it is how the admin picks a site backup to restore).
+    """
+    if kind == "backup" and user.role != "admin":
+        raise ApiError(403, "admin_only", "admin only")
     settings = request.app.state.settings
     existing = user_library(session, user)
     mine = Path(existing.root_uri).resolve() if existing and existing.root_uri else None
     libraries = library_root(settings.data_dir, user.id).parent.resolve()
     try:
-        listing = list_host_dir(path)
+        listing = list_host_dir(path, kind)
     except FileNotFoundError as exc:
         raise wrapped(404, "folder_not_found", exc) from exc
     except PermissionError as exc:

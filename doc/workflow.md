@@ -62,6 +62,7 @@ Keep Takeout routes as the **start** buttons; they create a job:
 | --- | --- |
 | `thumb_batch` | Thumbnails already made |
 | `site_backup` | Nothing: the `.part` file is removed and no archive is written |
+| `site_restore` | Nothing: the staging folders are removed and the library is unchanged |
 | `takeout_import` | Every finished item (committed before the job ends); importing again skips what is there (same SHA-256) |
 | `takeout_import` in `push` mode, still receiving | Cancelled at once by `/import/takeout/push/{id}/cancel` (ends as `error`, `cancelled`); `/jobs/{id}/cancel` hands over to it |
 

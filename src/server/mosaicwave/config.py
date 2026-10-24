@@ -2,10 +2,13 @@ from __future__ import annotations
 
 import json
 import logging
+import multiprocessing
 import os
 import secrets
 import shutil
+import signal
 import sqlite3
+import subprocess
 import sys
 import tempfile
 import time
@@ -672,12 +675,34 @@ def schedule_api_restart(bootstrap: Path) -> bool:
     import threading
 
     write_restart_flag(bootstrap)
-
-    def _die() -> None:
-        os._exit(0)
-
-    threading.Timer(1.0, _die).start()
+    threading.Timer(1.0, _exit_for_restart).start()
     return True
+
+
+def _exit_for_restart() -> None:
+    """End this API process so its supervisor starts a fresh one.
+
+    Under ``uvicorn --reload`` (the debug scripts) or ``--workers`` this process is only a worker: the
+    uvicorn parent keeps the port open and does not start a new worker when one dies, so the page would
+    hang for good. End the parent too, which makes the whole server exit and the supervisor (the debug
+    scripts, WinSW, launchd, systemd) bring it back. A plain ``uvicorn`` has no parent to end.
+    """
+    parent = multiprocessing.parent_process()
+    if parent is not None and parent.pid:
+        try:
+            if os.name == "nt":
+                subprocess.run(
+                    ["taskkill", "/PID", str(parent.pid), "/T", "/F"],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    timeout=10,
+                    check=False,
+                )
+            else:
+                os.kill(parent.pid, signal.SIGTERM)
+        except (OSError, subprocess.SubprocessError):
+            pass
+    os._exit(0)
 
 
 def resolve_data_dir(*, bootstrap: Path | None = None) -> Path:

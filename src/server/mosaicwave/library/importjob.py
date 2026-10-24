@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from mosaicwave.backup import backup_site
 from mosaicwave.config import Settings
 from mosaicwave.library.dbs import LibraryDbs
+from mosaicwave.restore import pending_exists, stage_site, write_pending
 from mosaicwave.library.dump import DumpWarning, TakeoutInspect, inspect_takeout_path
 from mosaicwave.library.takeout import import_takeout
 from mosaicwave.library.takeoutpush import safe_staging_file, staging_dir, write_upload
@@ -24,6 +25,7 @@ from mosaicwave.storage.blobstore import BlobStore
 KIND_TAKEOUT = "takeout_import"
 KIND_THUMB = "thumb_batch"
 KIND_BACKUP = "site_backup"
+KIND_RESTORE = "site_restore"
 INTERRUPTED = "interrupted (process stopped)"
 
 
@@ -309,6 +311,10 @@ class ImportJobRunner:
         session.commit()
 
     def _fail_if_busy(self, session: Session) -> None:
+        if self._settings is not None and pending_exists(self._settings):
+            raise ImportBusy(
+                "A restored copy is waiting to be applied. Apply or discard it first.", "restore_pending"
+            )
         if self._running_id is not None:
             current = session.get(Job, self._running_id)
             if current is not None and current.status == "running":
@@ -707,6 +713,114 @@ class ImportJobRunner:
         except JobCancelled:
             try:
                 self._mark_cancelled(session, job_id, "no archive was written")
+            except Exception:
+                session.rollback()
+        except Exception as exc:  # ArchiveError, OSError, sqlite errors: all end the job the same way
+            try:
+                session.rollback()
+                row = session.get(Job, job_id)
+                if row is not None:
+                    row.status = "error"
+                    row.error = str(exc)
+                    row.finished_at = utcnow()
+                    row.current = None
+                    session.add(JobEvent(id=new_id(), job_id=row.id, level="error", message=str(exc)))
+                session.commit()
+            except Exception:
+                session.rollback()
+        finally:
+            session.close()
+            with self._lock:
+                self._cancels.pop(job_id, None)
+                if self._running_id == job_id:
+                    self._running_id = None
+
+    def start_restore(self, *, user_id: str, archive: Path) -> dict:
+        """Unpack and check a site backup beside the live data (nothing live changes).
+
+        When it is done the restore is *staged*; the admin applies it, which restarts the server.
+        """
+        if self._settings is None:
+            raise RuntimeError("restore needs the app settings")
+        with self._lock:
+            session = self._factory()
+            try:
+                self._fail_if_busy(session)
+                now = utcnow()
+                row = Job(
+                    id=new_id(),
+                    kind=KIND_RESTORE,
+                    status="running",
+                    created_at=now,
+                    started_at=now,
+                    user_id=user_id,
+                    input_json=json.dumps({"archive": archive.name}, sort_keys=True),
+                    result_json="{}",
+                )
+                session.add(row)
+                session.add(
+                    JobEvent(
+                        id=new_id(), job_id=row.id, level="info", message=f"Restore of {archive.name} started"
+                    )
+                )
+                session.commit()
+                job_id = row.id
+                view = job_view(row)
+            finally:
+                session.close()
+            self._running_id = job_id
+        thread = threading.Thread(target=self._run_restore, args=(job_id, archive), daemon=True)
+        thread.start()
+        return view
+
+    def _run_restore(self, job_id: str, archive: Path) -> None:
+        assert self._settings is not None
+        session = self._factory()
+        try:
+            row = session.get(Job, job_id)
+            if row is None:
+                return
+
+            def on_progress(done: int, total: int, _rel: str) -> None:
+                # No file names here: they are photo paths, and this job is visible to admins only as a bar.
+                row.processed = done
+                row.total = total
+                if done % 25 == 0:
+                    session.commit()
+                self._check_cancel(job_id)
+
+            staged = stage_site(archive, self._settings, on_progress=on_progress)
+            try:
+                write_pending(self._settings, staged, archive.name)
+            except BaseException:
+                shutil.rmtree(staged.app_stage, ignore_errors=True)
+                shutil.rmtree(staged.data_stage, ignore_errors=True)
+                raise
+            manifest = staged.manifest
+            row.status = "done"
+            row.finished_at = utcnow()
+            row.current = None
+            row.processed = row.total
+            row.error = None
+            row.result_json = json.dumps(
+                {"archive": archive.name, "assets": manifest["assets"], "albums": manifest["albums"]},
+                sort_keys=True,
+            )
+            session.add(
+                JobEvent(
+                    id=new_id(),
+                    job_id=row.id,
+                    level="info",
+                    message=(
+                        f"Restore of {archive.name} is staged: {manifest['assets']} assets, "
+                        f"{manifest['users']} users. Apply it to swap it in."
+                    ),
+                )
+            )
+            session.commit()
+        except JobCancelled:
+            try:
+                self._mark_cancelled(session, job_id, "nothing was staged; the library is unchanged")
             except Exception:
                 session.rollback()
         except Exception as exc:  # ArchiveError, OSError, sqlite errors: all end the job the same way

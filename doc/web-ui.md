@@ -28,7 +28,7 @@ Each view has a hash URL, so links, reload and Back / Forward work without a ser
 | `#/import` | Google Takeout: folder path or browser folder, Check folder, Start import | `ImportView.tsx` |
 | `#/activity` | Job list (import, push, thumbs, site backup); read-only | `ActivityView.tsx` |
 | `#/maintenance` | **Admin only.** The maintenance switch, the message shown to users and the current state ([maintenance.md](maintenance.md)) | `MaintenanceView.tsx` (alert page: `MaintenanceScreen.tsx`) |
-| `#/backup` | **Admin only.** Back up now (optional thumbnails), progress, archive list with download and delete, and the offline restore command ([backup.md](backup.md)) | `BackupView.tsx` |
+| `#/backup` | **Admin only.** Back up now (optional thumbnails), progress, archive list with download, **Restore…** and delete, the restore source form (on the server with Browse, or upload from this device), the staged-restore box (Restart and apply / Discard), the last restore result, and the offline restore command ([backup.md](backup.md)) | `BackupView.tsx` |
 | `#/settings` | Language, **Generate thumbs**, data folder, shares, users and permissions (admin parts as before) | `SettingsPanel.tsx` |
 
 An empty or unknown hash shows Photos. Routing is `app/hashRoute.ts`: `useRoute()` reads `location.hash` with `useSyncExternalStore` on `hashchange`, and navigation sets `location.hash` (one history entry per view). The file is not called `route.ts` because that name is reserved by the Next App Router.

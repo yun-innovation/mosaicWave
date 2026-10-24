@@ -55,7 +55,16 @@ def _listdir_rows(resolved: Path) -> list[tuple[str, bool]]:
     return rows
 
 
-def _entries_from_rows(resolved: Path, rows: list[tuple[str, bool]]) -> tuple[list[FsEntry], int]:
+def _is_wanted_file(name: str, kind: str) -> bool:
+    """``takeout``: Google Takeout zips. ``backup``: any zip (a site backup may be renamed)."""
+    if kind == "backup":
+        return name.lower().endswith(".zip")
+    return bool(TAKEOUT_ZIP.match(name))
+
+
+def _entries_from_rows(
+    resolved: Path, rows: list[tuple[str, bool]], kind: str = "takeout"
+) -> tuple[list[FsEntry], int]:
     entries: list[FsEntry] = []
     zip_count = 0
     for name, is_dir in rows:
@@ -63,7 +72,7 @@ def _entries_from_rows(resolved: Path, rows: list[tuple[str, bool]]) -> tuple[li
         if is_dir:
             entries.append(FsEntry(name=name, path=str(item), is_dir=True))
             continue
-        if TAKEOUT_ZIP.match(name):
+        if _is_wanted_file(name, kind):
             zip_count += 1
             entries.append(FsEntry(name=name, path=str(item), is_dir=False))
     return entries, zip_count
@@ -84,12 +93,12 @@ def _unreadable_volume_message(resolved: Path) -> str:
     return f"cannot list {resolved} (permission)."
 
 
-def _scan_resolved(resolved: Path) -> tuple[list[FsEntry], int, str | None]:
+def _scan_resolved(resolved: Path, kind: str = "takeout") -> tuple[list[FsEntry], int, str | None]:
     try:
         rows = _listdir_rows(resolved)
     except OSError:
         return [], 0, _unreadable_volume_message(resolved)
-    return (*_entries_from_rows(resolved, rows), None)
+    return (*_entries_from_rows(resolved, rows, kind), None)
 
 
 def _posix_place_roots() -> list[FsEntry]:
@@ -149,7 +158,7 @@ def _normalize_path(raw: str | None) -> Path | None:
     return path
 
 
-def list_host_dir(raw: str | None) -> FsListing:
+def list_host_dir(raw: str | None, kind: str = "takeout") -> FsListing:
     if raw:
         if parse_remote_share(raw) is not None:
             try:
@@ -165,7 +174,7 @@ def list_host_dir(raw: str | None) -> FsListing:
             return FsListing(path="", parent=None, entries=_windows_drives(), takeout_zip_count=0)
         if sys.platform == "darwin":
             return FsListing(path="", parent=None, entries=_posix_place_roots(), takeout_zip_count=0)
-        return list_host_dir(str(posix_default_root()))
+        return list_host_dir(str(posix_default_root()), kind)
 
     try:
         resolved = path.resolve()
@@ -178,7 +187,7 @@ def list_host_dir(raw: str | None) -> FsListing:
     if not is_dir:
         raise FileNotFoundError(str(resolved))
 
-    entries, zip_count, warning = _scan_resolved(resolved)
+    entries, zip_count, warning = _scan_resolved(resolved, kind)
 
     parent: str | None
     if os.name == "nt" and resolved.parent == resolved:

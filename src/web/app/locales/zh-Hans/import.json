@@ -62,7 +62,8 @@
       "takeout_import": "Takeout 导入",
       "thumb_batch": "缩略图",
       "site_backup": "整站备份",
-      "unknown": "任务"
+      "unknown": "任务",
+      "site_restore": "整站还原"
     },
     "status": {
       "idle": "空闲",

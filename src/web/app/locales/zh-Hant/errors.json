@@ -75,5 +75,13 @@
   "check_partial": "這份匯出檔有很多 zip 檔。檢查只會讀到找到相片為止；匯入時會讀取每一個 zip 檔。",
   "reads_zips_other": "匯入時會直接讀取 {{count}} 個 zip 檔，不需要解壓縮。放在 zip 檔旁的大型影片會依附屬檔一併匯入。",
   "zip_has_no_photos": "已開啟 zip 檔，但裡面找不到相片或影片。",
-  "sidecar_without_media_other": "有 {{count}} 個相片／影片附屬檔找不到對應的媒體檔。"
+  "sidecar_without_media_other": "有 {{count}} 個相片／影片附屬檔找不到對應的媒體檔。",
+  "maintenance_required": "請先開啟維護模式。",
+  "restore_not_staged": "沒有等待套用的還原。",
+  "restore_pending": "有一份還原正等待套用。請先套用或捨棄它。",
+  "backup_invalid": "這不是可用的 mosaicWave 備份：{{message}}",
+  "backup_path_required": "請輸入或瀏覽伺服器上的備份 zip。",
+  "backup_not_a_file": "該路徑不是檔案：{{path}}",
+  "upload_too_large": "檔案太大（上限為 {{max_gb}} GB）。",
+  "backup_no_space": "可用空間不足：需要約 {{need_mb}} MB，目前只有 {{free_mb}} MB。"
 }

@@ -159,7 +159,7 @@ Illustrative v1 surface (names can change; behavior should not):
 | GET | `/api/v1/assets/{id}/file` | Original (so the player can skip in time) |
 | POST | `/api/v1/thumbs/generate` | Start `thumb_batch` job (one in-process job at a time) |
 | POST | `/api/v1/assets` | Upload into the caller's library |
-| GET | `/api/v1/fs/list` | Host folder picker. Other users' `{data_dir}/libraries/{id}` dirs are hidden. Optional `warning` when this process cannot list a folder (does not retry as the Mac GUI user). `smb://` and UNC: [smb-paths.md](smb-paths.md) |
+| GET | `/api/v1/fs/list` | Host folder picker. `kind=backup` (admin only) lists any `.zip` file for choosing a backup to restore. Other users' `{data_dir}/libraries/{id}` dirs are hidden. Optional `warning` when this process cannot list a folder (does not retry as the Mac GUI user). `smb://` and UNC: [smb-paths.md](smb-paths.md) |
 | POST | `/api/v1/import/takeout/inspect` | Verify Takeout download/extract (missing zips, oversized files) |
 | POST | `/api/v1/import/takeout` | Start deduping Takeout import from a **host path** into the caller's library (`dest` ignored); [takeout-dump.md](takeout-dump.md) |
 | POST | `/api/v1/import/takeout/push` | Start a **client upload** session (mobile / this device / cloud Files). Dump is not a server folder |
@@ -176,6 +176,12 @@ Illustrative v1 surface (names can change; behavior should not):
 | GET | `/api/v1/backups` | **Admin.** List site archives in the app folder's `backups/` |
 | GET | `/api/v1/backups/{name}` | **Admin.** Download one archive |
 | DELETE | `/api/v1/backups/{name}` | **Admin.** Delete one archive |
+| POST | `/api/v1/backups/{name}/restore` | **Admin.** Stage an online restore as a cancellable `site_restore` job; needs maintenance mode (`maintenance_required`) |
+| POST | `/api/v1/backups/restore` | **Admin.** `{path}`: stage a restore from a zip anywhere on the server (maintenance mode required) |
+| PUT | `/api/v1/backups/upload` | **Admin.** Raw zip body from the browser into `backups/`; checked and stored under the standard name |
+| GET | `/api/v1/backups/restore` | **Admin.** `{pending, result}`: the staged restore and the last start-up swap |
+| POST | `/api/v1/backups/restore/apply` | **Admin.** Restart the API; the staged restore is swapped in at start-up |
+| DELETE | `/api/v1/backups/restore` | **Admin.** Discard the staged restore and clear the result |
 | GET | `/api/v1/maintenance` | **Public.** `{state: off\|draining\|on, reason, since}`; [maintenance.md](maintenance.md) |
 | PUT | `/api/v1/maintenance` | **Admin.** `{enabled, reason}`: switch maintenance mode. While it is on, everyone but an admin gets `503 maintenance` |
 | GET | `/api/v1/sync/changes` | Metadata pull (`since_rev`, tombstones). Push is `/albums` + `base_rev`, not this URL. Covered vs later: [schema.md](schema.md) Sync protocol |
@@ -199,7 +205,7 @@ CORS is only needed if the web origin and API origin differ (local `next dev`). 
 
 Photo **files** stay in a FileStore (v1: local folders / QNAP shares). The database holds **info about** those files: virtual path, dates, EXIF, album membership, scan state. That is a classic index plus relations — not a document store problem.
 
-**Choice: SQLite.** FastAPI talks to it through SQLAlchemy (or similar). One file in the **data directory** next to the blob root. Milestone 6 split it into a site DB plus one library DB per user ([per-library-db.md](per-library-db.md)). Site backup and offline restore are in [backup.md](backup.md); a host-level copy of the data dir also works (stop the API or use the SQLite backup API). Do not restore from sync JSON.
+**Choice: SQLite.** FastAPI talks to it through SQLAlchemy (or similar). One file in the **data directory** next to the blob root. Milestone 6 split it into a site DB plus one library DB per user ([per-library-db.md](per-library-db.md)). Site backup and restore (offline, or staged online and swapped in at restart) are in [backup.md](backup.md); a host-level copy of the data dir also works (stop the API or use the SQLite backup API). Do not restore from sync JSON.
 
 **Schema versions.** `library.db` records its schema version (`PRAGMA user_version`). At startup the server applies numbered upgrade steps in order, keeps a copy of the file from before the upgrade, and refuses a database newer than the app. See [schema.md § Schema versions](schema.md#schema-versions).
 

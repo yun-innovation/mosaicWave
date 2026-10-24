@@ -13,7 +13,9 @@ the next time the API starts (with the usual ``library.db.pre-v{N}`` copy).
 from __future__ import annotations
 
 import argparse
+import json
 import os
+import re
 import shutil
 import socket
 import sqlite3
@@ -45,6 +47,24 @@ Progress = Callable[[int, int, str], None]
 
 _COPY_CHUNK = 1024 * 1024
 _NEEDS = {"source", "asset", "album", "album_asset"}
+
+APP_STAGE_PREFIX = ".restore-staging-app-"
+DATA_STAGE_PREFIX = ".restore-staging-data-"
+PENDING_NAME = "restore-pending.json"
+RESULT_NAME = "restore-result.json"
+_STAMP = re.compile(r"^\d{8}-\d{6}$")
+
+
+@dataclass
+class StagedRestore:
+    """An archive unpacked and checked, waiting to be swapped in."""
+
+    manifest: dict
+    stamp: str
+    app_stage: Path
+    data_stage: Path
+    site_upgrade_from: int | None = None
+    library_upgrade_from: int | None = None
 
 
 @dataclass
@@ -218,30 +238,45 @@ def _require_space(folder: Path, need: int) -> None:
         )
 
 
-def restore_site(archive: Path, settings: Settings, *, on_progress: Progress | None = None) -> RestoreResult:
+def _stamp() -> str:
+    return datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+
+
+def _stage_dirs(settings: Settings, stamp: str) -> tuple[Path, Path]:
+    return (
+        settings.database_path.parent / f"{APP_STAGE_PREFIX}{stamp}",
+        settings.data_dir / f"{DATA_STAGE_PREFIX}{stamp}",
+    )
+
+
+def stage_site(
+    archive: Path, settings: Settings, *, on_progress: Progress | None = None
+) -> StagedRestore:
+    """Validate ``archive`` and unpack it into staging folders beside where the data will go.
+
+    Nothing live is touched, so this is safe while the API runs. Any failure, and a cancel raised
+    from ``on_progress``, removes the staging folders again.
+    """
     data_dir = settings.data_dir
     ensure_data_dir_exists(data_dir)
-    db_path = settings.database_path
-    db_path.parent.mkdir(parents=True, exist_ok=True)
-    _require_unlocked(db_path)
-
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
-    app_stage = db_path.parent / f".restore-staging-app-{stamp}"
-    data_stage = data_dir / f".restore-staging-data-{stamp}"
+    settings.database_path.parent.mkdir(parents=True, exist_ok=True)
+    stamp = _stamp()
+    app_stage, data_stage = _stage_dirs(settings, stamp)
     try:
         with zipfile.ZipFile(archive) as zf:
             manifest = read_manifest(zf)
             check_manifest(manifest, schema.CURRENT_VERSION, LIBRARY_CURRENT_VERSION)
             infos = _members(zf, manifest)
-            _require_space(db_path.parent, sum(i.file_size for i in infos if not _is_media(i.filename)))
+            _require_space(
+                settings.database_path.parent, sum(i.file_size for i in infos if not _is_media(i.filename))
+            )
             _require_space(data_dir, sum(i.file_size for i in infos if _is_media(i.filename)))
             app_stage.mkdir(parents=True)
             data_stage.mkdir(parents=True)
             media = _extract(zf, infos, app_stage, data_stage, on_progress)
         if media != manifest.get("file_count"):
             raise ArchiveError(f"archive lists {manifest.get('file_count')} files but holds {media}")
-        result = RestoreResult(manifest=manifest)
-        result.site_upgrade_from = _prepare_site(app_stage / DB_ENTRY, manifest)
+        site_upgrade_from = _prepare_site(app_stage / DB_ENTRY, manifest)
         older: list[int] = []
         # No thumbnail files in the archive: give every asset a new thumbnail version so browsers refetch.
         # With thumbnails the versions must keep matching the restored files.
@@ -252,14 +287,193 @@ def restore_site(archive: Path, settings: Settings, *, on_progress: Progress | N
             )
             if was is not None:
                 older.append(was)
-        result.library_upgrade_from = min(older) if older else None
-        _swap(app_stage, data_stage, settings, stamp, result)
-        return result
+        return StagedRestore(
+            manifest=manifest,
+            stamp=stamp,
+            app_stage=app_stage,
+            data_stage=data_stage,
+            site_upgrade_from=site_upgrade_from,
+            library_upgrade_from=min(older) if older else None,
+        )
     except zipfile.BadZipFile as exc:
-        raise ArchiveError(f"not a zip file or damaged: {exc}") from exc
-    finally:
         _remove(app_stage)
         _remove(data_stage)
+        raise ArchiveError(f"not a zip file or damaged: {exc}") from exc
+    except BaseException:
+        _remove(app_stage)
+        _remove(data_stage)
+        raise
+
+
+def commit_site(staged: StagedRestore, settings: Settings) -> RestoreResult:
+    """Swap the staged data in. The databases must not be open (offline, or at API start-up)."""
+    result = RestoreResult(
+        manifest=staged.manifest,
+        site_upgrade_from=staged.site_upgrade_from,
+        library_upgrade_from=staged.library_upgrade_from,
+    )
+    try:
+        _swap(staged.app_stage, staged.data_stage, settings, staged.stamp, result)
+    finally:
+        _remove(staged.app_stage)
+        _remove(staged.data_stage)
+    return result
+
+
+def restore_site(archive: Path, settings: Settings, *, on_progress: Progress | None = None) -> RestoreResult:
+    """Offline restore: stage and swap in one go."""
+    ensure_data_dir_exists(settings.data_dir)
+    settings.database_path.parent.mkdir(parents=True, exist_ok=True)
+    _require_unlocked(settings.database_path)
+    return commit_site(stage_site(archive, settings, on_progress=on_progress), settings)
+
+
+# --- Online restore: stage while the API runs, swap at the next start --------------------------
+
+
+def pending_path(settings: Settings) -> Path:
+    return settings.database_path.parent / PENDING_NAME
+
+
+def result_path(settings: Settings) -> Path:
+    return settings.database_path.parent / RESULT_NAME
+
+
+def _summary(manifest: dict) -> dict:
+    keys = ("created_at", "app_version", "schema_version", "include_thumbs", "users", "assets", "albums", "file_count")
+    return {key: manifest.get(key) for key in keys}
+
+
+def _write_json(path: Path, data: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+    os.replace(tmp, path)
+
+
+def _read_json(path: Path) -> dict | None:
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def write_pending(settings: Settings, staged: StagedRestore, archive_name: str) -> None:
+    """Record a staged restore. It is applied the next time the API starts."""
+    _write_json(
+        pending_path(settings),
+        {
+            "archive": archive_name,
+            "stamp": staged.stamp,
+            "staged_at": datetime.now(timezone.utc).isoformat(),
+            "summary": _summary(staged.manifest),
+            "site_upgrade_from": staged.site_upgrade_from,
+            "library_upgrade_from": staged.library_upgrade_from,
+        },
+    )
+
+
+def pending_exists(settings: Settings) -> bool:
+    return pending_path(settings).exists()
+
+
+def read_pending(settings: Settings) -> dict | None:
+    """The staged restore, or None. A damaged record counts as none (it is cleaned at start)."""
+    data = _read_json(pending_path(settings))
+    if data is None or not _STAMP.match(str(data.get("stamp", ""))):
+        return None
+    return data
+
+
+def discard_pending(settings: Settings) -> bool:
+    """Throw a staged restore away. True when there was one."""
+    existed = pending_path(settings).exists()
+    pending = read_pending(settings)
+    if pending is not None:
+        for stage in _stage_dirs(settings, str(pending["stamp"])):
+            _remove(stage)
+    pending_path(settings).unlink(missing_ok=True)
+    if existed:
+        _remove_stale_stages(settings)
+    return existed
+
+
+def read_result(settings: Settings) -> dict | None:
+    return _read_json(result_path(settings))
+
+
+def clear_result(settings: Settings) -> bool:
+    existed = result_path(settings).exists()
+    result_path(settings).unlink(missing_ok=True)
+    return existed
+
+
+def _remove_stale_uploads(settings: Settings) -> None:
+    """Half-received uploads left by a server that stopped mid-upload. Only safe at start-up."""
+    if settings.backup_dir.is_dir():
+        for entry in settings.backup_dir.glob(".upload-*"):
+            _remove(entry)
+
+
+def _remove_stale_stages(settings: Settings) -> None:
+    for folder, prefix in (
+        (settings.database_path.parent, APP_STAGE_PREFIX),
+        (settings.data_dir, DATA_STAGE_PREFIX),
+    ):
+        if folder.is_dir():
+            for entry in folder.glob(f"{prefix}*"):
+                _remove(entry)
+
+
+def apply_pending(settings: Settings) -> str | None:
+    """Start-up hook, before any database is opened. Returns ``done``, ``error`` or None.
+
+    With no staged restore it only clears leftover staging folders. Otherwise it swaps the staged data
+    in and leaves a result record for the admin; a failure puts the old data back and is recorded too.
+    """
+    _remove_stale_uploads(settings)
+    record = _read_json(pending_path(settings))
+    if record is None and not pending_path(settings).exists():
+        _remove_stale_stages(settings)
+        return None
+    outcome: dict = {
+        "archive": str((record or {}).get("archive", "")),
+        "finished_at": datetime.now(timezone.utc).isoformat(),
+        "summary": (record or {}).get("summary") or {},
+    }
+    try:
+        stamp = str((record or {}).get("stamp", ""))
+        if not _STAMP.match(stamp):
+            raise ArchiveError("the staged restore record is damaged")
+        app_stage, data_stage = _stage_dirs(settings, stamp)
+        if not (app_stage / DB_ENTRY).is_file() or not data_stage.is_dir():
+            raise ArchiveError("the staged restore files are missing")
+        manifest_stub = {"stamp": stamp}
+        staged = StagedRestore(
+            manifest=manifest_stub,
+            stamp=stamp,
+            app_stage=app_stage,
+            data_stage=data_stage,
+            site_upgrade_from=(record or {}).get("site_upgrade_from"),
+            library_upgrade_from=(record or {}).get("library_upgrade_from"),
+        )
+        result = commit_site(staged, settings)
+        outcome.update(
+            status="done",
+            kept=[str(path) for path in result.kept],
+            upgrade=result.site_upgrade_from is not None or result.library_upgrade_from is not None,
+            thumbs_missing=not (outcome["summary"] or {}).get("include_thumbs", False),
+            message=None,
+        )
+        status = "done"
+    except (ArchiveError, OSError, sqlite3.Error) as exc:
+        outcome.update(status="error", kept=[], upgrade=False, thumbs_missing=False, message=str(exc))
+        status = "error"
+    _write_json(result_path(settings), outcome)
+    pending_path(settings).unlink(missing_ok=True)
+    _remove_stale_stages(settings)
+    return status
 
 
 def _swap(app_stage: Path, data_stage: Path, settings: Settings, stamp: str, result: RestoreResult) -> None:

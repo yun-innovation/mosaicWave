@@ -222,7 +222,7 @@ collection = {
 
 Hit FastAPI directly (`http://127.0.0.1:8000` debug, `:8090` MSI/QPKG), not the Next.js `:3000` proxy, unless you intend to test the rewrite.
 
-**Backups (admin):** folder **Backups**. Start a site backup, poll the job in **Jobs**, then List backups saves `{{backupName}}` for Download / Delete. Restore is offline only (`python -m mosaicwave.restore`), not an API.
+**Backups (admin):** folder **Backups**. Start a site backup, poll the job in **Jobs**, then List backups saves `{{backupName}}` for Download / Delete. Restore: turn on maintenance, Stage restore (a job), poll it, then Apply restore (restarts the server) and read Restore state. `python -m mosaicwave.restore` still works offline.
 
 **Maintenance:** folder **Maintenance**. Status is public; Turn on/off need an admin session. While it is on, other users get `503 maintenance`.
 
@@ -752,6 +752,46 @@ OpenAPI at `{{baseUrl}}/docs` stays the living spec; this collection is a snapsh
                     "DELETE",
                     "/api/v1/backups/{{backupName}}",
                     description="Admin only. 404 backup_not_found if the name does not exist.",
+                ),
+                req(
+                    "Stage restore",
+                    "POST",
+                    "/api/v1/backups/{{backupName}}/restore",
+                    description="Admin only. Needs maintenance mode on (409 maintenance_required) and no running job (409 job_running; 409 restore_pending while a staged restore waits). Starts a job (kind site_restore, cancellable) that unpacks and checks the archive next to the live data; saves {{jobId}}. Nothing live changes until Apply.",
+                    tests=SAVE_JOB,
+                ),
+                req(
+                    "Restore from a server path",
+                    "POST",
+                    "/api/v1/backups/restore",
+                    description="Admin only. Body {path}: a site backup .zip anywhere on the server (a share, a USB drive); it is restored from there, nothing is copied. Same rules as Stage restore (maintenance_required, job_running, restore_pending). 400 backup_path_required, backup_not_a_file or backup_invalid (not a usable site backup) start no job. Saves {{jobId}}.",
+                    body="{\n  \"path\": \"/share/backups/mosaicwave-site-20261021-093000.zip\"\n}",
+                    tests=SAVE_JOB,
+                ),
+                req(
+                    "Upload backup (from the device)",
+                    "PUT",
+                    "/api/v1/backups/upload",
+                    description="Admin only. Raw zip body (Send and Select File). Streamed to the app folder's backups/ and checked (manifest and zip index only); stored as mosaicwave-site-<time inside the archive>.zip and returned as listed. The same file twice is one archive; a different file with the same time gets the next free second. 400 backup_invalid (deleted), 413 upload_too_large, 507 backup_no_space, 409 restore_pending or job_running. Then use Stage restore with the returned name.",
+                    file_body=True,
+                ),
+                req(
+                    "Restore state",
+                    "GET",
+                    "/api/v1/backups/restore",
+                    description="Admin only. pending is the staged restore waiting to be applied (archive, summary, upgrade). result is what the last start-up swap did (status done or error, where the previous data was kept).",
+                ),
+                req(
+                    "Apply restore",
+                    "POST",
+                    "/api/v1/backups/restore/apply",
+                    description="Admin only. Restarts the server; the staged restore is swapped in before anything opens. 409 restore_not_staged, maintenance_required or job_running. restarting is true when a restart was scheduled (a supervisor or start script must bring the API back). Sign in again afterwards if the session is refused, then Restore state shows the result.",
+                ),
+                req(
+                    "Discard restore",
+                    "DELETE",
+                    "/api/v1/backups/restore",
+                    description="Admin only. Throws a staged restore away and forgets the last result.",
                 ),
             ],
         ),

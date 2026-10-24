@@ -5,28 +5,56 @@ import { useTranslation } from "react-i18next";
 
 import { apiFetch, apiMediaUrl, errorText, HostSettings, readDetail } from "./api";
 import { formatBytes, formatDateTime } from "./format";
+import { routeHash } from "./hashRoute";
 import i18n from "./i18n";
-import { BackupItem, isAbortError, Notice } from "./types";
+import { RestoreSourceForm } from "./RestoreSourceForm";
+import { BackupItem, isAbortError, MaintenanceStatus, Notice, RestoreState, RestoreSummary } from "./types";
 import type { TakeoutImport } from "./useTakeoutImport";
 
 const SAMPLE_NAME = "mosaicwave-site-YYYYMMDD-HHMMSS.zip";
 
+const HEALTH_MS = 1000;
+// The old process exits about a second after Apply. A health answer before this, with no failure
+// seen in between, can still be the old process.
+const OLD_PROCESS_MS = 8000;
+const GIVE_UP_MS = 180000;
+
+type Confirm = { name: string; kind: "delete" | "restore" };
+/** `wait`: restart asked, polling. `slow`: it has not come back. `manual`: nothing will restart it. */
+type Waiting = "wait" | "slow" | "manual" | null;
+
+function summaryText(summary: RestoreSummary): string {
+  return [
+    i18n.t("backup:users", { count: summary.users }),
+    i18n.t("backup:assets", { count: summary.assets }),
+    i18n.t("backup:albums", { count: summary.albums }),
+  ].join(" · ");
+}
+
 /**
- * Admin: site backup (start, list, download, delete). Progress and the result of a running backup
- * are in the status bar; this page reloads its list when one finishes. Restore is offline, so the
- * page shows the command.
+ * Admin: site backup (start, list, download, delete) and restore. Progress and the result of a
+ * running backup or restore are in the status bar; this page reloads when one finishes.
+ *
+ * Restore has three steps. Restore… (needs maintenance mode) unpacks and checks an archive next to
+ * the live data as a job. Restart and apply then restarts the server, which swaps the data in before
+ * anything opens; this page waits for the server and reloads, and shows what happened.
  */
-export function BackupView({ importer }: { importer: TakeoutImport }) {
+export function BackupView({ importer, maintenance }: { importer: TakeoutImport; maintenance: MaintenanceStatus }) {
   const { t } = useTranslation(["backup", "common"]);
   const [items, setItems] = useState<BackupItem[] | null>(null);
   const [folder, setFolder] = useState<string | null>(null);
   const [withThumbs, setWithThumbs] = useState(false);
   const [working, setWorking] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
-  const [confirming, setConfirming] = useState<string | null>(null);
+  const [restoreNotice, setRestoreNotice] = useState<Notice | null>(null);
+  const [confirming, setConfirming] = useState<Confirm | null>(null);
+  const [restore, setRestore] = useState<RestoreState | null>(null);
+  const [waiting, setWaiting] = useState<Waiting>(null);
+  const [applying, setApplying] = useState(false);
   const { busy, finished, refreshJobs } = importer;
-  const disabled = busy || working;
-  const lastBackup = finished?.kind === "site_backup" ? finished.id : null;
+  const disabled = busy || working || waiting !== null;
+  const maintenanceOn = maintenance.state === "on";
+  const lastFinished = finished?.kind === "site_backup" || finished?.kind === "site_restore" ? finished.id : null;
 
   const loadList = useCallback(async (signal?: AbortSignal) => {
     try {
@@ -44,12 +72,44 @@ export function BackupView({ importer }: { importer: TakeoutImport }) {
     }
   }, []);
 
-  // On open, and again each time a backup finishes.
+  const loadRestore = useCallback(async (signal?: AbortSignal) => {
+    try {
+      const res = await apiFetch("/api/v1/backups/restore", { signal });
+      if (res.ok) setRestore((await res.json()) as RestoreState);
+    } catch (err: unknown) {
+      if (isAbortError(err)) return;
+    }
+  }, []);
+
+  // On open, and again each time a backup or restore finishes.
   useEffect(() => {
     const ctrl = new AbortController();
     void loadList(ctrl.signal);
+    void loadRestore(ctrl.signal);
     return () => ctrl.abort();
-  }, [loadList, lastBackup]);
+  }, [loadList, loadRestore, lastFinished]);
+
+  // After Apply: wait for the server to go away and come back, then reload to show the outcome.
+  const polling = waiting === "wait" || waiting === "slow";
+  useEffect(() => {
+    if (!polling) return;
+    const started = Date.now();
+    let sawDown = false;
+    const timer = window.setInterval(() => {
+      const elapsed = Date.now() - started;
+      // A server that accepts the connection but never answers counts as down.
+      void apiFetch("/api/v1/health", { signal: AbortSignal.timeout(3000) })
+        .then((res) => {
+          if (!res.ok) sawDown = true;
+          else if (sawDown || elapsed > OLD_PROCESS_MS) window.location.reload();
+        })
+        .catch(() => {
+          sawDown = true;
+        });
+      if (elapsed > GIVE_UP_MS) setWaiting((w) => (w === "wait" ? "slow" : w));
+    }, HEALTH_MS);
+    return () => window.clearInterval(timer);
+  }, [polling]);
 
   useEffect(() => {
     const ctrl = new AbortController();
@@ -80,6 +140,55 @@ export function BackupView({ importer }: { importer: TakeoutImport }) {
       setNotice({ text: err instanceof Error ? err.message : i18n.t("common:networkError"), ok: false });
     } finally {
       setWorking(false);
+    }
+  }
+
+  async function startRestore(name: string) {
+    setConfirming(null);
+    setWorking(true);
+    setNotice(null);
+    try {
+      const res = await apiFetch(`/api/v1/backups/${encodeURIComponent(name)}/restore`, { method: "POST" });
+      if (!res.ok) {
+        const body: unknown = await res.json().catch(() => null);
+        setNotice({ text: errorText(body, res.status), ok: false });
+        return;
+      }
+      refreshJobs();
+    } catch (err: unknown) {
+      setNotice({ text: err instanceof Error ? err.message : i18n.t("common:networkError"), ok: false });
+    } finally {
+      setWorking(false);
+    }
+  }
+
+  async function applyRestore() {
+    setApplying(true);
+    setNotice(null);
+    try {
+      const res = await apiFetch("/api/v1/backups/restore/apply", { method: "POST" });
+      const body: unknown = await res.json().catch(() => null);
+      if (!res.ok) {
+        setNotice({ text: errorText(body, res.status), ok: false });
+        return;
+      }
+      setWaiting((body as { restarting?: boolean } | null)?.restarting ? "wait" : "manual");
+    } catch (err: unknown) {
+      setNotice({ text: err instanceof Error ? err.message : i18n.t("common:networkError"), ok: false });
+    } finally {
+      setApplying(false);
+    }
+  }
+
+  /** Discard a staged restore, or dismiss the last result. */
+  async function clearRestore() {
+    setNotice(null);
+    try {
+      const res = await apiFetch("/api/v1/backups/restore", { method: "DELETE" });
+      if (res.ok) setRestore((await res.json()) as RestoreState);
+      else setNotice({ text: await readDetail(res), ok: false });
+    } catch (err: unknown) {
+      setNotice({ text: err instanceof Error ? err.message : i18n.t("common:networkError"), ok: false });
     }
   }
 
@@ -154,11 +263,17 @@ export function BackupView({ importer }: { importer: TakeoutImport }) {
                 </p>
               </div>
               <div className="import backup-actions">
-                {confirming === item.name ? (
+                {confirming?.name === item.name ? (
                   <>
-                    <span className="detail">{t("backup:confirmDelete")}</span>
-                    <button type="button" disabled={disabled} onClick={() => void remove(item.name)}>
-                      {t("backup:confirmYes")}
+                    <span className="detail">
+                      {confirming.kind === "restore" ? t("backup:restore.confirm") : t("backup:confirmDelete")}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={disabled}
+                      onClick={() => void (confirming.kind === "restore" ? startRestore(item.name) : remove(item.name))}
+                    >
+                      {confirming.kind === "restore" ? t("backup:restore.confirmYes") : t("backup:confirmYes")}
                     </button>
                     <button type="button" onClick={() => setConfirming(null)}>
                       {t("common:cancel")}
@@ -169,7 +284,15 @@ export function BackupView({ importer }: { importer: TakeoutImport }) {
                     <a className="button-link" href={apiMediaUrl(`/api/v1/backups/${encodeURIComponent(item.name)}`)} download>
                       {t("backup:download")}
                     </a>
-                    <button type="button" disabled={disabled} onClick={() => setConfirming(item.name)}>
+                    <button
+                      type="button"
+                      disabled={disabled || !maintenanceOn || !!restore?.pending}
+                      title={maintenanceOn ? undefined : t("backup:restore.needsMaintenance")}
+                      onClick={() => setConfirming({ name: item.name, kind: "restore" })}
+                    >
+                      {t("backup:restore.button")}
+                    </button>
+                    <button type="button" disabled={disabled} onClick={() => setConfirming({ name: item.name, kind: "delete" })}>
                       {t("backup:delete")}
                     </button>
                   </>
@@ -181,10 +304,104 @@ export function BackupView({ importer }: { importer: TakeoutImport }) {
       )}
 
       <h2 className="backup-heading">{t("backup:restore.title")}</h2>
-      <p className="detail">{t("backup:restore.help")}</p>
+      {!maintenanceOn && !waiting && (
+        <p className="detail">
+          {t("backup:restore.needsMaintenance")}{" "}
+          <a href={routeHash({ view: "maintenance", albumId: null })}>{t("backup:restore.turnOn")}</a>
+        </p>
+      )}
+      {waiting && (
+        <p className={waiting === "wait" ? "detail import-progress" : "status fail"}>
+          {waiting === "wait" && t("backup:restore.restarting.text")}
+          {waiting === "slow" && t("backup:restore.restarting.slow")}
+          {waiting === "manual" && t("backup:restore.restarting.manual")}
+        </p>
+      )}
+      {restore?.result && (
+        <div className="restore-box">
+          <p className={restore.result.status === "done" ? "detail import-progress" : "status fail"}>
+            {restore.result.status === "done"
+              ? t("backup:restore.result.done", {
+                  archive: restore.result.archive,
+                  summary: summaryText(restore.result.summary),
+                })
+              : t("backup:restore.result.failed", {
+                  archive: restore.result.archive,
+                  message: restore.result.message ?? "",
+                })}
+          </p>
+          {restore.result.status === "done" && (
+            <>
+              {restore.result.kept.length > 0 && (
+                <>
+                  <p className="detail">{t("backup:restore.result.kept")}</p>
+                  <ul className="restore-kept">
+                    {restore.result.kept.map((path) => (
+                      <li key={path}>
+                        <code>{path}</code>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+              {restore.result.upgrade && <p className="detail">{t("backup:restore.result.upgrade")}</p>}
+              {restore.result.thumbs_missing && <p className="detail">{t("backup:restore.result.thumbs")}</p>}
+              <p className="detail">{t("backup:restore.result.users")}</p>
+              {maintenanceOn && <p className="detail">{t("backup:restore.result.maintenance")}</p>}
+            </>
+          )}
+          <div className="button-row">
+            <button type="button" onClick={() => void clearRestore()}>
+              {t("backup:restore.result.dismiss")}
+            </button>
+          </div>
+        </div>
+      )}
+      {restore?.pending && !waiting && (
+        <div className="restore-box">
+          <h3>{t("backup:restore.pending.title")}</h3>
+          <p>
+            {t("backup:restore.pending.summary", {
+              archive: restore.pending.archive,
+              summary: summaryText(restore.pending.summary),
+            })}
+          </p>
+          <p className="detail">{t("backup:restore.pending.warn")}</p>
+          {restore.pending.upgrade && <p className="detail">{t("backup:restore.pending.upgrade")}</p>}
+          <div className="button-row">
+            <button type="button" disabled={disabled || applying || !maintenanceOn} onClick={() => void applyRestore()}>
+              {applying ? t("common:working") : t("backup:restore.pending.apply")}
+            </button>
+            <button type="button" disabled={disabled || applying} onClick={() => void clearRestore()}>
+              {t("backup:restore.pending.discard")}
+            </button>
+          </div>
+        </div>
+      )}
+      {!restore?.pending && !waiting && (
+        <>
+          <p className="detail">{t("backup:restore.idle")}</p>
+          <RestoreSourceForm
+            maintenanceOn={maintenanceOn}
+            blocked={disabled}
+            onNotice={setRestoreNotice}
+            onStarted={() => {
+              refreshJobs();
+              void loadList();
+              void loadRestore();
+            }}
+          />
+          {restoreNotice && (
+            <p className={restoreNotice.ok ? "detail import-progress" : "status fail"}>{restoreNotice.text}</p>
+          )}
+        </>
+      )}
+
+      <h3 className="backup-heading">{t("backup:restore.offline.title")}</h3>
+      <p className="detail">{t("backup:restore.offline.help")}</p>
       <pre className="backup-command">{`python -m mosaicwave.restore "${archivePath}"`}</pre>
-      <p className="detail">{t("backup:restore.check")}</p>
-      <p className="detail">{t("backup:restore.keep")}</p>
+      <p className="detail">{t("backup:restore.offline.check")}</p>
+      <p className="detail">{t("backup:restore.offline.keep")}</p>
     </section>
   );
 }
