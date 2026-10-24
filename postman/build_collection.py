@@ -686,6 +686,12 @@ OpenAPI at `{{baseUrl}}/docs` stays the living spec; this collection is a snapsh
                     tests=SAVE_JOB,
                 ),
                 req(
+                    "Cancel job",
+                    "POST",
+                    "/api/v1/jobs/{{jobId}}/cancel",
+                    description="Stop a running job (thumbnails, site backup, Takeout import). Owner or admin; others get 404. The reply still says running: it ends as cancelled at the next check, so poll GET /jobs/{{jobId}}. 409 job_not_running if it already ended. Finished items stay; a cancelled backup leaves no archive.",
+                ),
+                req(
                     "Import status",
                     "GET",
                     "/api/v1/import/takeout/status",

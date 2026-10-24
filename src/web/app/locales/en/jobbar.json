@@ -2,6 +2,21 @@
   "starting": "Starting…",
   "failed": "Task failed.",
   "backupDone": "Backup finished.",
+  "cancelled": "Cancelled.",
+  "cancelledAt": "Cancelled after {{processed}} of {{total}}.",
   "viewActivity": "Activity",
-  "dismiss": "Dismiss"
+  "dismiss": "Dismiss",
+  "cancel": {
+    "button": "Cancel job",
+    "confirm": "Stop this job?",
+    "yes": "Yes, stop it",
+    "no": "Keep running",
+    "working": "Cancelling…",
+    "keeps": {
+      "takeout_import": "Items already imported stay. Import again to continue.",
+      "thumb_batch": "Thumbnails already made stay.",
+      "site_backup": "No archive is kept.",
+      "other": "Work already done stays."
+    }
+  }
 }

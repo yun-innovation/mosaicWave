@@ -30,6 +30,7 @@
   "takeout_path_required": "請輸入 Takeout 資料夾路徑。",
   "takeout_not_a_directory": "這個路徑不是資料夾。",
   "takeout_no_photos": "找不到相片。請選擇含有 takeout-*.zip 的資料夾，或已解壓縮的 Google 相簿資料夾。",
+  "job_not_running": "這項工作已不在執行。",
   "job_running": "已有其他工作正在執行。",
   "maintenance": "伺服器正在維護中，請稍後再試。",
   "upload_still_running": "裝置上傳仍在進行中。請按「取消上傳」，再重新匯入。",

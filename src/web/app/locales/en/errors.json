@@ -30,6 +30,7 @@
   "takeout_path_required": "Enter the Takeout folder path.",
   "takeout_not_a_directory": "That path is not a folder.",
   "takeout_no_photos": "No photos found. Pick a folder with takeout-*.zip archives or an extracted Google Photos folder.",
+  "job_not_running": "This job is not running any more.",
   "job_running": "Another job is already running.",
   "maintenance": "The server is in maintenance mode. Please try again later.",
   "upload_still_running": "A device upload is still running. Click Cancel upload, then Import again.",

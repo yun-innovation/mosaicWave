@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 
+import { CancelJobButton } from "./CancelJobButton";
 import { formatNumber } from "./format";
 import { routeHash } from "./hashRoute";
 import { ImportJob } from "./types";
@@ -14,13 +15,15 @@ type Props = {
   job: ImportJob | null;
   finished: FinishedJob | null;
   onDismiss: () => void;
+  /** Look at the jobs again now (after a cancel request). */
+  onRefresh: () => void;
 };
 
 /**
  * One place for background task progress, on every view: the running job (any kind) with its
  * count, then the result of the last one. Successes clear themselves; failures stay until dismissed.
  */
-export function StatusBar({ job, finished, onDismiss }: Props) {
+export function StatusBar({ job, finished, onDismiss, onRefresh }: Props) {
   const { t } = useTranslation(["jobbar", "common"]);
   const clearAfter = !job && finished?.ok ? finished : null;
 
@@ -47,13 +50,17 @@ export function StatusBar({ job, finished, onDismiss }: Props) {
           <progress className="status-bar-meter" />
         )}
         <a href={activity}>{t("jobbar:viewActivity")}</a>
+        {job.id && !(job.mode === "push" && job.phase === "receiving") && (
+          <CancelJobButton jobId={job.id} kind={job.kind} onRequested={onRefresh} />
+        )}
       </div>
     );
   }
 
   if (finished) {
+    const tone = finished.cancelled ? "status-bar" : finished.ok ? "status-bar done" : "status-bar fail";
     return (
-      <div className={finished.ok ? "status-bar done" : "status-bar fail"} role="status" aria-live="polite">
+      <div className={tone} role="status" aria-live="polite">
         <span className="status-bar-label">{jobKindLabel(finished.kind)}</span>
         <span className="status-bar-current">{finished.text}</span>
         <a href={activity}>{t("jobbar:viewActivity")}</a>

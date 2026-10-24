@@ -195,6 +195,7 @@ class RunningJobOut(BaseModel):
     processed: int = 0
     total: int = 0
     owner: str | None = Field(default=None, description="Display name of the user who started it")
+    cancelling: bool = Field(default=False, description="Someone asked it to stop; it ends within moments")
 
 
 class RunningJobResponse(BaseModel):
@@ -852,6 +853,7 @@ def get_jobs(
 
 @router.get("/jobs/running", response_model=RunningJobResponse)
 def get_running_job(
+    request: Request,
     session: Session = Depends(get_session),
     _admin: User = Depends(require_admin),
 ) -> RunningJobResponse:
@@ -872,8 +874,30 @@ def get_running_job(
             processed=row.processed,
             total=row.total,
             owner=(owner.display_name or owner.username) if owner else None,
+            cancelling=request.app.state.import_jobs.is_cancelling(row.id),
         )
     )
+
+
+@router.post("/jobs/{job_id}/cancel", response_model=ImportOut)
+def cancel_job(
+    job_id: str,
+    request: Request,
+    session: Session = Depends(get_session),
+    user: User = Depends(require_user),
+) -> ImportOut:
+    """Stop a running job: its owner may, and so may an admin (for any job). It ends as ``cancelled``."""
+    row = session.get(Job, job_id)
+    owned = row is not None and _job_owned(row, user)
+    if row is None or not (owned or user.role == "admin"):
+        raise ApiError(404, "job_not_found", "job not found")
+    session.close()
+    runner: ImportJobRunner = request.app.state.import_jobs
+    try:
+        view = runner.cancel(job_id, by="owner" if owned else "admin")
+    except ImportBusy as exc:
+        raise _busy_error(exc) from exc
+    return _job_out(view)
 
 
 @router.get("/jobs/{job_id}", response_model=ImportOut)

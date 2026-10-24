@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { apiFetch, errorText } from "./api";
+import { CancelJobButton } from "./CancelJobButton";
 import { formatDateTime } from "./format";
 import i18n from "./i18n";
 import { MaintenanceStatus, Notice, RunningJob } from "./types";
@@ -80,6 +81,8 @@ export function MaintenanceView({ status, running, onChanged }: Props) {
                 {running.started_at && (
                   <span className="detail">{t("maintenance:waiting.started", { time: formatDateTime(running.started_at) })}</span>
                 )}
+                <CancelJobButton jobId={running.id} kind={running.kind} cancelling={running.cancelling} />
+                
               </>
             ) : (
               <span className="detail">{t("maintenance:waiting.looking")}</span>

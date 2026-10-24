@@ -42,6 +42,11 @@ export function useTakeoutImport(me: Me | null, onFinished: () => void) {
         onFinished();
         return;
       }
+      if (job.status === "cancelled") {
+        if (job.kind === "takeout_import") setMessage(i18n.t("import:result.importCancelled"));
+        onFinished(); // finished items stay in the library
+        return;
+      }
       if (job.status !== "done") return;
       if (job.kind === "takeout_import") {
         const counts = {

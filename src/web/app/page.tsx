@@ -242,6 +242,7 @@ export default function Home() {
       job={importer.job}
       finished={importer.finished}
       onDismissFinished={importer.dismissFinished}
+      onJobsChanged={importer.refreshJobs}
       onMe={setMe}
       onUpload={() => setUploadOpen(true)}
       onLogout={() => void onLogout()}

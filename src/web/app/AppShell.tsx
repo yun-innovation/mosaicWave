@@ -96,6 +96,7 @@ type Props = {
   job: ImportJob | null;
   finished: FinishedJob | null;
   onDismissFinished: () => void;
+  onJobsChanged: () => void;
   onMe: (me: Me) => void;
   onUpload: () => void;
   onLogout: () => void;
@@ -111,6 +112,7 @@ export function AppShell({
   job,
   finished,
   onDismissFinished,
+  onJobsChanged,
   onMe,
   onUpload,
   onLogout,
@@ -234,7 +236,7 @@ export function AppShell({
             <a href={routeHash({ view: "maintenance", albumId: null })}>{t("maintenance:banner.manage")}</a>
           </div>
         )}
-        <StatusBar job={job} finished={finished} onDismiss={onDismissFinished} />
+        <StatusBar job={job} finished={finished} onDismiss={onDismissFinished} onRefresh={onJobsChanged} />
         {children}
       </main>
     </div>

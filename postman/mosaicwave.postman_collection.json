@@ -1541,6 +1541,15 @@
           ]
         },
         {
+          "name": "Cancel job",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/jobs/{{jobId}}/cancel",
+            "description": "Stop a running job (thumbnails, site backup, Takeout import). Owner or admin; others get 404. The reply still says running: it ends as cancelled at the next check, so poll GET /jobs/{{jobId}}. 409 job_not_running if it already ended. Finished items stay; a cancelled backup leaves no archive."
+          }
+        },
+        {
           "name": "Import status",
           "request": {
             "method": "GET",
@@ -1729,6 +1738,15 @@
             "header": [],
             "url": "{{baseUrl}}/api/v1/maintenance",
             "description": "Public (no sign-in). state is off, draining (on, but a job is still running) or on, with the reason and since. Works during maintenance, unlike most other requests."
+          }
+        },
+        {
+          "name": "Running job (any user)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/jobs/running",
+            "description": "Admin only. The one job running on the server, whoever started it: kind, owner, progress and start time, but no file names. This is the job maintenance mode waits for while the state is draining. 403 for members."
           }
         },
         {

@@ -42,7 +42,8 @@
     "importedFrom": "已从 {{path}} 导入 {{assets}}、{{albums}}",
     "assets_other": "{{count, number}} 个项目",
     "albums_other": "{{count, number}} 个相册",
-    "cancelled": "已取消上传"
+    "cancelled": "已取消上传",
+    "importCancelled": "已取消导入。已导入的项目会保留；再次导入即可继续。"
   },
   "fail": {
     "chooseFolder": "请先在本设备上选择 Takeout 文件夹",
@@ -68,7 +69,8 @@
       "queued": "排队中",
       "running": "运行中",
       "done": "完成",
-      "error": "错误"
+      "error": "错误",
+      "cancelled": "已取消"
     },
     "thumbs_other": "{{count, number}} 张缩略图"
   }

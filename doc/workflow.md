@@ -52,6 +52,20 @@ Keep Takeout routes as the **start** buttons; they create a job:
 | GET | `/api/v1/jobs` | List recent jobs (**admin**); cursor, filter `kind` |
 | GET | `/api/v1/jobs/{id}` | One job + progress / result (replaces ad-hoc import status) |
 | GET | `/api/v1/jobs/{id}/events` | Audit events if `job_event` exists |
+| POST | `/api/v1/jobs/{id}/cancel` | Stop a running job: its owner may, and so may an admin (any job). Others get `404 job_not_found`; an ended job gets `409 job_not_running`. See Cancelling |
+
+## Cancelling
+
+`POST /jobs/{id}/cancel` sets a flag the running job checks **between items**, so it ends as `cancelled` within moments (the reply still says `running`). An event "Cancel requested by owner|admin" is logged, and "Cancelled: …" when it stops. Asking twice is harmless. `GET /jobs/running` (admin) reports `cancelling`.
+
+| Kind | What stays |
+| --- | --- |
+| `thumb_batch` | Thumbnails already made |
+| `site_backup` | Nothing: the `.part` file is removed and no archive is written |
+| `takeout_import` | Every finished item (committed before the job ends); importing again skips what is there (same SHA-256) |
+| `takeout_import` in `push` mode, still receiving | Cancelled at once by `/import/takeout/push/{id}/cancel` (ends as `error`, `cancelled`); `/jobs/{id}/cancel` hands over to it |
+
+Inside the code a `JobCancelled` exception (a `BaseException`, so work that catches `Exception` cannot swallow it) unwinds the job; each runner catches it by name.
 
 `GET /api/v1/import/takeout/status` may stay as an alias of the latest `takeout_import` job during Phase 3.
 

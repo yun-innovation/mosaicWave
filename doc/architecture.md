@@ -168,6 +168,7 @@ Illustrative v1 surface (names can change; behavior should not):
 | POST | `/api/v1/import/takeout/push/{id}/cancel` | Abort a receiving push job |
 | GET | `/api/v1/import/takeout/status` | Latest Takeout job for this user (alias; Phase 3: `GET /jobs/{id}`) |
 | GET | `/api/v1/jobs` | The caller's task runs; [workflow.md](workflow.md) |
+| POST | `/api/v1/jobs/{id}/cancel` | Stop a running job (owner, or an admin for any job); it ends as `cancelled`; [workflow.md](workflow.md) |
 | GET | `/api/v1/jobs/running` | **Admin.** The one running job on the server, any owner, without file names; [maintenance.md](maintenance.md) |
 | GET | `/api/v1/jobs/{id}` | One job + progress / result (own jobs only) |
 | GET | `/api/v1/jobs/{id}/events` | Job audit log (own jobs only) |

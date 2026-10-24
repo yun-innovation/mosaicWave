@@ -1147,6 +1147,13 @@ main.app-main {
   font-weight: 400;
 }
 
+.cancel-job {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
 .maintenance-waiting {
   display: flex;
   align-items: center;

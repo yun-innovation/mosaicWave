@@ -14,6 +14,8 @@ export type FinishedJob = {
   id: string;
   kind: string | null;
   ok: boolean;
+  /** Stopped on request: neither a success nor a failure. */
+  cancelled?: boolean;
   text: string;
 };
 
@@ -40,6 +42,13 @@ export function jobKindLabel(kind: string | null): string {
 
 function summary(job: ImportJob): FinishedJob {
   const id = job.id ?? "";
+  if (job.status === "cancelled") {
+    const text =
+      job.total > 0
+        ? i18n.t("jobbar:cancelledAt", { processed: job.processed, total: job.total })
+        : i18n.t("jobbar:cancelled");
+    return { id, kind: job.kind, ok: true, cancelled: true, text };
+  }
   if (job.status === "error") {
     return { id, kind: job.kind, ok: false, text: job.error || i18n.t("jobbar:failed") };
   }
