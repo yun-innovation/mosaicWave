@@ -97,7 +97,8 @@ export function BackupView({ importer, maintenance }: { importer: TakeoutImport;
     let sawDown = false;
     const timer = window.setInterval(() => {
       const elapsed = Date.now() - started;
-      void apiFetch("/api/v1/health")
+      // A server that accepts the connection but never answers counts as down.
+      void apiFetch("/api/v1/health", { signal: AbortSignal.timeout(3000) })
         .then((res) => {
           if (!res.ok) sawDown = true;
           else if (sawDown || elapsed > OLD_PROCESS_MS) window.location.reload();

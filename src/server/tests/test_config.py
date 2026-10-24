@@ -736,3 +736,40 @@ def test_recover_library_db_to_bootstrap(tmp_path: Path) -> None:
     con = sqlite3.connect(boot / "library.db")
     assert con.execute("SELECT COUNT(*) FROM user").fetchone()[0] == 1
     con.close()
+
+
+class _Exited(Exception):
+    pass
+
+
+@pytest.mark.parametrize("has_parent", [True, False])
+def test_restart_also_ends_the_uvicorn_parent_of_a_worker(
+    monkeypatch: pytest.MonkeyPatch, has_parent: bool
+) -> None:
+    """Under `uvicorn --reload` a dead worker is never replaced, so the parent must end too."""
+    import types
+
+    from mosaicwave import config
+
+    ended: list[object] = []
+    monkeypatch.setattr(
+        config.multiprocessing, "parent_process", lambda: types.SimpleNamespace(pid=4242) if has_parent else None
+    )
+    monkeypatch.setattr(config.subprocess, "run", lambda cmd, **_kw: ended.append(("taskkill", cmd)))
+    monkeypatch.setattr(config.os, "kill", lambda pid, sig: ended.append(("kill", pid, sig)))
+
+    def fake_exit(code: int) -> None:
+        ended.append(("exit", code))
+        raise _Exited
+
+    monkeypatch.setattr(config.os, "_exit", fake_exit)
+    with pytest.raises(_Exited):
+        config._exit_for_restart()
+
+    assert ended[-1] == ("exit", 0)
+    if not has_parent:
+        assert ended == [("exit", 0)]
+    elif os.name == "nt":
+        assert ended[0][0] == "taskkill" and "4242" in ended[0][1] and "/T" in ended[0][1]
+    else:
+        assert ended[0] == ("kill", 4242, config.signal.SIGTERM)
