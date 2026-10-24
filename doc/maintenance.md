@@ -34,14 +34,16 @@ Switching it on twice replaces the message and keeps `since`. The message is pla
 | --- | --- | --- |
 | GET | `/api/v1/maintenance` | **Public.** `{state: off\|draining\|on, reason, since}` |
 | PUT | `/api/v1/maintenance` | **Admin.** `{enabled: bool, reason: string}`; returns the new status |
+| GET | `/api/v1/jobs/running` | **Admin.** `{job: null}` or the one job running on the server, whoever started it: `id`, `kind`, `status`, `started_at`, `processed`, `total`, `owner` (display name). It leaves out `current`, `path`, warnings and the event log, because those name a user's files. `/jobs`, `/jobs/{id}` and `/jobs/{id}/events` stay owner-only |
 
 ## Web
 
 - `useMaintenance` polls the public status every 15 s, every 3 s while it is not `off`, and at once when any call is refused with `503 maintenance` (`apiFetch` raises an event). `MaintenanceStatus` is in `types.ts`.
 - **Everyone but an admin** (signed out or a member) gets `MaintenanceScreen`: the message, since when, "checking again automatically", and **Sign out** for a member or **Administrator sign in** when signed out. The app returns by itself when maintenance ends.
+- **While `draining`** an admin's page polls `GET /jobs/running` every 2 s (`useRunningJob`). The Maintenance page shows "Waiting for", the job type and owner, `processed / total` with a progress bar and the start time; the banner shows the same in one line. There is no way to cancel a thumbnail or backup job yet; wait for it, or restart the API (an interrupted job is marked at start-up).
 - **An admin** sees a banner with the message and a **Manage** link, the upload button and Settings link are hidden, and the sidebar shrinks to Backup, Maintenance and Activity. Any other URL shows Backup.
 - Strings: namespace `maintenance`, `nav.maintenance` in `common`, and `errors:maintenance`.
 
 ## Tests
 
-`tests/test_maintenance.py`: the guard for admin, member and anonymous; sign-in rules; `draining` then `on`; blocked job start while draining; reason trimming; flag written by another process; unreadable flag; start from the environment; the command line.
+`tests/test_maintenance.py`: the guard for admin, member and anonymous; sign-in rules; `draining` then `on`; blocked job start while draining; an admin seeing another user's running job without file names; reason trimming; flag written by another process; unreadable flag; start from the environment; the command line.

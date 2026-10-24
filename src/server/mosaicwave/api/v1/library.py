@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from mosaicwave.api.errors import ApiError, wrapped
 from mosaicwave.auth.access import can_use_source, granted_source_ids
-from mosaicwave.auth.deps import get_library_session, require_user, require_user_brief
+from mosaicwave.auth.deps import get_library_session, require_admin, require_user, require_user_brief
 from mosaicwave.config import Settings
 from mosaicwave.db import get_session, sqlite_locked
 from mosaicwave.library.dump import TakeoutInspect, inspect_takeout_path
@@ -183,6 +183,22 @@ class JobEventOut(BaseModel):
 
 class JobListOut(BaseModel):
     items: list[ImportOut]
+
+
+class RunningJobOut(BaseModel):
+    """What an admin may see of anyone's running job: type, owner and progress, never file names."""
+
+    id: str
+    kind: str | None = None
+    status: str
+    started_at: str | None = None
+    processed: int = 0
+    total: int = 0
+    owner: str | None = Field(default=None, description="Display name of the user who started it")
+
+
+class RunningJobResponse(BaseModel):
+    job: RunningJobOut | None = None
 
 
 def _settings(request: Request) -> Settings:
@@ -832,6 +848,32 @@ def get_jobs(
 ) -> JobListOut:
     rows = list_jobs(session, kind=kind, limit=limit, user_id=user.id)
     return JobListOut(items=[_job_out(job_view(row)) for row in rows])
+
+
+@router.get("/jobs/running", response_model=RunningJobResponse)
+def get_running_job(
+    session: Session = Depends(get_session),
+    _admin: User = Depends(require_admin),
+) -> RunningJobResponse:
+    """The one job running on the server, whoever owns it. Registered before ``/jobs/{job_id}``."""
+    row = session.scalar(
+        select(Job).where(Job.status == "running").order_by(Job.created_at.desc()).limit(1)
+    )
+    if row is None:
+        return RunningJobResponse()
+    owner = session.get(User, row.user_id) if row.user_id else None
+    view = job_view(row)
+    return RunningJobResponse(
+        job=RunningJobOut(
+            id=row.id,
+            kind=row.kind,
+            status=row.status,
+            started_at=view["started_at"],
+            processed=row.processed,
+            total=row.total,
+            owner=(owner.display_name or owner.username) if owner else None,
+        )
+    )
 
 
 @router.get("/jobs/{job_id}", response_model=ImportOut)

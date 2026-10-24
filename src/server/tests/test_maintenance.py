@@ -109,6 +109,49 @@ def test_draining_while_a_job_runs_then_on(tmp_path: Path) -> None:
     assert admin.post("/api/v1/backups", json={}).status_code == 200
 
 
+def test_admin_sees_who_runs_the_job_but_not_its_files(tmp_path: Path) -> None:
+    admin = authed_client(_settings(tmp_path))
+    member = _member(admin)
+    member_id = member.get("/api/v1/me").json()["id"]
+    assert admin.get("/api/v1/jobs/running").json() == {"job": None}
+
+    session = admin.app.state.session_factory()
+    job_id = new_id()
+    session.add(
+        Job(
+            id=job_id,
+            kind="thumb_batch",
+            status="running",
+            created_at=utcnow(),
+            started_at=utcnow(),
+            user_id=member_id,
+            input_json='{"path": "/private/photos"}',
+            result_json="{}",
+            processed=12,
+            total=80,
+            current="holiday/secret.jpg",
+        )
+    )
+    session.commit()
+    session.close()
+
+    _switch(admin, True, "Soon")
+    res = admin.get("/api/v1/jobs/running")
+    assert res.status_code == 200, res.text
+    job = res.json()["job"]
+    assert job["id"] == job_id and job["kind"] == "thumb_batch" and job["status"] == "running"
+    assert (job["processed"], job["total"], job["owner"]) == (12, 80, "Pat")
+    assert job["started_at"]
+    assert "current" not in job and "path" not in job
+    assert "secret.jpg" not in res.text and "/private" not in res.text
+
+    # still owner-only everywhere else, and the member cannot ask for it
+    assert member.get("/api/v1/jobs/running").status_code == 503  # locked out
+    _switch(admin, False)
+    assert member.get("/api/v1/jobs/running").status_code == 403
+    assert admin.get(f"/api/v1/jobs/{job_id}").status_code == 404
+
+
 def test_reason_is_trimmed_and_since_survives_a_change(tmp_path: Path) -> None:
     admin = authed_client(_settings(tmp_path))
     first = _switch(admin, True, "  one  ")

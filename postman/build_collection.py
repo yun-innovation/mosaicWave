@@ -759,6 +759,12 @@ OpenAPI at `{{baseUrl}}/docs` stays the living spec; this collection is a snapsh
                     description="Public (no sign-in). state is off, draining (on, but a job is still running) or on, with the reason and since. Works during maintenance, unlike most other requests.",
                 ),
                 req(
+                    "Running job (any user)",
+                    "GET",
+                    "/api/v1/jobs/running",
+                    description="Admin only. The one job running on the server, whoever started it: kind, owner, progress and start time, but no file names. This is the job maintenance mode waits for while the state is draining. 403 for members.",
+                ),
+                req(
                     "Turn maintenance on",
                     "PUT",
                     "/api/v1/maintenance",

@@ -8,7 +8,8 @@ import { LocaleSelect } from "./LocaleSelect";
 import { Route, routeHash, View } from "./hashRoute";
 import { StatusBar } from "./StatusBar";
 import type { FinishedJob } from "./useActiveJob";
-import type { ImportJob, MaintenanceStatus } from "./types";
+import type { ImportJob, MaintenanceStatus, RunningJob } from "./types";
+import { runningLabel, runningProgress } from "./useRunningJob";
 
 const ICONS: Record<View | "upload" | "menu", ReactNode> = {
   photos: (
@@ -89,6 +90,8 @@ type Props = {
   healthError: string | null;
   /** Maintenance mode: an admin sees a banner and the short menu. */
   maintenance: MaintenanceStatus;
+  /** The job maintenance is waiting for, whoever started it (admin, while starting). */
+  waitingFor: RunningJob | null;
   /** The running job and the last finished one, for the status bar. */
   job: ImportJob | null;
   finished: FinishedJob | null;
@@ -104,6 +107,7 @@ export function AppShell({
   route,
   healthError,
   maintenance,
+  waitingFor,
   job,
   finished,
   onDismissFinished,
@@ -221,6 +225,11 @@ export function AppShell({
             <span>
               {maintenance.state === "draining" ? t("maintenance:banner.draining") : t("maintenance:banner.on")}
             </span>
+            {maintenance.state === "draining" && waitingFor && (
+              <span className="maintenance-banner-reason">
+                {[runningLabel(waitingFor), runningProgress(waitingFor)].filter(Boolean).join(" · ")}
+              </span>
+            )}
             {maintenance.reason && <span className="maintenance-banner-reason">{maintenance.reason}</span>}
             <a href={routeHash({ view: "maintenance", albumId: null })}>{t("maintenance:banner.manage")}</a>
           </div>

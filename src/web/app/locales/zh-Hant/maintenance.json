@@ -7,6 +7,12 @@
     "on": "維護模式已開啟。只有管理員可以使用伺服器。"
   },
   "since": "自 {{time}} 起",
+  "waiting": {
+    "label": "正在等待",
+    "job": "{{kind}}（{{owner}}）",
+    "started": "開始於 {{time}}",
+    "looking": "正在查詢執行中的工作…"
+  },
   "reasonLabel": "給使用者的訊息（選填）",
   "reasonPlaceholder": "例如：正在還原備份，約一小時後恢復",
   "turnOn": "開啟維護模式",

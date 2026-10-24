@@ -59,6 +59,17 @@ export type ImportJob = {
 
 export type Notice = { text: string; ok: boolean };
 
+/** `GET /api/v1/jobs/running` (admin): anyone's running job, without file names. */
+export type RunningJob = {
+  id: string;
+  kind: string | null;
+  status: string;
+  started_at: string | null;
+  processed: number;
+  total: number;
+  owner: string | null;
+};
+
 /** `GET /api/v1/maintenance`: `draining` = on, but a running job is still finishing. */
 export type MaintenanceStatus = {
   state: "off" | "draining" | "on";

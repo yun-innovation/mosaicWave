@@ -20,6 +20,7 @@ import { TimelineView } from "./TimelineView";
 import { ignoreAbort, isAbortError, LibraryAlbum } from "./types";
 import { UploadDialog } from "./UploadDialog";
 import { useMaintenance } from "./useMaintenance";
+import { useRunningJob } from "./useRunningJob";
 import { useTakeoutImport } from "./useTakeoutImport";
 
 export default function Home() {
@@ -30,6 +31,7 @@ export default function Home() {
   const locked = maintenance.status.state !== "off";
   const [healthError, setHealthError] = useState<string | null>(null);
   const [me, setMe] = useState<Me | null>(null);
+  const waitingFor = useRunningJob(me?.role === "admin" && maintenance.status.state === "draining");
   const [authReady, setAuthReady] = useState(false);
   const [needsSetup, setNeedsSetup] = useState(false);
   const [platform, setPlatform] = useState("standalone");
@@ -205,7 +207,7 @@ export default function Home() {
     case "maintenance":
       view =
         me.role === "admin" ? (
-          <MaintenanceView status={maintenance.status} onChanged={maintenance.set} />
+          <MaintenanceView status={maintenance.status} running={waitingFor} onChanged={maintenance.set} />
         ) : (
           <SettingsPanel me={me} platform={platform} importer={importer} onMe={setMe} />
         );
@@ -236,6 +238,7 @@ export default function Home() {
       route={{ ...route, view: shownView }}
       healthError={healthError}
       maintenance={maintenance.status}
+      waitingFor={waitingFor}
       job={importer.job}
       finished={importer.finished}
       onDismissFinished={importer.dismissFinished}

@@ -7,6 +7,12 @@
     "on": "Maintenance mode is on. Only administrators can use the server."
   },
   "since": "Since {{time}}",
+  "waiting": {
+    "label": "Waiting for",
+    "job": "{{kind}} ({{owner}})",
+    "started": "Started {{time}}",
+    "looking": "Looking up the running job…"
+  },
   "reasonLabel": "Message for users (optional)",
   "reasonPlaceholder": "For example: Restoring a backup, back in about an hour",
   "turnOn": "Turn on maintenance mode",

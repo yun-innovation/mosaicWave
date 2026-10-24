@@ -6,15 +6,18 @@ import { useTranslation } from "react-i18next";
 import { apiFetch, errorText } from "./api";
 import { formatDateTime } from "./format";
 import i18n from "./i18n";
-import { MaintenanceStatus, Notice } from "./types";
+import { MaintenanceStatus, Notice, RunningJob } from "./types";
+import { runningLabel, runningProgress } from "./useRunningJob";
 
 type Props = {
   status: MaintenanceStatus;
+  /** The job maintenance is waiting for (only while `status.state` is `draining`). */
+  running: RunningJob | null;
   onChanged: (status: MaintenanceStatus) => void;
 };
 
 /** Admin: the maintenance switch and the message shown to everyone else. */
-export function MaintenanceView({ status, onChanged }: Props) {
+export function MaintenanceView({ status, running, onChanged }: Props) {
   const { t } = useTranslation(["maintenance", "common"]);
   const [reason, setReason] = useState(status.reason);
   const [working, setWorking] = useState(false);
@@ -62,6 +65,27 @@ export function MaintenanceView({ status, onChanged }: Props) {
           {t(`maintenance:state.${status.state}`)}
           {on && status.since ? ` ${t("maintenance:since", { time: formatDateTime(status.since) })}` : ""}
         </p>
+        {status.state === "draining" && (
+          <div className="maintenance-waiting" role="status" aria-live="polite">
+            <span className="status-bar-label">{t("maintenance:waiting.label")}</span>
+            {running ? (
+              <>
+                <span>{runningLabel(running)}</span>
+                {runningProgress(running) && <span className="status-bar-count">{runningProgress(running)}</span>}
+                {running.total > 0 ? (
+                  <progress className="status-bar-meter" max={running.total} value={Math.min(running.processed, running.total)} />
+                ) : (
+                  <progress className="status-bar-meter" />
+                )}
+                {running.started_at && (
+                  <span className="detail">{t("maintenance:waiting.started", { time: formatDateTime(running.started_at) })}</span>
+                )}
+              </>
+            ) : (
+              <span className="detail">{t("maintenance:waiting.looking")}</span>
+            )}
+          </div>
+        )}
         <label htmlFor="maintenance-reason">{t("maintenance:reasonLabel")}</label>
         <input
           id="maintenance-reason"

@@ -1147,6 +1147,17 @@ main.app-main {
   font-weight: 400;
 }
 
+.maintenance-waiting {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.6rem 1rem;
+  border-radius: 12px;
+  background: #24303a;
+  border: 1px solid #34465a;
+}
+
 .maintenance-screen h2 {
   margin: 0 0 0.25rem;
 }
