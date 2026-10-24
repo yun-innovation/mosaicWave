@@ -88,10 +88,10 @@
       "empty": "No library backups yet."
     },
     "restore": {
-      "confirm": "Replace your library with this backup? Your current library is kept aside.",
+      "confirm": "Replace your library with this backup? Your current library is deleted once the restore succeeds, so back it up first if you want to keep it.",
       "confirmYes": "Yes, replace it"
     },
-    "keepNote": "When you restore, your previous library is kept aside on the server, not deleted. Ask the administrator to remove it once you no longer need it.",
+    "keepNote": "Restoring replaces your current library and deletes it when the restore succeeds. Back up your library first if you may want to go back.",
     "upload": {
       "label": "Backup zip on this device",
       "hint": "Choose a mosaicwave-library-….zip made by this or another mosaicWave. It is uploaded to the list above; restore it from there.",

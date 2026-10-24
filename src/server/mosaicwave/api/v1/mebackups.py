@@ -118,7 +118,7 @@ async def upload_my_backup(request: Request, user: User = Depends(require_user_b
 
 @router.post("/me/backups/{name}/restore", response_model=ImportOut)
 def restore_my_backup(name: str, request: Request, user: User = Depends(require_user)) -> ImportOut:
-    """Replace your library with this backup. Your current library is kept aside by the server."""
+    """Replace your library with this backup. Your current library is deleted once the restore succeeds."""
     path = _existing(request, user, name)
     try:
         check_library_archive(path)

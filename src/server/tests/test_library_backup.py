@@ -60,7 +60,7 @@ def _leftovers(settings: Settings) -> list[Path]:
     return sorted(found)
 
 
-def test_round_trip_restores_the_exact_library_and_keeps_the_old_one(tmp_path: Path) -> None:
+def test_round_trip_restores_the_exact_library_and_deletes_the_old_one(tmp_path: Path) -> None:
     settings = _settings(tmp_path)
     client = _seed(settings)
     uid = me_id(client)
@@ -90,7 +90,10 @@ def test_round_trip_restores_the_exact_library_and_keeps_the_old_one(tmp_path: P
     kept = list((settings.database_path.parent / "before-restore").glob(f"*-{uid}-db")) + list(
         (settings.data_dir / "before-restore").glob(f"*-{uid}-files")
     )
-    assert len(kept) == 2 and any((p / "late.jpg").exists() for p in kept)
+    assert kept == []  # the old library is deleted once the new one is in place
+    assert not (settings.data_dir / "before-restore").exists() or not any(
+        (settings.data_dir / "before-restore").iterdir()
+    )
 
     # The restored library has no thumbnails; a photo still opens (the server rebuilds it).
     first = client.get("/api/v1/assets").json()["items"][0]
@@ -421,8 +424,11 @@ def test_start_clears_leftover_user_staging(tmp_path: Path) -> None:
     for folder in (a, b):
         folder.mkdir(parents=True)
         (folder / "x").write_text("x")
+    left = settings.data_dir / "before-restore" / f"20260101-000000-{uid}-files"
+    left.mkdir(parents=True)
+    (left / "x.jpg").write_text("x")
     libbackup.remove_stale_user_staging(settings)
-    assert not a.exists() and not b.exists()
+    assert not a.exists() and not b.exists() and not left.exists()
 
 
 def test_an_empty_library_backs_up_and_restore_needs_a_free_server(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

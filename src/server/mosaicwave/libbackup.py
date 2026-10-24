@@ -6,7 +6,8 @@ thumbnails: they are rebuilt when photos are first viewed.
 
 Restore is an exact swap of that one library while the API runs. It is staged first (nothing live is
 touched), then the user's database engine is closed, the live database and originals are moved aside
-and the staged ones moved in, with a rollback if any step fails. A small journal makes a crash in the
+and the staged ones moved in, with a rollback if any step fails. Once the new library is in place the
+old one is deleted: nothing restores from it, and a user who wants to go back makes a backup first. A small journal makes a crash in the
 middle recoverable at the next start. Other users are never touched.
 """
 
@@ -19,7 +20,7 @@ import tempfile
 import time
 import zipfile
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -72,11 +73,6 @@ class StagedLibrary:
     db_stage: Path
     data_stage: Path
     upgrade_from: int | None = None
-
-
-@dataclass
-class SwapResult:
-    kept: list[Path] = field(default_factory=list)
 
 
 def user_backup_dir(settings: Settings, user_id: str) -> Path:
@@ -319,8 +315,11 @@ def swap_library(
     libraries: LibraryDbs,
     *,
     wait: float = SWAP_WAIT_SECONDS,
-) -> SwapResult:
-    """Replace the user's live library with the staged one. Requests for this user get ``503`` meanwhile."""
+) -> None:
+    """Replace the user's live library with the staged one. Requests for this user get ``503`` meanwhile.
+
+    The previous library is deleted once the new one is in place (not before: a failed swap rolls back).
+    """
     user_id = staged.user_id
     live_db_dir = settings.accounts_dir / user_id
     live_files = settings.data_dir / LIBRARIES / user_id
@@ -330,7 +329,6 @@ def swap_library(
 
     moved: list[tuple[Path, Path]] = []  # (original place, where it went) for the rollback
     placed: list[Path] = []
-    result = SwapResult()
     try:
         with libraries.locked(user_id):
             _checkpoint_library_db(live_db_dir / DB_ENTRY)
@@ -358,7 +356,6 @@ def swap_library(
             live_files.parent.mkdir(parents=True, exist_ok=True)
             new_files.rename(live_files)
             placed.append(live_files)
-            result.kept = [aside for _, aside in moved]
     except BaseException:
         for path in reversed(placed):
             _remove(path)
@@ -371,7 +368,10 @@ def swap_library(
         _remove(staged.db_stage)
         _remove(staged.data_stage)
     journal.unlink(missing_ok=True)
-    return result
+    # Deleted outside the lock, so a big library does not keep this user's requests waiting. Anything a
+    # crash leaves here is removed at the next start (remove_stale_user_staging).
+    for _, aside in moved:
+        _remove(aside)
 
 
 def recover_library_swaps(settings: Settings) -> list[str]:
@@ -405,7 +405,10 @@ def recover_library_swaps(settings: Settings) -> list[str]:
 
 
 def remove_stale_user_staging(settings: Settings) -> None:
-    """Start-up: remove unpacked restores that a stopped server left behind."""
+    """Start-up: remove unpacked restores, and old libraries awaiting deletion, that a stop left behind.
+
+    Run after ``recover_library_swaps``, which may still need an old library to put back.
+    """
     for root, prefix in (
         (settings.database_path.parent, USER_STAGE_PREFIX),
         (settings.data_dir, USER_DATA_STAGE_PREFIX),
@@ -413,12 +416,13 @@ def remove_stale_user_staging(settings: Settings) -> None:
         if root.is_dir():
             for entry in root.glob(f"{prefix}*"):
                 _remove(entry)
+    for root in (settings.database_path.parent, settings.data_dir):
+        _remove(root / ASIDE)
 
 
 __all__ = [
     "LibraryBackupResult",
     "StagedLibrary",
-    "SwapResult",
     "backup_library",
     "check_library_archive",
     "library_archive_name",

@@ -228,7 +228,7 @@ Hit FastAPI directly (`http://127.0.0.1:8000` debug, `:8090` MSI/QPKG), not the 
 
 **Backups (admin):** folder **Backups**. Start a site backup, poll the job in **Jobs**, then List backups saves `{{backupName}}` for Download / Delete. Restore: turn on maintenance, Stage restore (a job), poll it, then Apply restore (restarts the server) and read Restore state. `python -m mosaicwave.restore` still works offline.
 
-**My library backup (any signed-in user):** folder **My library backups**. Back up my library starts a job; List my backups saves `{{libraryBackupName}}` for Download / Delete / Restore. Restore replaces only your own library while the server runs (a job; your previous library is kept aside by the server).
+**My library backup (any signed-in user):** folder **My library backups**. Back up my library starts a job; List my backups saves `{{libraryBackupName}}` for Download / Delete / Restore. Restore replaces only your own library while the server runs (a job; your previous library is deleted once the restore succeeds, so back up first).
 
 **Maintenance:** folder **Maintenance**. Status is public; Turn on/off need an admin session. While it is on, other users get `503 maintenance`.
 
@@ -842,7 +842,7 @@ OpenAPI at `{{baseUrl}}/docs` stays the living spec; this collection is a snapsh
                     "Restore my library",
                     "POST",
                     "/api/v1/me/backups/{{libraryBackupName}}/restore",
-                    description="Replaces your library with the backup while the server runs: a job (kind library_restore) that unpacks and checks it, then swaps your database and originals (cancellable until the swap starts). Your previous library is kept aside on the server. Other users are not affected; your own requests get 503 library_restoring for a moment during the swap. 409 job_running or restore_pending. Saves {{jobId}}.",
+                    description="Replaces your library with the backup while the server runs: a job (kind library_restore) that unpacks and checks it, then swaps your database and originals (cancellable until the swap starts). Your previous library is deleted once the restore succeeds (back it up first); a failed restore changes nothing. Other users are not affected; your own requests get 503 library_restoring for a moment during the swap. 409 job_running or restore_pending. Saves {{jobId}}.",
                     tests=SAVE_JOB,
                 ),
             ],
