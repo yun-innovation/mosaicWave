@@ -35,7 +35,7 @@
     "pending": {
       "title": "Ready to apply",
       "summary": "{{archive}}: {{summary}}.",
-      "warn": "Applying restarts the server and replaces all data on it with this backup. Anything changed since the backup is gone from the server. Your current data is kept beside it as *.before-restore-<time> until you delete it.",
+      "warn": "Applying restarts the server and replaces all data on it with this backup. Anything changed since the backup is gone from the server. Your current data is deleted once the restore succeeds, so make a backup first if you want to keep it.",
       "upgrade": "This backup is from an older mosaicWave; its databases are upgraded when the server starts.",
       "apply": "Restart and apply",
       "discard": "Discard"

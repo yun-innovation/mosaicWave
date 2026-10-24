@@ -786,7 +786,7 @@ OpenAPI at `{{baseUrl}}/docs` stays the living spec; this collection is a snapsh
                     "Restore state",
                     "GET",
                     "/api/v1/backups/restore",
-                    description="Admin only. pending is the staged restore waiting to be applied (archive, summary, upgrade). result is what the last start-up swap did (status done or error, where the previous data was kept).",
+                    description="Admin only. pending is the staged restore waiting to be applied (archive, summary, upgrade). result is what the last start-up swap did (status done or error). The replaced data is deleted once the new data is in place, so kept is empty.",
                 ),
                 req(
                     "Apply restore",

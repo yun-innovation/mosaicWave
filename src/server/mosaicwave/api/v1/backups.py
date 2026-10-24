@@ -125,7 +125,7 @@ class RestoreResultOut(BaseModel):
     archive: str
     finished_at: str
     summary: RestoreSummary
-    kept: list[str] = Field(default_factory=list, description="Where the previous data was kept")
+    kept: list[str] = Field(default_factory=list, description="Where the previous data was kept (empty: an online restore deletes it)")
     upgrade: bool = False
     thumbs_missing: bool = False
     message: str | None = None

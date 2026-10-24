@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import shutil
+import time
 from pathlib import Path
 
 import pytest
@@ -49,6 +50,17 @@ def _restart(settings: Settings, client: TestClient) -> TestClient:
     return authed_client(settings)
 
 
+def _until_gone(settings: Settings) -> None:
+    """The replaced data is deleted by a background thread right after the swap."""
+    deadline = time.monotonic() + 10
+    while time.monotonic() < deadline:
+        left = [p for folder in {settings.database_path.parent, settings.data_dir} for p in folder.glob("*.discard-*")]
+        if not left:
+            return
+        time.sleep(0.05)
+    raise AssertionError(left)
+
+
 def _stages(settings: Settings) -> list[Path]:
     found = set(settings.database_path.parent.glob(".restore-staging-*"))
     return sorted(found | set(settings.data_dir.glob(".restore-staging-*")))
@@ -80,7 +92,8 @@ def test_stage_then_apply_swaps_at_the_next_start(tmp_path: Path) -> None:
     assert state["pending"] is None
     result = state["result"]
     assert result["status"] == "done" and result["archive"] == name and result["message"] is None
-    assert result["kept"] and all(Path(p).exists() for p in result["kept"])
+    assert result["kept"] == []  # the replaced data is deleted once the new data is in place
+    _until_gone(settings)
     assert result["thumbs_missing"] is True
     assert fresh.get("/api/v1/maintenance").json()["state"] == "on"  # the admin turns it off
     assert not _stages(settings) and not restore.pending_path(settings).exists()

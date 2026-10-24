@@ -5,7 +5,8 @@
 Everything is validated and staged before anything is replaced. The databases (site file and
 ``accounts/``) live in the app folder and the photos (``libraries/``, ``blobs/``) in the data
 folder, which can be another volume, so each side is staged next to where it will go and the
-swap is a rename. The current data is kept as ``*.before-restore-{time}``; a failure while
+swap is a rename. The current data is kept as ``*.before-restore-{time}`` (offline restore) or deleted once the new data
+is in place (online restore, ``keep_old=False``); a failure while
 swapping puts it back. Databases older than this app are upgraded by the normal schema steps
 the next time the API starts (with the usual ``library.db.pre-v{N}`` copy).
 """
@@ -20,6 +21,7 @@ import shutil
 import socket
 import sqlite3
 import sys
+import threading
 import zipfile
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -50,6 +52,7 @@ _NEEDS = {"source", "asset", "album", "album_asset"}
 
 APP_STAGE_PREFIX = ".restore-staging-app-"
 DATA_STAGE_PREFIX = ".restore-staging-data-"
+DISCARD_MARK = ".discard-"
 PENDING_NAME = "restore-pending.json"
 RESULT_NAME = "restore-result.json"
 _STAMP = re.compile(r"^\d{8}-\d{6}$")
@@ -73,6 +76,7 @@ class RestoreResult:
     site_upgrade_from: int | None = None
     library_upgrade_from: int | None = None
     kept: list[Path] = field(default_factory=list)
+    discarded: list[Path] = field(default_factory=list)
 
 
 def _members(zf: zipfile.ZipFile, manifest: dict) -> list[zipfile.ZipInfo]:
@@ -360,8 +364,13 @@ def offset_revs(staged_db: Path, offset: int) -> None:
         con.close()
 
 
-def commit_site(staged: StagedRestore, settings: Settings) -> RestoreResult:
-    """Swap the staged data in. The databases must not be open (offline, or at API start-up)."""
+def commit_site(staged: StagedRestore, settings: Settings, *, keep_old: bool = True) -> RestoreResult:
+    """Swap the staged data in. The databases must not be open (offline, or at API start-up).
+
+    ``keep_old`` keeps the replaced data as ``*.before-restore-{time}`` (the offline command: the last
+    resort when the server will not start). Without it the replaced data is deleted once the new data
+    is in place, in a background thread so a large library does not hold up the start.
+    """
     for staged_db in sorted((staged.app_stage / ACCOUNTS).glob(f"*/{DB_ENTRY}")):
         offset_revs(staged_db, live_max_rev(settings.accounts_dir / staged_db.parent.name / DB_ENTRY))
     result = RestoreResult(
@@ -370,10 +379,12 @@ def commit_site(staged: StagedRestore, settings: Settings) -> RestoreResult:
         library_upgrade_from=staged.library_upgrade_from,
     )
     try:
-        _swap(staged.app_stage, staged.data_stage, settings, staged.stamp, result)
+        _swap(staged.app_stage, staged.data_stage, settings, staged.stamp, result, keep_old=keep_old)
     finally:
         _remove(staged.app_stage)
         _remove(staged.data_stage)
+    if result.discarded:
+        threading.Thread(target=_remove_all, args=(result.discarded,), daemon=True).start()
     return result
 
 
@@ -473,13 +484,23 @@ def _remove_stale_uploads(settings: Settings) -> None:
             _remove(entry)
 
 
+def _remove_all(paths: list[Path]) -> None:
+    for path in paths:
+        _remove(path)
+
+
 def _remove_stale_stages(settings: Settings) -> None:
+    """Staging folders, and replaced data a stopped server had not finished deleting."""
     for folder, prefix in (
         (settings.database_path.parent, APP_STAGE_PREFIX),
         (settings.data_dir, DATA_STAGE_PREFIX),
     ):
         if folder.is_dir():
             for entry in folder.glob(f"{prefix}*"):
+                _remove(entry)
+    for folder in {settings.database_path.parent, settings.data_dir}:
+        if folder.is_dir():
+            for entry in folder.glob(f"*{DISCARD_MARK}????????-??????"):
                 _remove(entry)
 
 
@@ -515,7 +536,7 @@ def apply_pending(settings: Settings) -> str | None:
             site_upgrade_from=(record or {}).get("site_upgrade_from"),
             library_upgrade_from=(record or {}).get("library_upgrade_from"),
         )
-        result = commit_site(staged, settings)
+        result = commit_site(staged, settings, keep_old=False)
         outcome.update(
             status="done",
             kept=[str(path) for path in result.kept],
@@ -533,7 +554,15 @@ def apply_pending(settings: Settings) -> str | None:
     return status
 
 
-def _swap(app_stage: Path, data_stage: Path, settings: Settings, stamp: str, result: RestoreResult) -> None:
+def _swap(
+    app_stage: Path,
+    data_stage: Path,
+    settings: Settings,
+    stamp: str,
+    result: RestoreResult,
+    *,
+    keep_old: bool = True,
+) -> None:
     data_dir = settings.data_dir
     db_path = settings.database_path
     accounts = settings.accounts_dir
@@ -544,7 +573,8 @@ def _swap(app_stage: Path, data_stage: Path, settings: Settings, stamp: str, res
     try:
         for current in (db_path, accounts, data_dir / LIBRARIES, data_dir / BLOBS):
             if current.exists():
-                kept = current.with_name(f"{current.name}.before-restore-{stamp}")
+                mark = ".before-restore-" if keep_old else DISCARD_MARK
+                kept = current.with_name(f"{current.name}{mark}{stamp}")
                 current.rename(kept)
                 aside.append((current, kept))
         for sidecar in ("-wal", "-shm", "-journal"):
@@ -570,7 +600,10 @@ def _swap(app_stage: Path, data_stage: Path, settings: Settings, stamp: str, res
             if kept.exists():
                 kept.rename(original)
         raise
-    result.kept = [kept for _, kept in aside]
+    if keep_old:
+        result.kept = [kept for _, kept in aside]
+    else:
+        result.discarded = [kept for _, kept in aside]
 
 
 def _api_listening(settings: Settings) -> bool:
