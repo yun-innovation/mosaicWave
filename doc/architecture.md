@@ -176,6 +176,10 @@ Illustrative v1 surface (names can change; behavior should not):
 | GET | `/api/v1/backups` | **Admin.** List site archives in the app folder's `backups/` |
 | GET | `/api/v1/backups/{name}` | **Admin.** Download one archive |
 | DELETE | `/api/v1/backups/{name}` | **Admin.** Delete one archive |
+| POST | `/api/v1/backups/{name}/restore` | **Admin.** Stage an online restore as a cancellable `site_restore` job; needs maintenance mode (`maintenance_required`) |
+| GET | `/api/v1/backups/restore` | **Admin.** `{pending, result}`: the staged restore and the last start-up swap |
+| POST | `/api/v1/backups/restore/apply` | **Admin.** Restart the API; the staged restore is swapped in at start-up |
+| DELETE | `/api/v1/backups/restore` | **Admin.** Discard the staged restore and clear the result |
 | GET | `/api/v1/maintenance` | **Public.** `{state: off\|draining\|on, reason, since}`; [maintenance.md](maintenance.md) |
 | PUT | `/api/v1/maintenance` | **Admin.** `{enabled, reason}`: switch maintenance mode. While it is on, everyone but an admin gets `503 maintenance` |
 | GET | `/api/v1/sync/changes` | Metadata pull (`since_rev`, tombstones). Push is `/albums` + `base_rev`, not this URL. Covered vs later: [schema.md](schema.md) Sync protocol |
@@ -199,7 +203,7 @@ CORS is only needed if the web origin and API origin differ (local `next dev`). 
 
 Photo **files** stay in a FileStore (v1: local folders / QNAP shares). The database holds **info about** those files: virtual path, dates, EXIF, album membership, scan state. That is a classic index plus relations — not a document store problem.
 
-**Choice: SQLite.** FastAPI talks to it through SQLAlchemy (or similar). One file in the **data directory** next to the blob root. Milestone 6 split it into a site DB plus one library DB per user ([per-library-db.md](per-library-db.md)). Site backup and offline restore are in [backup.md](backup.md); a host-level copy of the data dir also works (stop the API or use the SQLite backup API). Do not restore from sync JSON.
+**Choice: SQLite.** FastAPI talks to it through SQLAlchemy (or similar). One file in the **data directory** next to the blob root. Milestone 6 split it into a site DB plus one library DB per user ([per-library-db.md](per-library-db.md)). Site backup and restore (offline, or staged online and swapped in at restart) are in [backup.md](backup.md); a host-level copy of the data dir also works (stop the API or use the SQLite backup API). Do not restore from sync JSON.
 
 **Schema versions.** `library.db` records its schema version (`PRAGMA user_version`). At startup the server applies numbered upgrade steps in order, keeps a copy of the file from before the upgrade, and refuses a database newer than the app. See [schema.md § Schema versions](schema.md#schema-versions).
 

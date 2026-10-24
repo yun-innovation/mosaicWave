@@ -69,7 +69,8 @@
       "takeout_import": "Takeout import",
       "thumb_batch": "Thumbs",
       "site_backup": "Site backup",
-      "unknown": "job"
+      "unknown": "job",
+      "site_restore": "Site restore"
     },
     "status": {
       "idle": "idle",

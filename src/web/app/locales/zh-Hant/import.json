@@ -62,7 +62,8 @@
       "takeout_import": "Takeout 匯入",
       "thumb_batch": "縮圖",
       "site_backup": "整站備份",
-      "unknown": "工作"
+      "unknown": "工作",
+      "site_restore": "整站還原"
     },
     "status": {
       "idle": "閒置",

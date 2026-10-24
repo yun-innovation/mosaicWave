@@ -26,8 +26,40 @@
   "deleted": "Backup deleted.",
   "restore": {
     "title": "Restore",
-    "help": "A restore replaces all data on this server, so it runs with the API stopped. Stop mosaicWave, then run this on the host:",
-    "check": "Add --check to only validate the archive; nothing is changed.",
-    "keep": "Your current data is kept beside it as *.before-restore-<time> until you delete it."
+    "button": "Restore…",
+    "confirm": "Unpack this backup next to the live data? Nothing is replaced until you apply it.",
+    "confirmYes": "Yes, unpack it",
+    "needsMaintenance": "Restoring needs maintenance mode, so nobody changes the data meanwhile.",
+    "turnOn": "Turn on maintenance mode",
+    "idle": "To restore, turn on maintenance mode, then choose Restore on an archive above. The archive is unpacked and checked first; nothing is replaced until you apply it.",
+    "pending": {
+      "title": "Ready to apply",
+      "summary": "{{archive}}: {{summary}}.",
+      "warn": "Applying restarts the server and replaces all data on it with this backup. Anything changed since the backup is gone from the server. Your current data is kept beside it as *.before-restore-<time> until you delete it.",
+      "upgrade": "This backup is from an older mosaicWave; its databases are upgraded when the server starts.",
+      "apply": "Restart and apply",
+      "discard": "Discard"
+    },
+    "restarting": {
+      "text": "Restarting the server and applying the restore… This page reloads when the server is back.",
+      "slow": "The server has not come back. If mosaicWave does not restart by itself, start it on the host; the restore is applied when it starts.",
+      "manual": "The server does not restart by itself here. Restart it on the host; the restore is applied when it starts."
+    },
+    "result": {
+      "done": "Restored {{archive}}: {{summary}}.",
+      "failed": "The restore of {{archive}} failed and nothing was replaced: {{message}}",
+      "kept": "Your previous data is kept at:",
+      "upgrade": "The backup was from an older mosaicWave; its databases were upgraded.",
+      "thumbs": "The backup has no thumbnails; they are rebuilt when photos are first viewed.",
+      "users": "User accounts now come from the backup. If you cannot sign in, use the administrator account the backup was made with.",
+      "maintenance": "Maintenance mode is still on. Turn it off when you have checked the result.",
+      "dismiss": "Dismiss"
+    },
+    "offline": {
+      "title": "From the command line",
+      "help": "A restore can also run offline with the API stopped. Stop mosaicWave, then run this on the host:",
+      "check": "Add --check to only validate the archive; nothing is changed.",
+      "keep": "Your current data is kept beside it as *.before-restore-<time> until you delete it."
+    }
   }
 }

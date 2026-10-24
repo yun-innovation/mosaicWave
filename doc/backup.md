@@ -1,6 +1,6 @@
 # Backup and restore
 
-Milestone 7. Three parts, each its own PR: **site backup + offline restore** (this page, shipped first), **per-user backup + online restore + Backup view**, and **export**. Sync JSON is never a backup ([schema.md](schema.md)). The data it backs up is laid out by milestone 6 ([per-library-db.md](per-library-db.md)).
+Milestone 7, four PRs: **site backup + offline restore**, **online site restore from the Backup page**, **per-user backup + online restore of one library**, and **export**. Sync JSON is never a backup ([schema.md](schema.md)). The data it backs up is laid out by milestone 6 ([per-library-db.md](per-library-db.md)).
 
 > **An archive of the whole site contains password hashes** (`local_credential`) and every user's originals. Site backup and restore are **admin only**. Store archives like the data folder itself.
 
@@ -22,12 +22,27 @@ The manifest holds counts and byte totals, not a per-file list: the zip's own di
 
 ## Make a backup
 
-- **Web (admin):** the **Backup** page (`#/backup`) starts a backup (optional thumbnails), shows progress, lists the archives with date, size and counts, and downloads or deletes them. It also shows the exact restore command for the newest archive. Behind it, `POST /api/v1/backups` starts a job (kind `site_backup`, also visible in Activity). Archives go to `backups/` beside the site database (the app folder; with `MOSAICWAVE_DATA_DIR` set, the data folder), outside the libraries they protect. `GET /api/v1/settings` reports the folder as `backup_dir`. `GET /api/v1/backups` lists them, `GET /api/v1/backups/{name}` downloads, `DELETE` removes. A backup cannot run while another job (import, thumbnails) is running.
+- **Web (admin):** the **Backup** page (`#/backup`) starts a backup (optional thumbnails), shows progress, lists the archives with date, size and counts, and downloads or deletes them. It also restores (below). Behind it, `POST /api/v1/backups` starts a job (kind `site_backup`, also visible in Activity). Archives go to `backups/` beside the site database (the app folder; with `MOSAICWAVE_DATA_DIR` set, the data folder), outside the libraries they protect. `GET /api/v1/settings` reports the folder as `backup_dir`. `GET /api/v1/backups` lists them, `GET /api/v1/backups/{name}` downloads, `DELETE` removes. A backup cannot run while another job (import, thumbnails) is running.
 - **Command line:** `python -m mosaicwave.backup [--out FOLDER] [--include-thumbs]`. Uses the same data folder as the API. The archive is written as `*.part` and renamed when complete, so a crash never leaves a half archive with the final name.
+
+## Restore online (admin, from the Backup page)
+
+The API keeps the site database and every library database open, so it does not swap them under live requests (open handles on Windows, a stray request re-creating an empty `library.db`, requests in flight). Restore is staged while the server runs and swapped in when it **restarts**, before anything opens.
+
+1. **Turn on maintenance mode** ([maintenance.md](maintenance.md)). Restore is refused otherwise (`409 maintenance_required`), and with a job running (`409 job_running`).
+2. **Restore…** on an archive (`POST /api/v1/backups/{name}/restore`) starts a job of kind `site_restore`, shown in the status bar and Activity, and **cancellable**. It checks free space, then unpacks and validates the archive into the same two staging folders the offline restore uses, and checks the databases (all in `stage_site`, shared with the offline command). Nothing live is touched; cancelling or failing removes the staging folders. Progress shows counts only, never file names.
+3. When it is done the restore is **staged**: `restore-pending.json` beside the site database records the archive, the stamp, a summary and whether the databases will upgrade. The page shows what the archive holds and offers **Restart and apply** or **Discard**. While a restore is staged, every new job is refused (`409 restore_pending`) and so is moving the data folder, because the staged copy is a snapshot. Whatever an admin changes in their own library meanwhile is lost when the restore is applied.
+4. **Restart and apply** (`POST /api/v1/backups/restore/apply`) needs a staged restore, maintenance mode on and no running job. It restarts the API the way **Save folder** in Settings does (`schedule_api_restart`: `restart.flag`, exit after one second; the debug `start.sh` respawns it, packaged services keep it alive). Run by hand without a supervisor, start it again yourself. Under pytest nothing restarts and `restarting` is false.
+5. **At the next start**, `create_app` calls `apply_pending` before it opens any database. It swaps the staged data in with the same `_swap` as the offline restore (current data kept as `*.before-restore-<time>`, full rollback on failure), writes `restore-result.json` and deletes `restore-pending.json`. A missing or damaged staging folder is an error result and changes nothing. With no staged restore it only removes leftover `.restore-staging-*` folders. Older archives upgrade through the normal schema steps right after, as for offline restore.
+6. The page waits for the server (polls `/api/v1/health`, then reloads) and shows the result from `GET /api/v1/backups/restore`: done (with where the previous data was kept, upgrade and thumbnail notes), or the error with nothing replaced. **Dismiss** / `DELETE /api/v1/backups/restore` forgets it. Maintenance stays on; the admin turns it off after checking.
+
+Both state files sit beside the site database, are never archived, and survive the swap. The job row of a restore lives in the old site database and is set aside with it, so the restored site has no record of it; the result file is the record. Sessions are signed cookies keyed by `session.key`, which is not restored, so they stay valid for users that exist in the archive (same ids) and everyone else is signed out. The restored accounts come from the archive: sign in with the administrator the backup was made with.
+
+`GET /api/v1/backups/restore` returns `{pending, result}` (either may be null); all four restore endpoints are admin only.
 
 ## Restore (offline, admin)
 
-Stop the API first, then:
+Also works with no running server, and is what the online restore uses underneath. Stop the API first, then:
 
 ```
 python -m mosaicwave.restore mosaicwave-site-20261021-093000.zip

@@ -202,7 +202,7 @@ export default function Home() {
       view = <ActivityView importer={importer} libraryRev={libraryRev} />;
       break;
     case "backup":
-      view = me.role === "admin" ? <BackupView importer={importer} /> : <SettingsPanel me={me} platform={platform} importer={importer} onMe={setMe} />;
+      view = me.role === "admin" ? <BackupView importer={importer} maintenance={maintenance.status} /> : <SettingsPanel me={me} platform={platform} importer={importer} onMe={setMe} />;
       break;
     case "maintenance":
       view =

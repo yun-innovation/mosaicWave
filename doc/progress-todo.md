@@ -19,7 +19,7 @@ Open items only. Roadmap: ordered milestones in [roadmap.md](roadmap.md). The ea
 - [x] Maintenance mode (**milestone 12**; [maintenance.md](maintenance.md)): flag file, `503 maintenance` for non-admins, public status + full-page alert, simplified admin menu, `python -m mosaicwave.maintenance`, start with `MOSAICWAVE_MAINTENANCE=1` (built; not yet marked done)
 - [ ] Backup / restore / export (**milestone 7**, four PRs; [backup.md](backup.md))
   - [x] PR 1: site backup (`POST/GET/DELETE /backups`, `python -m mosaicwave.backup`), admin Backup page, offline restore (`python -m mosaicwave.restore`); Generate thumbs moved to Settings; one status bar for job progress on every view; offline restore bumps `thumb_rev` when the archive has no thumbnails ([PR #40](https://github.com/yun-innovation/mosaicWave/pull/40))
-  - [ ] PR 2: online site restore from the Backup page (needs milestone 12)
+  - [x] PR 2: online site restore from the Backup page: stage as a cancellable `site_restore` job, then Restart and apply swaps it in at start-up (`restore-pending.json`, `restore-result.json`); needs maintenance mode
   - [ ] PR 3: per-user backup and online exact-swap restore of one library
   - [ ] PR 4: export selected albums/photos as ordinary files
 - [ ] ARM64 QPKG sideload on a QTS 5 ARM64 NAS (**milestone 10, frozen**: no ARM hardware)
