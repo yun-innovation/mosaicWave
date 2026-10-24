@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from mosaicwave.api.errors import ApiError, wrapped
 from mosaicwave.auth.access import can_use_source, granted_source_ids
-from mosaicwave.auth.deps import get_library_session, require_user, require_user_brief
+from mosaicwave.auth.deps import get_library_session, require_admin, require_user, require_user_brief
 from mosaicwave.config import Settings
 from mosaicwave.db import get_session, sqlite_locked
 from mosaicwave.library.dump import TakeoutInspect, inspect_takeout_path
@@ -183,6 +183,23 @@ class JobEventOut(BaseModel):
 
 class JobListOut(BaseModel):
     items: list[ImportOut]
+
+
+class RunningJobOut(BaseModel):
+    """What an admin may see of anyone's running job: type, owner and progress, never file names."""
+
+    id: str
+    kind: str | None = None
+    status: str
+    started_at: str | None = None
+    processed: int = 0
+    total: int = 0
+    owner: str | None = Field(default=None, description="Display name of the user who started it")
+    cancelling: bool = Field(default=False, description="Someone asked it to stop; it ends within moments")
+
+
+class RunningJobResponse(BaseModel):
+    job: RunningJobOut | None = None
 
 
 def _settings(request: Request) -> Settings:
@@ -832,6 +849,55 @@ def get_jobs(
 ) -> JobListOut:
     rows = list_jobs(session, kind=kind, limit=limit, user_id=user.id)
     return JobListOut(items=[_job_out(job_view(row)) for row in rows])
+
+
+@router.get("/jobs/running", response_model=RunningJobResponse)
+def get_running_job(
+    request: Request,
+    session: Session = Depends(get_session),
+    _admin: User = Depends(require_admin),
+) -> RunningJobResponse:
+    """The one job running on the server, whoever owns it. Registered before ``/jobs/{job_id}``."""
+    row = session.scalar(
+        select(Job).where(Job.status == "running").order_by(Job.created_at.desc()).limit(1)
+    )
+    if row is None:
+        return RunningJobResponse()
+    owner = session.get(User, row.user_id) if row.user_id else None
+    view = job_view(row)
+    return RunningJobResponse(
+        job=RunningJobOut(
+            id=row.id,
+            kind=row.kind,
+            status=row.status,
+            started_at=view["started_at"],
+            processed=row.processed,
+            total=row.total,
+            owner=(owner.display_name or owner.username) if owner else None,
+            cancelling=request.app.state.import_jobs.is_cancelling(row.id),
+        )
+    )
+
+
+@router.post("/jobs/{job_id}/cancel", response_model=ImportOut)
+def cancel_job(
+    job_id: str,
+    request: Request,
+    session: Session = Depends(get_session),
+    user: User = Depends(require_user),
+) -> ImportOut:
+    """Stop a running job: its owner may, and so may an admin (for any job). It ends as ``cancelled``."""
+    row = session.get(Job, job_id)
+    owned = row is not None and _job_owned(row, user)
+    if row is None or not (owned or user.role == "admin"):
+        raise ApiError(404, "job_not_found", "job not found")
+    session.close()
+    runner: ImportJobRunner = request.app.state.import_jobs
+    try:
+        view = runner.cancel(job_id, by="owner" if owned else "admin")
+    except ImportBusy as exc:
+        raise _busy_error(exc) from exc
+    return _job_out(view)
 
 
 @router.get("/jobs/{job_id}", response_model=ImportOut)

@@ -10,10 +10,12 @@ type Props = {
   mode: "setup" | "login";
   platform: string;
   onAuthed: (me: Me) => void;
+  /** Maintenance: back to the alert page. */
+  onBack?: () => void;
 };
 
-export function AuthScreen({ mode, platform, onAuthed }: Props) {
-  const { t } = useTranslation(["auth", "common"]);
+export function AuthScreen({ mode, platform, onAuthed, onBack }: Props) {
+  const { t } = useTranslation(["auth", "common", "maintenance"]);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -93,6 +95,11 @@ export function AuthScreen({ mode, platform, onAuthed }: Props) {
                 ? t("auth:submit.setup")
                 : t("auth:submit.login")}
           </button>
+          {onBack && (
+            <button type="button" onClick={onBack}>
+              {t("maintenance:screen.back")}
+            </button>
+          )}
         </div>
         {error && <p className="status fail">{error}</p>}
       </form>

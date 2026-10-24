@@ -27,6 +27,14 @@ KIND_BACKUP = "site_backup"
 INTERRUPTED = "interrupted (process stopped)"
 
 
+class JobCancelled(BaseException):
+    """Raised inside a running job when someone asked it to stop.
+
+    A BaseException so the ``except Exception`` blocks in the work being done (import, backup)
+    cannot swallow it; each runner catches it by name and ends the job as ``cancelled``.
+    """
+
+
 class ImportBusy(Exception):
     """Another job is already running. ``code`` is the API error code."""
 
@@ -245,6 +253,60 @@ class ImportJobRunner:
         self._blobs = blobs
         self._lock = threading.RLock()
         self._running_id: str | None = None
+        # job id -> set when someone asked it to stop; the job checks between items.
+        self._cancels: dict[str, threading.Event] = {}
+
+    def is_cancelling(self, job_id: str) -> bool:
+        event = self._cancels.get(job_id)
+        return bool(event and event.is_set())
+
+    def _check_cancel(self, job_id: str) -> None:
+        if self.is_cancelling(job_id):
+            raise JobCancelled()
+
+    def cancel(self, job_id: str, *, by: str) -> dict:
+        """Ask a running job to stop. It ends as ``cancelled`` at its next check, within moments.
+
+        ``by`` is ``owner`` or ``admin`` (for the job log). Asking twice is harmless. A device
+        upload that is still receiving files is cancelled at once, as before.
+        """
+        with self._lock:
+            session = self._factory()
+            try:
+                row = session.get(Job, job_id)
+                if row is None:
+                    raise ImportBusy("job not found", "job_not_found")
+                if row.status != "running":
+                    raise ImportBusy("This job is not running", "job_not_running")
+                inp = _parse_json(row.input_json)
+                if row.kind == KIND_TAKEOUT and inp.get("mode") == "push" and inp.get("phase") == "receiving":
+                    owner = row.user_id or ""
+                else:
+                    owner = None
+                if owner is None:
+                    event = self._cancels.setdefault(job_id, threading.Event())
+                    if not event.is_set():
+                        event.set()
+                        session.add(
+                            JobEvent(
+                                id=new_id(), job_id=row.id, level="info", message=f"Cancel requested by {by}"
+                            )
+                        )
+                        session.commit()
+                    return job_view(row)
+            finally:
+                session.close()
+            return self.cancel_push(job_id, user_id=owner)
+
+    def _mark_cancelled(self, session: Session, job_id: str, note: str) -> None:
+        row = session.get(Job, job_id)
+        if row is not None:
+            row.status = "cancelled"
+            row.error = None
+            row.finished_at = utcnow()
+            row.current = None
+            session.add(JobEvent(id=new_id(), job_id=row.id, level="info", message=f"Cancelled: {note}"))
+        session.commit()
 
     def _fail_if_busy(self, session: Session) -> None:
         if self._running_id is not None:
@@ -613,6 +675,7 @@ class ImportJobRunner:
                 row.current = rel
                 if done % 25 == 0:
                     session.commit()
+                self._check_cancel(job_id)
 
             result = backup_site(
                 self._settings,
@@ -641,6 +704,11 @@ class ImportJobRunner:
             for warning in manifest["warnings"]:
                 session.add(JobEvent(id=new_id(), job_id=row.id, level="info", message=warning))
             session.commit()
+        except JobCancelled:
+            try:
+                self._mark_cancelled(session, job_id, "no archive was written")
+            except Exception:
+                session.rollback()
         except Exception as exc:  # ArchiveError, OSError, sqlite errors: all end the job the same way
             try:
                 session.rollback()
@@ -657,6 +725,7 @@ class ImportJobRunner:
         finally:
             session.close()
             with self._lock:
+                self._cancels.pop(job_id, None)
                 if self._running_id == job_id:
                     self._running_id = None
 
@@ -677,6 +746,7 @@ class ImportJobRunner:
                 row.current = rel
                 if done % 25 == 0:
                     session.commit()
+                self._check_cancel(job_id)
 
             source = import_takeout(
                 lib,
@@ -712,6 +782,15 @@ class ImportJobRunner:
                 )
             )
             session.commit()
+        except JobCancelled:
+            # The check runs between items, so everything done so far is whole: keep it. A new
+            # import skips what is already there (same SHA-256).
+            try:
+                if lib is not None:
+                    lib.commit()
+                self._mark_cancelled(session, job_id, "the items imported so far are kept")
+            except Exception:
+                session.rollback()
         except Exception as exc:
             try:
                 if lib is not None:
@@ -739,6 +818,7 @@ class ImportJobRunner:
             if cleanup is not None:
                 shutil.rmtree(cleanup, ignore_errors=True)
             with self._lock:
+                self._cancels.pop(job_id, None)
                 if self._running_id == job_id:
                     self._running_id = None
 
@@ -763,6 +843,7 @@ class ImportJobRunner:
             clear_placeholder_skips()
             done = 0
             for asset in assets:
+                self._check_cancel(job_id)
                 source = lib.get(Source, asset.source_id)
                 if source is None or source.deleted_at is not None:
                     continue
@@ -789,6 +870,13 @@ class ImportJobRunner:
                 )
             )
             session.commit()
+        except JobCancelled:
+            try:
+                if lib is not None:
+                    lib.commit()
+                self._mark_cancelled(session, job_id, "the thumbnails made so far are kept")
+            except Exception:
+                session.rollback()
         except Exception as exc:
             try:
                 if lib is not None:
@@ -815,5 +903,6 @@ class ImportJobRunner:
                 lib.close()
             session.close()
             with self._lock:
+                self._cancels.pop(job_id, None)
                 if self._running_id == job_id:
                     self._running_id = None

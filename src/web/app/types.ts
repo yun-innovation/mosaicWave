@@ -38,7 +38,7 @@ export type TakeoutInspect = {
 export type ImportJob = {
   id: string | null;
   kind: string | null;
-  status: "idle" | "running" | "done" | "error" | string;
+  status: "idle" | "running" | "done" | "error" | "cancelled" | string;
   created_at: string | null;
   started_at: string | null;
   finished_at: string | null;
@@ -58,6 +58,26 @@ export type ImportJob = {
 };
 
 export type Notice = { text: string; ok: boolean };
+
+/** `GET /api/v1/jobs/running` (admin): anyone's running job, without file names. */
+export type RunningJob = {
+  id: string;
+  kind: string | null;
+  status: string;
+  started_at: string | null;
+  processed: number;
+  total: number;
+  owner: string | null;
+  /** A stop was requested; the job ends within moments. */
+  cancelling: boolean;
+};
+
+/** `GET /api/v1/maintenance`: `draining` = on, but a running job is still finishing. */
+export type MaintenanceStatus = {
+  state: "off" | "draining" | "on";
+  reason: string;
+  since: string | null;
+};
 
 export type BackupItem = {
   name: string;

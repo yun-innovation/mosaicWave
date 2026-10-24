@@ -2,6 +2,21 @@
   "starting": "正在开始…",
   "failed": "任务失败。",
   "backupDone": "备份完成。",
+  "cancelled": "已取消。",
+  "cancelledAt": "已在 {{total}} 项中的第 {{processed}} 项取消。",
   "viewActivity": "活动",
-  "dismiss": "关闭"
+  "dismiss": "关闭",
+  "cancel": {
+    "button": "取消任务",
+    "confirm": "要停止这项任务吗？",
+    "yes": "是，停止",
+    "no": "继续运行",
+    "working": "正在取消…",
+    "keeps": {
+      "takeout_import": "已导入的项目会保留。再次导入即可继续。",
+      "thumb_batch": "已生成的缩略图会保留。",
+      "site_backup": "不会保留任何归档文件。",
+      "other": "已完成的部分会保留。"
+    }
+  }
 }

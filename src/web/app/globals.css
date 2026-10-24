@@ -1122,6 +1122,53 @@ main.app-main {
   color: var(--fg);
 }
 
+.maintenance-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+  padding: 0.6rem 1rem;
+  border-radius: 12px;
+  background: #3a3220;
+  border: 1px solid #6b5a2e;
+  font-weight: 600;
+}
+
+.maintenance-banner-reason {
+  flex: 1 1 8rem;
+  min-width: 0;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.maintenance-banner a {
+  color: var(--fg);
+  font-weight: 400;
+}
+
+.cancel-job {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.maintenance-waiting {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.6rem 1rem;
+  border-radius: 12px;
+  background: #24303a;
+  border: 1px solid #34465a;
+}
+
+.maintenance-screen h2 {
+  margin: 0 0 0.25rem;
+}
+
 .status-bar button {
   padding: 0.25rem 0.7rem;
   border: 0;

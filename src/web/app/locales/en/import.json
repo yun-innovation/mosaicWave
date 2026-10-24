@@ -49,7 +49,8 @@
     "assets_other": "{{count, number}} assets",
     "albums_one": "{{count, number}} album",
     "albums_other": "{{count, number}} albums",
-    "cancelled": "Upload cancelled"
+    "cancelled": "Upload cancelled",
+    "importCancelled": "Import cancelled. Items already imported are kept; import again to continue."
   },
   "fail": {
     "chooseFolder": "Choose a Takeout folder on this device first",
@@ -75,7 +76,8 @@
       "queued": "queued",
       "running": "running",
       "done": "done",
-      "error": "error"
+      "error": "error",
+      "cancelled": "cancelled"
     },
     "thumbs_one": "{{count, number}} thumb",
     "thumbs_other": "{{count, number}} thumbs"

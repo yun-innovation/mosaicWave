@@ -2,6 +2,21 @@
   "starting": "正在開始…",
   "failed": "工作失敗。",
   "backupDone": "備份完成。",
+  "cancelled": "已取消。",
+  "cancelledAt": "已在 {{total}} 項中的第 {{processed}} 項取消。",
   "viewActivity": "活動",
-  "dismiss": "關閉"
+  "dismiss": "關閉",
+  "cancel": {
+    "button": "取消工作",
+    "confirm": "要停止這項工作嗎？",
+    "yes": "是，停止",
+    "no": "繼續執行",
+    "working": "正在取消…",
+    "keeps": {
+      "takeout_import": "已匯入的項目會保留。再次匯入即可繼續。",
+      "thumb_batch": "已產生的縮圖會保留。",
+      "site_backup": "不會保留任何封存檔。",
+      "other": "已完成的部分會保留。"
+    }
+  }
 }

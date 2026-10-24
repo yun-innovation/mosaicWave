@@ -224,6 +224,8 @@ Hit FastAPI directly (`http://127.0.0.1:8000` debug, `:8090` MSI/QPKG), not the 
 
 **Backups (admin):** folder **Backups**. Start a site backup, poll the job in **Jobs**, then List backups saves `{{backupName}}` for Download / Delete. Restore is offline only (`python -m mosaicwave.restore`), not an API.
 
+**Maintenance:** folder **Maintenance**. Status is public; Turn on/off need an admin session. While it is on, other users get `503 maintenance`.
+
 OpenAPI at `{{baseUrl}}/docs` stays the living spec; this collection is a snapshot for manual tests.""",
         "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     },
@@ -684,6 +686,12 @@ OpenAPI at `{{baseUrl}}/docs` stays the living spec; this collection is a snapsh
                     tests=SAVE_JOB,
                 ),
                 req(
+                    "Cancel job",
+                    "POST",
+                    "/api/v1/jobs/{{jobId}}/cancel",
+                    description="Stop a running job (thumbnails, site backup, Takeout import). Owner or admin; others get 404. The reply still says running: it ends as cancelled at the next check, so poll GET /jobs/{{jobId}}. 409 job_not_running if it already ended. Finished items stay; a cancelled backup leaves no archive.",
+                ),
+                req(
                     "Import status",
                     "GET",
                     "/api/v1/import/takeout/status",
@@ -744,6 +752,37 @@ OpenAPI at `{{baseUrl}}/docs` stays the living spec; this collection is a snapsh
                     "DELETE",
                     "/api/v1/backups/{{backupName}}",
                     description="Admin only. 404 backup_not_found if the name does not exist.",
+                ),
+            ],
+        ),
+        folder(
+            "Maintenance",
+            [
+                req(
+                    "Maintenance status",
+                    "GET",
+                    "/api/v1/maintenance",
+                    description="Public (no sign-in). state is off, draining (on, but a job is still running) or on, with the reason and since. Works during maintenance, unlike most other requests.",
+                ),
+                req(
+                    "Running job (any user)",
+                    "GET",
+                    "/api/v1/jobs/running",
+                    description="Admin only. The one job running on the server, whoever started it: kind, owner, progress and start time, but no file names. This is the job maintenance mode waits for while the state is draining. 403 for members.",
+                ),
+                req(
+                    "Turn maintenance on",
+                    "PUT",
+                    "/api/v1/maintenance",
+                    description="Admin only. While on, every other user and anonymous call gets 503 with code maintenance (and a Retry-After header); an admin keeps working. Sign-in is refused for non-admins. Run Turn maintenance off when done.",
+                    body="{\n  \"enabled\": true,\n  \"reason\": \"Restoring a backup\"\n}",
+                ),
+                req(
+                    "Turn maintenance off",
+                    "PUT",
+                    "/api/v1/maintenance",
+                    description="Admin only. Idempotent. The command line does the same without the API: python -m mosaicwave.maintenance off.",
+                    body="{\n  \"enabled\": false\n}",
                 ),
             ],
         ),

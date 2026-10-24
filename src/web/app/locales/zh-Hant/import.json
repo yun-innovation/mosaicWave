@@ -42,7 +42,8 @@
     "importedFrom": "已從 {{path}} 匯入 {{assets}}、{{albums}}",
     "assets_other": "{{count, number}} 個項目",
     "albums_other": "{{count, number}} 本相簿",
-    "cancelled": "已取消上傳"
+    "cancelled": "已取消上傳",
+    "importCancelled": "已取消匯入。已匯入的項目會保留；再次匯入即可繼續。"
   },
   "fail": {
     "chooseFolder": "請先在這部裝置上選擇 Takeout 資料夾",
@@ -68,7 +69,8 @@
       "queued": "排隊中",
       "running": "執行中",
       "done": "完成",
-      "error": "錯誤"
+      "error": "錯誤",
+      "cancelled": "已取消"
     },
     "thumbs_other": "{{count, number}} 張縮圖"
   }

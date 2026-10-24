@@ -13,6 +13,7 @@ These documents are the source of truth for product direction. Implemented schem
 | [Index](index.md) | TOC plus **For AI Agents** (session start / `mosaic done`) |
 | [System overview](system-overview.md) | Product intent, users, what we are (and are not), high-level capabilities |
 | [Backup and restore](backup.md) | Site archive, offline restore, per-user backup |
+| [Maintenance mode](maintenance.md) | Lock everyone but admins out for a backup or restore |
 | [Architecture](architecture.md) | Runtime split, tech stack, hosts, API contract, data and clients |
 | [Storage](storage.md) | Virtual FileStore + BlobStore; extra requirements for multi-platform |
 | [FileStore](filestore.md) | Originals I/O: virtual paths, LocalFileStore, how scan walks a tree |

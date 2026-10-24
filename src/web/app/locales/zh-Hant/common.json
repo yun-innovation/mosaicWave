@@ -22,7 +22,8 @@
     "import": "匯入",
     "activity": "活動",
     "settings": "設定",
-    "backup": "備份"
+    "backup": "備份",
+    "maintenance": "維護"
   },
   "account": {
     "menu": "{{name}} 的帳號選單"

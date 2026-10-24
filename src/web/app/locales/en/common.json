@@ -22,7 +22,8 @@
     "import": "Import",
     "activity": "Activity",
     "settings": "Settings",
-    "backup": "Backup"
+    "backup": "Backup",
+    "maintenance": "Maintenance"
   },
   "account": {
     "menu": "Account menu for {{name}}"

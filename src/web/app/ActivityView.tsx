@@ -4,13 +4,14 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { apiFetch } from "./api";
+import { CancelJobButton } from "./CancelJobButton";
 import { formatDateTime } from "./format";
 import i18n from "./i18n";
 import { ImportJob, ignoreAbort, isAbortError } from "./types";
 import { jobKindLabel } from "./useActiveJob";
 import { TakeoutImport } from "./useTakeoutImport";
 
-const JOB_STATUSES = ["idle", "queued", "running", "done", "error"] as const;
+const JOB_STATUSES = ["idle", "queued", "running", "done", "error", "cancelled"] as const;
 
 function jobStatusLabel(status: string): string {
   const known = JOB_STATUSES.find((s) => s === status);
@@ -65,6 +66,9 @@ export function ActivityView({ importer, libraryRev }: Props) {
                   : ""}
                 {job.error ? ` · ${job.error}` : ""}
               </span>
+              {job.status === "running" && job.id && !(job.mode === "push" && job.phase === "receiving") && (
+                <CancelJobButton jobId={job.id} kind={job.kind} onRequested={importer.refreshJobs} />
+              )}
               <span className="date">{formatDateTime(job.started_at || job.created_at)}</span>
             </li>
           ))}

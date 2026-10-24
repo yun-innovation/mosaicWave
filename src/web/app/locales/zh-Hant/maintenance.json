@@ -1,0 +1,38 @@
+{
+  "title": "維護",
+  "intro": "維護模式會鎖定管理員以外的所有人，讓你可以在沒人更動資料的情況下備份或還原。正在執行的工作會先完成。此設定在重新啟動後仍然有效。",
+  "state": {
+    "off": "維護模式已關閉。",
+    "draining": "正在等待執行中的工作完成。其他人已被鎖定。",
+    "on": "維護模式已開啟。只有管理員可以使用伺服器。"
+  },
+  "since": "自 {{time}} 起",
+  "waiting": {
+    "label": "正在等待",
+    "job": "{{kind}}（{{owner}}）",
+    "started": "開始於 {{time}}",
+    "looking": "正在查詢執行中的工作…"
+  },
+  "reasonLabel": "給使用者的訊息（選填）",
+  "reasonPlaceholder": "例如：正在還原備份，約一小時後恢復",
+  "turnOn": "開啟維護模式",
+  "confirmOn": "這會立即鎖定所有其他使用者。要繼續嗎？",
+  "confirmYes": "是，開啟",
+  "update": "更新訊息",
+  "turnOff": "關閉維護模式",
+  "saved": "維護模式已更新。",
+  "cli": "在主機上，不論 API 是否執行中，都可以使用：python -m mosaicwave.maintenance on、off 或 status。",
+  "banner": {
+    "on": "維護模式已開啟。只有管理員可以使用 mosaicWave。",
+    "draining": "維護模式即將開始。正在等待執行中的工作完成。",
+    "manage": "管理"
+  },
+  "screen": {
+    "title": "系統維護中",
+    "lede": "mosaicWave 正在維護，很快就會恢復。",
+    "noReason": "管理員沒有說明原因。",
+    "retrying": "會自動重新檢查。",
+    "adminSignIn": "管理員登入",
+    "back": "返回"
+  }
+}
