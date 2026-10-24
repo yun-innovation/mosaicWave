@@ -887,6 +887,13 @@ h2 {
   color: #a8d99a;
 }
 
+.sidebar-sep {
+  width: 100%;
+  margin: 0.5rem 0;
+  border: 0;
+  border-top: 1px solid #2a2a30;
+}
+
 .nav-backdrop {
   display: none;
 }
