@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { apiFetch, AppUser, HostSettings, Me, readDetail, Source } from "./api";
 import { FolderPicker } from "./FolderPicker";
 import i18n from "./i18n";
+import { LibraryBackupPanel } from "./LibraryBackupPanel";
 import { LocaleSelect } from "./LocaleSelect";
 import type { TakeoutImport } from "./useTakeoutImport";
 
@@ -308,6 +309,7 @@ export function SettingsPanel({ me, platform, importer, onMe }: Props) {
         </div>
         {thumbsError && <p className="status fail">{thumbsError}</p>}
       </div>
+      <LibraryBackupPanel importer={importer} />
       {error && <p className="status fail">{error}</p>}
       {notice && !error && <p className="detail">{notice}</p>}
       {sources === null && !error && <p className="detail">{t("common:loading")}</p>}

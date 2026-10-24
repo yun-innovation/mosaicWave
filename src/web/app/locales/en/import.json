@@ -70,7 +70,9 @@
       "thumb_batch": "Thumbs",
       "site_backup": "Site backup",
       "unknown": "job",
-      "site_restore": "Site restore"
+      "site_restore": "Site restore",
+      "library_backup": "Library backup",
+      "library_restore": "Library restore"
     },
     "status": {
       "idle": "idle",

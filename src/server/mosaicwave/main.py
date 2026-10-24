@@ -12,9 +12,11 @@ from mosaicwave.api.v1.health import router as health_router
 from mosaicwave.api.v1.fs import router as fs_router
 from mosaicwave.api.v1.library import router as library_router
 from mosaicwave.api.v1.backups import router as backups_router
+from mosaicwave.api.v1.mebackups import router as me_backups_router
 from mosaicwave.api.v1.maintenance import maintenance_guard, router as maintenance_router
 from mosaicwave.api.v1.settings import router as settings_router
 from mosaicwave.config import Settings, consume_restart_flag
+from mosaicwave.libbackup import recover_library_swaps, remove_stale_user_staging
 from mosaicwave.maintenance import start_from_env
 from mosaicwave.restore import apply_pending
 from mosaicwave.runtime import attach_runtime
@@ -50,7 +52,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app = FastAPI(title="mosaicWave", version="0.1.1", dependencies=[Depends(maintenance_guard)])
     start_from_env(settings)
-    # A restore staged from the Backup page is swapped in now, before any database is opened.
+    # A library swap a crash cut short is undone first, then a restore staged from the Backup page is
+    # swapped in, all before any database is opened.
+    recover_library_swaps(settings)
+    remove_stale_user_staging(settings)
     apply_pending(settings)
     attach_runtime(app, settings, recover=True)
     install_error_handlers(app)
@@ -68,6 +73,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(library_router, prefix="/api/v1")
     app.include_router(settings_router, prefix="/api/v1")
     app.include_router(backups_router, prefix="/api/v1")
+    app.include_router(me_backups_router, prefix="/api/v1")
     app.include_router(maintenance_router, prefix="/api/v1")
     if settings.web_root is not None:
         _mount_web(app, settings.web_root)

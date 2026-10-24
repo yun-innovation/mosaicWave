@@ -57,7 +57,7 @@ The migration runs at startup, so the API must already read from the library DBs
 
 ## Effect on backup (milestone 7)
 
-A site backup is the site DB plus every library folder. A user's backup is one `accounts/{user_id}/` folder plus `libraries/{user_id}/`, and their restore is an exact swap of their own library, so the earlier "additive merge" rules are not needed. The unmerged work in commit `3967fe1` (branch `feature/site-backup-restore`, single-DB site backup and offline restore) is a reference and has to be rebased onto this layout.
+A site backup is the site DB plus every library folder. A user's backup is one `accounts/{user_id}/` folder plus `libraries/{user_id}/`, and their restore is an exact swap of their own library (built, milestone 7 PR 3: `LibraryDbs.locked()` closes and blocks that one user's engine during the swap, see [backup.md](backup.md)), so the earlier "additive merge" rules are not needed. The unmerged work in commit `3967fe1` (branch `feature/site-backup-restore`, single-DB site backup and offline restore) is a reference and has to be rebased onto this layout.
 
 ## Findings: how the code splits (read-only pass for PR 1)
 

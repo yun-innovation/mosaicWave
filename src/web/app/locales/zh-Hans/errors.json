@@ -83,5 +83,7 @@
   "backup_path_required": "请输入或浏览服务器上的备份 zip。",
   "backup_not_a_file": "该路径不是文件：{{path}}",
   "upload_too_large": "文件太大（上限为 {{max_gb}} GB）。",
-  "backup_no_space": "可用空间不足：需要约 {{need_mb}} MB，当前只有 {{free_mb}} MB。"
+  "backup_no_space": "可用空间不足：需要约 {{need_mb}} MB，当前只有 {{free_mb}} MB。",
+  "library_restoring": "你的相册正在还原中，请稍后再试。",
+  "backup_wrong_kind": "这是不同类型的备份：整站备份请到管理员的“备份”页使用，相册备份请在“设置”中使用。"
 }

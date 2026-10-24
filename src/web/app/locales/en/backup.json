@@ -78,5 +78,25 @@
       "uploadCancelled": "Upload cancelled.",
       "uploadedKept": "The backup was uploaded and is in the list above, but the restore did not start: {{message}}"
     }
+  },
+  "library": {
+    "title": "My library backup",
+    "intro": "Back up only your own library (your photos, albums and their details) as one zip you can download. Restoring replaces your library with a backup; other people are not affected. Thumbnails are not included; they are rebuilt when photos are first viewed.",
+    "start": "Back up my library",
+    "list": {
+      "title": "Your library backups",
+      "empty": "No library backups yet."
+    },
+    "restore": {
+      "confirm": "Replace your library with this backup? Your current library is kept aside.",
+      "confirmYes": "Yes, replace it"
+    },
+    "keepNote": "When you restore, your previous library is kept aside on the server, not deleted. Ask the administrator to remove it once you no longer need it.",
+    "upload": {
+      "label": "Backup zip on this device",
+      "hint": "Choose a mosaicwave-library-….zip made by this or another mosaicWave. It is uploaded to the list above; restore it from there.",
+      "button": "Upload archive"
+    },
+    "uploaded": "The backup was uploaded and is in the list above."
   }
 }

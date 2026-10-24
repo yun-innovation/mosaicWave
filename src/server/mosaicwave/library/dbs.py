@@ -11,6 +11,8 @@ from __future__ import annotations
 import re
 import threading
 from collections import OrderedDict
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 
 from sqlalchemy.engine import Engine
@@ -22,6 +24,10 @@ from mosaicwave.schema.library import LIBRARY_STEPS, create_library_schema
 
 DB_NAME = "library.db"
 USER_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")
+
+
+class LibraryLocked(RuntimeError):
+    """The user's library is being swapped by a restore; try again in a moment."""
 
 
 def _create_current(engine: Engine) -> None:
@@ -43,6 +49,7 @@ class LibraryDbs:
         self._lock = threading.Lock()
         self._engines: OrderedDict[str, Engine] = OrderedDict()
         self._factories: dict[str, sessionmaker[Session]] = {}
+        self._locked: set[str] = set()
 
     def path(self, user_id: str) -> Path:
         if not USER_ID.match(user_id or ""):
@@ -65,6 +72,8 @@ class LibraryDbs:
         """The engine for `user_id`, creating or upgrading its file on first use."""
         db = self.path(user_id)
         with self._lock:
+            if user_id in self._locked:
+                raise LibraryLocked(user_id)
             found = self._engines.get(user_id)
             if found is not None:
                 self._engines.move_to_end(user_id)
@@ -86,6 +95,25 @@ class LibraryDbs:
             if found is None:  # evicted between the two calls
                 found = sessionmaker(engine, expire_on_commit=False)
             return found
+
+    @contextmanager
+    def locked(self, user_id: str) -> Iterator[None]:
+        """Keep ``user_id``'s database closed (new use raises ``LibraryLocked``) for a file swap.
+
+        Closes the cached engine on entry. Requests already holding a connection finish first or make
+        the swap's rename fail, which the caller rolls back.
+        """
+        self.path(user_id)  # validates the id
+        with self._lock:
+            if user_id in self._locked:
+                raise LibraryLocked(user_id)
+            self._locked.add(user_id)
+        try:
+            self.dispose(user_id)
+            yield
+        finally:
+            with self._lock:
+                self._locked.discard(user_id)
 
     def open_count(self) -> int:
         with self._lock:

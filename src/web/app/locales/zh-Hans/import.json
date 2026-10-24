@@ -63,7 +63,9 @@
       "thumb_batch": "缩略图",
       "site_backup": "整站备份",
       "unknown": "任务",
-      "site_restore": "整站还原"
+      "site_restore": "整站还原",
+      "library_backup": "相册备份",
+      "library_restore": "相册还原"
     },
     "status": {
       "idle": "空闲",

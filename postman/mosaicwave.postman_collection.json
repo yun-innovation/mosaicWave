@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "mosaicWave /api/v1",
-    "description": "Hand-written Postman collection for mosaicWave. Not a generated client.\n\n**Import:** Postman → Import → `postman/mosaicwave.postman_collection.json` and an environment JSON from this folder. Create a Postman workspace if you want (File → New → Workspace); workspaces are not a file format.\n\n**Auth:** `POST /auth/login` sets httponly cookie `mw_session`. The collection copies it into variable `mw_session` and sends `Cookie` on later requests. You can also use Postman’s cookie jar.\n\n**Order that fills ids:** Login → List sources → List assets → List users. Then open thumb/file using `{{assetId}}` / `{{sourceId}}`. Share: owner **Set grants** with a member `userId` (`read` or `write`).\n\n**Share:** `PUT /sources/{id}/grants` is the owner’s replacement list. Grantee keeps their own library and also sees the shared one. Admin has no bypass.\n\n**Album sync:** Pull is `GET /sync/changes` (`since_rev`). Push is `/albums` with `base_rev` (the album `rev`, not `server_rev`). Folder **Sync replica** is create-`id`, membership `base_rev`, delete + tombstone pull. Do not POST the pull JSON back.\n\nHit FastAPI directly (`http://127.0.0.1:8000` debug, `:8090` MSI/QPKG), not the Next.js `:3000` proxy, unless you intend to test the rewrite.\n\n**Backups (admin):** folder **Backups**. Start a site backup, poll the job in **Jobs**, then List backups saves `{{backupName}}` for Download / Delete. Restore: turn on maintenance, Stage restore (a job), poll it, then Apply restore (restarts the server) and read Restore state. `python -m mosaicwave.restore` still works offline.\n\n**Maintenance:** folder **Maintenance**. Status is public; Turn on/off need an admin session. While it is on, other users get `503 maintenance`.\n\nOpenAPI at `{{baseUrl}}/docs` stays the living spec; this collection is a snapshot for manual tests.",
+    "description": "Hand-written Postman collection for mosaicWave. Not a generated client.\n\n**Import:** Postman → Import → `postman/mosaicwave.postman_collection.json` and an environment JSON from this folder. Create a Postman workspace if you want (File → New → Workspace); workspaces are not a file format.\n\n**Auth:** `POST /auth/login` sets httponly cookie `mw_session`. The collection copies it into variable `mw_session` and sends `Cookie` on later requests. You can also use Postman’s cookie jar.\n\n**Order that fills ids:** Login → List sources → List assets → List users. Then open thumb/file using `{{assetId}}` / `{{sourceId}}`. Share: owner **Set grants** with a member `userId` (`read` or `write`).\n\n**Share:** `PUT /sources/{id}/grants` is the owner’s replacement list. Grantee keeps their own library and also sees the shared one. Admin has no bypass.\n\n**Album sync:** Pull is `GET /sync/changes` (`since_rev`). Push is `/albums` with `base_rev` (the album `rev`, not `server_rev`). Folder **Sync replica** is create-`id`, membership `base_rev`, delete + tombstone pull. Do not POST the pull JSON back.\n\nHit FastAPI directly (`http://127.0.0.1:8000` debug, `:8090` MSI/QPKG), not the Next.js `:3000` proxy, unless you intend to test the rewrite.\n\n**Backups (admin):** folder **Backups**. Start a site backup, poll the job in **Jobs**, then List backups saves `{{backupName}}` for Download / Delete. Restore: turn on maintenance, Stage restore (a job), poll it, then Apply restore (restarts the server) and read Restore state. `python -m mosaicwave.restore` still works offline.\n\n**My library backup (any signed-in user):** folder **My library backups**. Back up my library starts a job; List my backups saves `{{libraryBackupName}}` for Download / Delete / Restore. Restore replaces only your own library while the server runs (a job; your previous library is kept aside by the server).\n\n**Maintenance:** folder **Maintenance**. Status is public; Turn on/off need an admin session. While it is on, other users get `503 maintenance`.\n\nOpenAPI at `{{baseUrl}}/docs` stays the living spec; this collection is a snapshot for manual tests.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -43,6 +43,10 @@
     },
     {
       "key": "backupName",
+      "value": ""
+    },
+    {
+      "key": "libraryBackupName",
       "value": ""
     },
     {
@@ -1834,6 +1838,118 @@
             "url": "{{baseUrl}}/api/v1/backups/restore",
             "description": "Admin only. Throws a staged restore away and forgets the last result."
           }
+        }
+      ]
+    },
+    {
+      "name": "My library backups",
+      "item": [
+        {
+          "name": "Back up my library",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/me/backups",
+            "description": "Any signed-in user. Starts a job (kind library_backup, cancellable; poll it in Jobs) that writes mosaicwave-library-<time>.zip under your own backups folder: your library database and originals, no thumbnails. 409 job_running while another job runs. Saves {{jobId}}."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const b = pm.response.json();",
+                  "  const id = b.id || (b.items && b.items[0] && b.items[0].id);",
+                  "  if (id) { pm.collectionVariables.set('jobId', id); }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List my backups",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/me/backups",
+            "description": "Only your own archives, newest first. Saves {{libraryBackupName}} from the first item."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var b = pm.response.json();",
+                  "if (Array.isArray(b) && b[0]) { pm.collectionVariables.set('libraryBackupName', b[0].name); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Download my backup",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/me/backups/{{libraryBackupName}}",
+            "description": "404 backup_not_found for a name that is not yours. Use Send and Download in Postman."
+          }
+        },
+        {
+          "name": "Delete my backup",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/me/backups/{{libraryBackupName}}",
+            "description": "404 backup_not_found if the name does not exist in your folder."
+          }
+        },
+        {
+          "name": "Upload my backup (from the device)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/octet-stream"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/me/backups/upload",
+            "description": "Raw zip body (Send and Select File). Streamed to your backups folder and checked; stored as mosaicwave-library-<time inside the archive>.zip and returned as listed. 400 backup_wrong_kind (a site backup), backup_invalid, 413 upload_too_large, 507 backup_no_space, 409 job_running or restore_pending. The archive may come from another account; restoring remaps it to you.",
+            "body": {
+              "mode": "file",
+              "file": {
+                "src": ""
+              }
+            }
+          }
+        },
+        {
+          "name": "Restore my library",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/me/backups/{{libraryBackupName}}/restore",
+            "description": "Replaces your library with the backup while the server runs: a job (kind library_restore) that unpacks and checks it, then swaps your database and originals (cancellable until the swap starts). Your previous library is kept aside on the server. Other users are not affected; your own requests get 503 library_restoring for a moment during the swap. 409 job_running or restore_pending. Saves {{jobId}}."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const b = pm.response.json();",
+                  "  const id = b.id || (b.items && b.items[0] && b.items[0].id);",
+                  "  if (id) { pm.collectionVariables.set('jobId', id); }",
+                  "}"
+                ]
+              }
+            }
+          ]
         }
       ]
     },

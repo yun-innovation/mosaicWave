@@ -17,8 +17,12 @@
       "thumb_batch": "已生成的缩略图会保留。",
       "site_backup": "不会保留任何归档文件。",
       "other": "已完成的部分会保留。",
-      "site_restore": "不会保留任何内容，你的相册保持原样。"
+      "site_restore": "不会保留任何内容，你的相册保持原样。",
+      "library_backup": "不会保留任何归档文件。",
+      "library_restore": "不会更改任何内容，你的相册保持原样。一旦开始替换你的相册，就无法中止。"
     }
   },
-  "restoreStaged": "还原已就绪，可以应用。"
+  "restoreStaged": "还原已就绪，可以应用。",
+  "libraryBackupDone": "相册备份完成。",
+  "libraryRestored": "相册已还原。"
 }

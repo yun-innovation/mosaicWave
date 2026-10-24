@@ -182,6 +182,12 @@ Illustrative v1 surface (names can change; behavior should not):
 | GET | `/api/v1/backups/restore` | **Admin.** `{pending, result}`: the staged restore and the last start-up swap |
 | POST | `/api/v1/backups/restore/apply` | **Admin.** Restart the API; the staged restore is swapped in at start-up |
 | DELETE | `/api/v1/backups/restore` | **Admin.** Discard the staged restore and clear the result |
+| POST | `/api/v1/me/backups` | Start a backup of **your own** library (job `library_backup`); [backup.md](backup.md) |
+| GET | `/api/v1/me/backups` | List your library archives (kept in `backups/users/{your id}/`) |
+| GET | `/api/v1/me/backups/{name}` | Download one of your archives |
+| DELETE | `/api/v1/me/backups/{name}` | Delete one of your archives |
+| PUT | `/api/v1/me/backups/upload` | Raw zip body from the browser; `400 backup_wrong_kind` for a site archive |
+| POST | `/api/v1/me/backups/{name}/restore` | Replace your library with this archive while the server runs (job `library_restore`: stage, then swap; no maintenance mode, other users unaffected, `503 library_restoring` for your own requests during the swap) |
 | GET | `/api/v1/maintenance` | **Public.** `{state: off\|draining\|on, reason, since}`; [maintenance.md](maintenance.md) |
 | PUT | `/api/v1/maintenance` | **Admin.** `{enabled, reason}`: switch maintenance mode. While it is on, everyone but an admin gets `503 maintenance` |
 | GET | `/api/v1/sync/changes` | Metadata pull (`since_rev`, tombstones). Push is `/albums` + `base_rev`, not this URL. Covered vs later: [schema.md](schema.md) Sync protocol |

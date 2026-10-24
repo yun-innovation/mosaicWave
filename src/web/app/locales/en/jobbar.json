@@ -17,8 +17,12 @@
       "thumb_batch": "Thumbnails already made stay.",
       "site_backup": "No archive is kept.",
       "other": "Work already done stays.",
-      "site_restore": "Nothing is kept; your library stays as it is."
+      "site_restore": "Nothing is kept; your library stays as it is.",
+      "library_backup": "No archive is kept.",
+      "library_restore": "Nothing is changed; your library stays as it is. Once your library is being replaced it cannot be stopped."
     }
   },
-  "restoreStaged": "Restore is ready to apply."
+  "restoreStaged": "Restore is ready to apply.",
+  "libraryBackupDone": "Library backup finished.",
+  "libraryRestored": "Library restored."
 }

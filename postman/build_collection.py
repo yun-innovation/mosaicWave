@@ -190,6 +190,10 @@ EXPECT_409 = [
     "});",
 ]
 
+SAVE_LIBRARY_BACKUP = [
+    "var b = pm.response.json();",
+    "if (Array.isArray(b) && b[0]) { pm.collectionVariables.set('libraryBackupName', b[0].name); }",
+]
 SAVE_BACKUP = [
     "if (pm.response.code === 200) {",
     "  const b = pm.response.json();",
@@ -224,6 +228,8 @@ Hit FastAPI directly (`http://127.0.0.1:8000` debug, `:8090` MSI/QPKG), not the 
 
 **Backups (admin):** folder **Backups**. Start a site backup, poll the job in **Jobs**, then List backups saves `{{backupName}}` for Download / Delete. Restore: turn on maintenance, Stage restore (a job), poll it, then Apply restore (restarts the server) and read Restore state. `python -m mosaicwave.restore` still works offline.
 
+**My library backup (any signed-in user):** folder **My library backups**. Back up my library starts a job; List my backups saves `{{libraryBackupName}}` for Download / Delete / Restore. Restore replaces only your own library while the server runs (a job; your previous library is kept aside by the server).
+
 **Maintenance:** folder **Maintenance**. Status is public; Turn on/off need an admin session. While it is on, other users get `503 maintenance`.
 
 OpenAPI at `{{baseUrl}}/docs` stays the living spec; this collection is a snapshot for manual tests.""",
@@ -240,6 +246,7 @@ OpenAPI at `{{baseUrl}}/docs` stays the living spec; this collection is a snapsh
         {"key": "assetCursor", "value": ""},
         {"key": "jobId", "value": ""},
         {"key": "backupName", "value": ""},
+        {"key": "libraryBackupName", "value": ""},
         {"key": "sinceRev", "value": "0"},
         {"key": "syncCursor", "value": ""},
         {"key": "albumId", "value": ""},
@@ -792,6 +799,51 @@ OpenAPI at `{{baseUrl}}/docs` stays the living spec; this collection is a snapsh
                     "DELETE",
                     "/api/v1/backups/restore",
                     description="Admin only. Throws a staged restore away and forgets the last result.",
+                ),
+            ],
+        ),
+        folder(
+            "My library backups",
+            [
+                req(
+                    "Back up my library",
+                    "POST",
+                    "/api/v1/me/backups",
+                    description="Any signed-in user. Starts a job (kind library_backup, cancellable; poll it in Jobs) that writes mosaicwave-library-<time>.zip under your own backups folder: your library database and originals, no thumbnails. 409 job_running while another job runs. Saves {{jobId}}.",
+                    tests=SAVE_JOB,
+                ),
+                req(
+                    "List my backups",
+                    "GET",
+                    "/api/v1/me/backups",
+                    description="Only your own archives, newest first. Saves {{libraryBackupName}} from the first item.",
+                    tests=SAVE_LIBRARY_BACKUP,
+                ),
+                req(
+                    "Download my backup",
+                    "GET",
+                    "/api/v1/me/backups/{{libraryBackupName}}",
+                    description="404 backup_not_found for a name that is not yours. Use Send and Download in Postman.",
+                ),
+                req(
+                    "Delete my backup",
+                    "DELETE",
+                    "/api/v1/me/backups/{{libraryBackupName}}",
+                    description="404 backup_not_found if the name does not exist in your folder.",
+                ),
+                req(
+                    "Upload my backup (from the device)",
+                    "PUT",
+                    "/api/v1/me/backups/upload",
+                    description="Raw zip body (Send and Select File). Streamed to your backups folder and checked; stored as mosaicwave-library-<time inside the archive>.zip and returned as listed. 400 backup_wrong_kind (a site backup), backup_invalid, 413 upload_too_large, 507 backup_no_space, 409 job_running or restore_pending. The archive may come from another account; restoring remaps it to you.",
+                    file_body=True,
+                ),
+                req(
+                    "Restore my library",
+                    "POST",
+                    "/api/v1/me/backups/{{libraryBackupName}}/restore",
+                    description="Replaces your library with the backup while the server runs: a job (kind library_restore) that unpacks and checks it, then swaps your database and originals (cancellable until the swap starts). Your previous library is kept aside on the server. Other users are not affected; your own requests get 503 library_restoring for a moment during the swap. 409 job_running or restore_pending. Saves {{jobId}}.",
+                    tests=SAVE_JOB,
                 ),
             ],
         ),

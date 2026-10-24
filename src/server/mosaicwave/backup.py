@@ -94,13 +94,15 @@ def _snapshot_site(settings: Settings, work: Path) -> tuple[Path, int, int]:
     return dest, version, users
 
 
-def _snapshot_library(settings: Settings, user_id: str, work: Path) -> tuple[Path, dict, int]:
+def _snapshot_library(
+    settings: Settings, user_id: str, work: Path, *, dest: Path | None = None
+) -> tuple[Path, dict, int]:
     """Copy one user's library database and make its source paths portable.
 
     Returns (file, facts, sources kept outside libraries/).
     """
     source = settings.accounts_dir / user_id / DB_ENTRY
-    dest = work / account_entry(user_id)
+    dest = dest or work / account_entry(user_id)
     libraries = (settings.data_dir / LIBRARIES).resolve()
     con = _copy_db(source, dest)
     try:

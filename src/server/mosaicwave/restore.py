@@ -186,9 +186,20 @@ def _prepare_site(staged: Path, manifest: dict) -> int | None:
 
 
 def _prepare_library(
-    staged: Path, data_dir: Path, user_id: str, manifest: dict, thumb_bump: int | None = None
+    staged: Path,
+    data_dir: Path,
+    user_id: str,
+    manifest: dict,
+    thumb_bump: int | None = None,
+    *,
+    target_user_id: str | None = None,
+    listed: dict | None = None,
 ) -> int | None:
     """Verify one library database and point its sources at ``data_dir``.
+
+    ``target_user_id`` restores the library into another account: the first folder under
+    ``libraries/`` and every source's owner become that user. ``listed`` is the manifest's counts for
+    this library (a site archive keeps them per user; a library archive at the top level).
 
     ``thumb_bump`` is added to every ``thumb_rev``. Thumbnail URLs carry the version and browsers keep
     them for an hour, so without a bump a restored library (which has no thumbnail files) would keep
@@ -205,13 +216,18 @@ def _prepare_library(
         for source_id, uri in list(con.execute("SELECT id, root_uri FROM source")):
             if isinstance(uri, str) and uri.startswith(DATA_PREFIX):
                 rel = uri[len(DATA_PREFIX) :].split("/")
+                if target_user_id and len(rel) > 1 and rel[0] == LIBRARIES and rel[1] == user_id:
+                    rel[1] = target_user_id
                 real = data_dir.joinpath(*rel).resolve()
                 con.execute("UPDATE source SET root_uri = ? WHERE id = ?", (str(real), source_id))
+        if target_user_id:
+            con.execute("UPDATE source SET owner_user_id = ?", (target_user_id,))
         if thumb_bump:
             con.execute("UPDATE asset SET thumb_rev = thumb_rev + ?", (thumb_bump,))
         con.commit()
         con.execute("PRAGMA journal_mode=DELETE")
-        listed = manifest["libraries"].get(user_id, {})
+        if listed is None:
+            listed = manifest["libraries"].get(user_id, {})
         for table, key in (("asset", "assets"), ("album", "albums")):
             count = int(con.execute(f"SELECT COUNT(*) FROM {table} WHERE deleted_at IS NULL").fetchone()[0])
             if count != listed.get(key):
@@ -305,8 +321,49 @@ def stage_site(
         raise
 
 
+def live_max_rev(db: Path) -> int:
+    """The highest sync number in a library database (0 when there is none). Read only."""
+    if not db.is_file():
+        return 0
+    try:
+        con = sqlite3.connect(os.fspath(db.resolve()), timeout=5.0)
+    except sqlite3.Error:
+        return 0
+    try:
+        top = 0
+        for table in ("asset", "album", "album_asset"):
+            try:
+                top = max(top, int(con.execute(f"SELECT COALESCE(MAX(rev), 0) FROM {table}").fetchone()[0]))
+            except sqlite3.Error:
+                continue
+        return top
+    finally:
+        con.close()
+
+
+def offset_revs(staged_db: Path, offset: int) -> None:
+    """Move every restored row's sync number above ``offset``.
+
+    A sync client remembers the number it last pulled. A restored library goes back in time, so rows
+    that look old to a client would never be pulled again. Raising them above anything the live library
+    ever handed out (``offset`` is its highest number) makes every client pull them afresh. Order is
+    kept; ``updated_at`` and the album ``rev`` that guards edits are left alone except by this shift.
+    """
+    if offset <= 0:
+        return
+    con = sqlite3.connect(os.fspath(staged_db))
+    try:
+        for table in ("asset", "album", "album_asset"):
+            con.execute(f"UPDATE {table} SET rev = rev + ?", (offset,))
+        con.commit()
+    finally:
+        con.close()
+
+
 def commit_site(staged: StagedRestore, settings: Settings) -> RestoreResult:
     """Swap the staged data in. The databases must not be open (offline, or at API start-up)."""
+    for staged_db in sorted((staged.app_stage / ACCOUNTS).glob(f"*/{DB_ENTRY}")):
+        offset_revs(staged_db, live_max_rev(settings.accounts_dir / staged_db.parent.name / DB_ENTRY))
     result = RestoreResult(
         manifest=staged.manifest,
         site_upgrade_from=staged.site_upgrade_from,
