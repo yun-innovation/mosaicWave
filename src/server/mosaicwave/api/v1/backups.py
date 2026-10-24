@@ -2,24 +2,29 @@
 
 from __future__ import annotations
 
+import os
+import shutil
 import zipfile
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, Request
+from starlette.requests import ClientDisconnect
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from mosaicwave import maintenance, restore
-from mosaicwave.api.errors import ApiError
+from mosaicwave.api.errors import ApiError, wrapped
 from mosaicwave.api.v1.library import ImportOut, _busy_error, _job_out
 from mosaicwave.api.v1.maintenance import job_running
 from mosaicwave.archive import SITE_NAME, ArchiveError, read_manifest
-from mosaicwave.auth.deps import require_admin
+from mosaicwave.auth.deps import require_admin, require_user_brief
 from mosaicwave.config import schedule_api_restart
 from mosaicwave.db import get_session
 from mosaicwave.library.importjob import ImportBusy, ImportJobRunner
-from mosaicwave.models import User
+from mosaicwave.library.takeoutpush import MAX_PUSH_BYTES, write_upload_async
+from mosaicwave.models import User, new_id
 
 router = APIRouter()
 
@@ -201,12 +206,130 @@ def apply_restore(
     return RestartOut(restarting=schedule_api_restart(boot))
 
 
+class RestoreFromPathIn(BaseModel):
+    path: str = Field(default="", max_length=4096, description="A site backup .zip on the server")
+
+
+def _require_maintenance(request: Request) -> None:
+    if maintenance.read(request.app.state.settings) is None:
+        raise ApiError(409, "maintenance_required", "Turn maintenance mode on first")
+
+
+@router.post("/backups/restore", response_model=ImportOut)
+def post_restore_from_path(
+    body: RestoreFromPathIn, request: Request, admin: User = Depends(require_admin)
+) -> ImportOut:
+    """Stage a restore from a zip anywhere on the server (a share, a USB drive). Nothing is copied."""
+    text = body.path.strip()
+    if not text:
+        raise ApiError(400, "backup_path_required", "Choose the backup zip on the server")
+    _require_maintenance(request)
+    try:
+        path = Path(text).expanduser().resolve()
+        is_file = path.is_file()
+    except OSError as exc:
+        raise wrapped(400, "backup_invalid", exc) from exc
+    if not is_file:
+        raise ApiError(400, "backup_not_a_file", "That path is not a file", {"path": text})
+    try:
+        restore.check_archive(path)
+    except (ArchiveError, OSError) as exc:
+        raise wrapped(400, "backup_invalid", exc) from exc
+    runner: ImportJobRunner = request.app.state.import_jobs
+    try:
+        job = runner.start_restore(user_id=admin.id, archive=path)
+    except ImportBusy as exc:
+        raise _busy_error(exc) from exc
+    return _job_out(job)
+
+
+_UPLOAD_BODY = {
+    "requestBody": {
+        "required": True,
+        "content": {"application/octet-stream": {"schema": {"type": "string", "format": "binary"}}},
+    }
+}
+
+
+def _archive_name(manifest: dict) -> str:
+    """The standard name for an uploaded archive, from the time inside it (so a renamed file works)."""
+    try:
+        stamp = datetime.fromisoformat(str(manifest["created_at"]))
+        if stamp.tzinfo is None:
+            stamp = stamp.replace(tzinfo=timezone.utc)
+        stamp = stamp.astimezone(timezone.utc)
+    except (KeyError, ValueError):
+        stamp = datetime.now(timezone.utc)
+    return f"mosaicwave-site-{stamp:%Y%m%d-%H%M%S}.zip"
+
+
+@router.put("/backups/upload", response_model=BackupOut, openapi_extra=_UPLOAD_BODY)
+async def upload_backup(request: Request, user: User = Depends(require_user_brief)) -> BackupOut:
+    """Receive a site backup zip from the browser into ``backups/`` (raw body, streamed to disk)."""
+    if user.role != "admin":
+        raise ApiError(403, "admin_only", "admin only")
+    settings = request.app.state.settings
+    if restore.pending_exists(settings):
+        raise ApiError(409, "restore_pending", "A restore is waiting to be applied")
+    session = request.app.state.session_factory()
+    try:
+        if job_running(session):
+            raise ApiError(409, "job_running", "Another job is already running")
+    finally:
+        session.close()
+
+    folder = settings.backup_dir
+    folder.mkdir(parents=True, exist_ok=True)
+    raw = request.headers.get("content-length")
+    declared = int(raw) if raw and raw.isdigit() else None
+    if declared is not None:
+        if declared > MAX_PUSH_BYTES:
+            raise ApiError(413, "upload_too_large", "That file is too large", {"max_gb": MAX_PUSH_BYTES >> 30})
+        free = shutil.disk_usage(folder).free
+        if free < declared + declared // 20:
+            raise ApiError(
+                507,
+                "backup_no_space",
+                "Not enough free space for that file",
+                {"need_mb": declared >> 20, "free_mb": free >> 20},
+            )
+
+    received = folder / f".upload-{new_id()}.zip"
+    try:
+        try:
+            await write_upload_async(received, request.stream())
+        except ClientDisconnect as exc:
+            raise ApiError(400, "upload_interrupted", "upload interrupted") from exc
+        except ValueError as exc:
+            raise ApiError(413, "upload_too_large", str(exc), {"max_gb": MAX_PUSH_BYTES >> 30}) from exc
+        except OSError as exc:
+            raise wrapped(400, "upload_failed", exc) from exc
+        try:
+            manifest = restore.check_archive(received)
+        except (ArchiveError, OSError) as exc:
+            raise wrapped(400, "backup_invalid", exc) from exc
+        final = folder / _archive_name(manifest)
+        size = received.stat().st_size
+        while final.exists():
+            if final.stat().st_size == size:  # the same file again
+                break
+            stamp = datetime.strptime(final.name[len("mosaicwave-site-") : -len(".zip")], "%Y%m%d-%H%M%S")
+            final = folder / f"mosaicwave-site-{stamp + timedelta(seconds=1):%Y%m%d-%H%M%S}.zip"
+        if not final.exists():
+            os.replace(received, final)
+    finally:
+        received.unlink(missing_ok=True)
+    info = _describe(final)
+    if info is None:
+        raise ApiError(400, "backup_invalid", "The archive could not be read", {"message": "unreadable"})
+    return info
+
+
 @router.post("/backups/{name}/restore", response_model=ImportOut)
 def post_restore(name: str, request: Request, admin: User = Depends(require_admin)) -> ImportOut:
     """Stage a restore of this backup. Needs maintenance mode; nothing live changes until Apply."""
     path = _existing(request, name)
-    if maintenance.read(request.app.state.settings) is None:
-        raise ApiError(409, "maintenance_required", "Turn maintenance mode on first")
+    _require_maintenance(request)
     runner: ImportJobRunner = request.app.state.import_jobs
     try:
         job = runner.start_restore(user_id=admin.id, archive=path)

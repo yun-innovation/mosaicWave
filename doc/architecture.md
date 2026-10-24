@@ -159,7 +159,7 @@ Illustrative v1 surface (names can change; behavior should not):
 | GET | `/api/v1/assets/{id}/file` | Original (so the player can skip in time) |
 | POST | `/api/v1/thumbs/generate` | Start `thumb_batch` job (one in-process job at a time) |
 | POST | `/api/v1/assets` | Upload into the caller's library |
-| GET | `/api/v1/fs/list` | Host folder picker. Other users' `{data_dir}/libraries/{id}` dirs are hidden. Optional `warning` when this process cannot list a folder (does not retry as the Mac GUI user). `smb://` and UNC: [smb-paths.md](smb-paths.md) |
+| GET | `/api/v1/fs/list` | Host folder picker. `kind=backup` (admin only) lists any `.zip` file for choosing a backup to restore. Other users' `{data_dir}/libraries/{id}` dirs are hidden. Optional `warning` when this process cannot list a folder (does not retry as the Mac GUI user). `smb://` and UNC: [smb-paths.md](smb-paths.md) |
 | POST | `/api/v1/import/takeout/inspect` | Verify Takeout download/extract (missing zips, oversized files) |
 | POST | `/api/v1/import/takeout` | Start deduping Takeout import from a **host path** into the caller's library (`dest` ignored); [takeout-dump.md](takeout-dump.md) |
 | POST | `/api/v1/import/takeout/push` | Start a **client upload** session (mobile / this device / cloud Files). Dump is not a server folder |
@@ -177,6 +177,8 @@ Illustrative v1 surface (names can change; behavior should not):
 | GET | `/api/v1/backups/{name}` | **Admin.** Download one archive |
 | DELETE | `/api/v1/backups/{name}` | **Admin.** Delete one archive |
 | POST | `/api/v1/backups/{name}/restore` | **Admin.** Stage an online restore as a cancellable `site_restore` job; needs maintenance mode (`maintenance_required`) |
+| POST | `/api/v1/backups/restore` | **Admin.** `{path}`: stage a restore from a zip anywhere on the server (maintenance mode required) |
+| PUT | `/api/v1/backups/upload` | **Admin.** Raw zip body from the browser into `backups/`; checked and stored under the standard name |
 | GET | `/api/v1/backups/restore` | **Admin.** `{pending, result}`: the staged restore and the last start-up swap |
 | POST | `/api/v1/backups/restore/apply` | **Admin.** Restart the API; the staged restore is swapped in at start-up |
 | DELETE | `/api/v1/backups/restore` | **Admin.** Discard the staged restore and clear the result |

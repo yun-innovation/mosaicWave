@@ -7,6 +7,7 @@ import { apiFetch, apiMediaUrl, errorText, HostSettings, readDetail } from "./ap
 import { formatBytes, formatDateTime } from "./format";
 import { routeHash } from "./hashRoute";
 import i18n from "./i18n";
+import { RestoreSourceForm } from "./RestoreSourceForm";
 import { BackupItem, isAbortError, MaintenanceStatus, Notice, RestoreState, RestoreSummary } from "./types";
 import type { TakeoutImport } from "./useTakeoutImport";
 
@@ -45,6 +46,7 @@ export function BackupView({ importer, maintenance }: { importer: TakeoutImport;
   const [withThumbs, setWithThumbs] = useState(false);
   const [working, setWorking] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
+  const [restoreNotice, setRestoreNotice] = useState<Notice | null>(null);
   const [confirming, setConfirming] = useState<Confirm | null>(null);
   const [restore, setRestore] = useState<RestoreState | null>(null);
   const [waiting, setWaiting] = useState<Waiting>(null);
@@ -375,7 +377,24 @@ export function BackupView({ importer, maintenance }: { importer: TakeoutImport;
           </div>
         </div>
       )}
-      {!restore?.pending && !waiting && maintenanceOn && <p className="detail">{t("backup:restore.idle")}</p>}
+      {!restore?.pending && !waiting && (
+        <>
+          <p className="detail">{t("backup:restore.idle")}</p>
+          <RestoreSourceForm
+            maintenanceOn={maintenanceOn}
+            blocked={disabled}
+            onNotice={setRestoreNotice}
+            onStarted={() => {
+              refreshJobs();
+              void loadList();
+              void loadRestore();
+            }}
+          />
+          {restoreNotice && (
+            <p className={restoreNotice.ok ? "detail import-progress" : "status fail"}>{restoreNotice.text}</p>
+          )}
+        </>
+      )}
 
       <h3 className="backup-heading">{t("backup:restore.offline.title")}</h3>
       <p className="detail">{t("backup:restore.offline.help")}</p>

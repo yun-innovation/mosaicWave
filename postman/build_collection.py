@@ -761,6 +761,21 @@ OpenAPI at `{{baseUrl}}/docs` stays the living spec; this collection is a snapsh
                     tests=SAVE_JOB,
                 ),
                 req(
+                    "Restore from a server path",
+                    "POST",
+                    "/api/v1/backups/restore",
+                    description="Admin only. Body {path}: a site backup .zip anywhere on the server (a share, a USB drive); it is restored from there, nothing is copied. Same rules as Stage restore (maintenance_required, job_running, restore_pending). 400 backup_path_required, backup_not_a_file or backup_invalid (not a usable site backup) start no job. Saves {{jobId}}.",
+                    body="{\n  \"path\": \"/share/backups/mosaicwave-site-20261021-093000.zip\"\n}",
+                    tests=SAVE_JOB,
+                ),
+                req(
+                    "Upload backup (from the device)",
+                    "PUT",
+                    "/api/v1/backups/upload",
+                    description="Admin only. Raw zip body (Send and Select File). Streamed to the app folder's backups/ and checked (manifest and zip index only); stored as mosaicwave-site-<time inside the archive>.zip and returned as listed. The same file twice is one archive; a different file with the same time gets the next free second. 400 backup_invalid (deleted), 413 upload_too_large, 507 backup_no_space, 409 restore_pending or job_running. Then use Stage restore with the returned name.",
+                    file_body=True,
+                ),
+                req(
                     "Restore state",
                     "GET",
                     "/api/v1/backups/restore",

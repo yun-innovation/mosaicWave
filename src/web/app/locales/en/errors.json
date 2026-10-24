@@ -80,5 +80,10 @@
   "sidecar_without_media_other": "{{count}} photo/video sidecars have no matching media file.",
   "maintenance_required": "Turn maintenance mode on first.",
   "restore_not_staged": "No restore is waiting to be applied.",
-  "restore_pending": "A restored copy is waiting to be applied. Apply or discard it first."
+  "restore_pending": "A restored copy is waiting to be applied. Apply or discard it first.",
+  "backup_invalid": "That is not a usable mosaicWave backup: {{message}}",
+  "backup_path_required": "Enter or browse to the backup zip on the server.",
+  "backup_not_a_file": "That path is not a file: {{path}}",
+  "upload_too_large": "That file is too large (the limit is {{max_gb}} GB).",
+  "backup_no_space": "Not enough free space for that file: it needs about {{need_mb}} MB and {{free_mb}} MB is free."
 }

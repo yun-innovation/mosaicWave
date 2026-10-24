@@ -78,5 +78,10 @@
   "sidecar_without_media_other": "有 {{count}} 个照片/视频附属文件找不到对应的媒体文件。",
   "maintenance_required": "请先开启维护模式。",
   "restore_not_staged": "没有等待应用的还原。",
-  "restore_pending": "有一份还原正等待应用。请先应用或丢弃它。"
+  "restore_pending": "有一份还原正等待应用。请先应用或丢弃它。",
+  "backup_invalid": "这不是可用的 mosaicWave 备份：{{message}}",
+  "backup_path_required": "请输入或浏览服务器上的备份 zip。",
+  "backup_not_a_file": "该路径不是文件：{{path}}",
+  "upload_too_large": "文件太大（上限为 {{max_gb}} GB）。",
+  "backup_no_space": "可用空间不足：需要约 {{need_mb}} MB，当前只有 {{free_mb}} MB。"
 }

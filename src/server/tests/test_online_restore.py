@@ -228,3 +228,135 @@ def test_start_clears_leftover_staging_folders(tmp_path: Path) -> None:
     fresh = _restart(settings, client)
     assert not leftover.exists()
     assert fresh.get("/api/v1/backups/restore").json() == {"pending": None, "result": None}
+
+
+# --- choosing the archive: on the server (any path) or on this device (upload) -------------------
+
+
+def _archive_elsewhere(settings: Settings, folder: Path) -> Path:
+    return backup_site(settings, folder).path
+
+
+def test_restore_from_a_path_on_the_server(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    client = _seed(settings)
+    elsewhere = _archive_elsewhere(settings, tmp_path / "usb")
+    (library_dir(settings, client) / "late.jpg").write_bytes(_jpeg_bytes((10, 200, 10)))
+    scan_library(client)
+    assert _assets(client) == 3
+
+    blank = client.post("/api/v1/backups/restore", json={"path": "  "})
+    assert blank.status_code == 400 and blank.json()["code"] == "backup_path_required"
+    locked_out = client.post("/api/v1/backups/restore", json={"path": str(elsewhere)})
+    assert locked_out.status_code == 409 and locked_out.json()["code"] == "maintenance_required"
+
+    _lock(client)
+    folder = client.post("/api/v1/backups/restore", json={"path": str(tmp_path)})
+    assert folder.status_code == 400 and folder.json()["code"] == "backup_not_a_file"
+    junk = tmp_path / "notes.zip"
+    junk.write_bytes(b"not a zip at all")
+    bad = client.post("/api/v1/backups/restore", json={"path": str(junk)})
+    assert bad.status_code == 400 and bad.json()["code"] == "backup_invalid"
+    assert not [j for j in client.get("/api/v1/jobs", params={"kind": "site_restore"}).json()["items"]]
+
+    res = client.post("/api/v1/backups/restore", json={"path": str(elsewhere)})
+    assert res.status_code == 200, res.text
+    assert _until(client, res.json()["id"], {"done", "error", "cancelled"})["status"] == "done"
+    assert elsewhere.exists()  # restored from where it is; nothing was copied or moved
+    assert not (settings.backup_dir / elsewhere.name).exists()
+    assert client.get("/api/v1/backups/restore").json()["pending"]["archive"] == elsewhere.name
+
+    assert client.post("/api/v1/backups/restore/apply").status_code == 200
+    fresh = _restart(settings, client)
+    assert _assets(fresh) == 2
+    assert fresh.get("/api/v1/backups/restore").json()["result"]["status"] == "done"
+
+
+def test_server_path_restore_is_admin_only(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    admin = _seed(settings)
+    archive = _archive_elsewhere(settings, tmp_path / "usb")
+    member = _make_member(admin)
+    assert member.post("/api/v1/backups/restore", json={"path": str(archive)}).status_code == 403
+    assert member.put("/api/v1/backups/upload", content=b"x").status_code == 403
+
+
+def test_upload_from_the_device_then_restore(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    client = _seed(settings)
+    archive = _archive_elsewhere(settings, tmp_path / "laptop")
+    data = archive.read_bytes()
+    (library_dir(settings, client) / "late.jpg").write_bytes(_jpeg_bytes((10, 200, 10)))
+    scan_library(client)
+
+    up = client.put("/api/v1/backups/upload", content=data)
+    assert up.status_code == 200, up.text
+    info = up.json()
+    assert info["name"] == archive.name and info["assets"] == 2 and info["size"] == len(data)
+    assert [b["name"] for b in client.get("/api/v1/backups").json()] == [archive.name]
+    assert not list(settings.backup_dir.glob(".upload-*"))
+
+    again = client.put("/api/v1/backups/upload", content=data)  # the same file twice is one archive
+    assert again.status_code == 200 and again.json()["name"] == archive.name
+    assert len(client.get("/api/v1/backups").json()) == 1
+
+    _lock(client)
+    assert _stage(client, info["name"])["status"] == "done"
+    assert client.post("/api/v1/backups/restore/apply").status_code == 200
+    fresh = _restart(settings, client)
+    assert _assets(fresh) == 2
+
+
+def test_uploaded_archive_is_named_from_its_own_time(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    client = _seed(settings)
+    when = {"created_at": "2026-03-04T05:06:07+00:00"}
+    first = _fake_archive(tmp_path / "my backup (1).zip", db=b"x", manifest=when).read_bytes()
+    second = _fake_archive(tmp_path / "other.zip", db=b"xxxxxxxx", manifest=when).read_bytes()
+
+    one = client.put("/api/v1/backups/upload", content=first).json()
+    two = client.put("/api/v1/backups/upload", content=second).json()
+    assert one["name"] == "mosaicwave-site-20260304-050607.zip"
+    assert two["name"] == "mosaicwave-site-20260304-050608.zip"  # a different file never overwrites
+
+
+def test_bad_uploads_are_refused_and_leave_nothing(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    client = _seed(settings)
+    too_new = _fake_archive(tmp_path / "new.zip", db=b"x", manifest={"schema_version": 99}).read_bytes()
+    for content in (b"this is not a zip", too_new, b""):
+        res = client.put("/api/v1/backups/upload", content=content)
+        assert res.status_code == 400 and res.json()["code"] == "backup_invalid", res.text
+    assert client.get("/api/v1/backups").json() == []
+    assert not list(settings.backup_dir.glob(".upload-*")) and not list(settings.backup_dir.glob("*.zip"))
+
+
+def test_upload_is_refused_while_a_restore_is_staged(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    client = _seed(settings)
+    name = backup_site(settings, settings.backup_dir).path.name
+    _lock(client)
+    assert _stage(client, name)["status"] == "done"
+    res = client.put("/api/v1/backups/upload", content=b"x")
+    assert res.status_code == 409 and res.json()["code"] == "restore_pending"
+
+
+def test_folder_picker_lists_zips_for_backups_only_for_admins(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    admin = _seed(settings)
+    folder = tmp_path / "share"
+    folder.mkdir()
+    for name in ("renamed.ZIP", "notes.txt", "takeout-20260101T000000Z-001.zip"):
+        (folder / name).write_bytes(b"x")
+
+    def files(**params: str) -> list[str]:
+        res = admin.get("/api/v1/fs/list", params={"path": str(folder), **params})
+        assert res.status_code == 200, res.text
+        return sorted(e["name"] for e in res.json()["entries"] if not e["is_dir"])
+
+    assert files() == ["takeout-20260101T000000Z-001.zip"]  # Import is unchanged
+    assert files(kind="backup") == ["renamed.ZIP", "takeout-20260101T000000Z-001.zip"]
+    assert admin.get("/api/v1/fs/list", params={"kind": "other"}).status_code == 422
+    member = _make_member(admin)
+    assert member.get("/api/v1/fs/list", params={"path": str(folder), "kind": "backup"}).status_code == 403
+    assert member.get("/api/v1/fs/list", params={"path": str(folder)}).status_code == 200

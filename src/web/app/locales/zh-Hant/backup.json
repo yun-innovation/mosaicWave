@@ -31,7 +31,7 @@
     "confirmYes": "確定解開",
     "needsMaintenance": "還原需要先開啟維護模式，這樣期間沒有人會變更資料。",
     "turnOn": "開啟維護模式",
-    "idle": "要還原時，請先開啟維護模式，再對上方的備份檔按「還原」。備份檔會先被解開並檢查，在你套用之前不會取代任何資料。",
+    "idle": "可還原上方列出的備份（還原…），或選擇伺服器上或這部裝置上的備份。備份會先被解開並檢查，在你套用之前不會取代任何資料。",
     "pending": {
       "title": "可以套用了",
       "summary": "{{archive}}：{{summary}}。",
@@ -60,6 +60,23 @@
       "help": "也可以在 API 停止時離線還原。請先停止 mosaicWave，再於主機上執行：",
       "check": "加上 --check 只會驗證備份檔，不會變更任何資料。",
       "keep": "目前的資料會保留在旁邊，名稱為 *.before-restore-<時間>，直到你自行刪除。"
+    },
+    "source": {
+      "server": "在伺服器上",
+      "device": "在這部裝置上",
+      "pathLabel": "伺服器上的備份 zip",
+      "pathPlaceholder": "伺服器上 mosaicwave-site-….zip 的路徑",
+      "pickerTitle": "選擇備份 zip",
+      "pickerIntro": "開啟伺服器上的資料夾，再選擇 zip 檔案。會直接從原位置還原，不會複製。",
+      "deviceLabel": "這部裝置上的備份 zip",
+      "deviceHint": "選擇 mosaicwave-site-….zip。它會先上傳到伺服器（並保留在上方清單中），因此大型備份需要一些時間，且需要足夠的可用空間來上傳與解開。",
+      "deviceSelected": "{{name}}（{{size}}）",
+      "restore": "還原",
+      "upload": "上傳並還原",
+      "uploading": "上傳中… {{percent}}%",
+      "cancelUpload": "取消上傳",
+      "uploadCancelled": "已取消上傳。",
+      "uploadedKept": "備份已上傳並列在上方清單中，但還原沒有開始：{{message}}"
     }
   }
 }

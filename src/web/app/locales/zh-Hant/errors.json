@@ -78,5 +78,10 @@
   "sidecar_without_media_other": "有 {{count}} 個相片／影片附屬檔找不到對應的媒體檔。",
   "maintenance_required": "請先開啟維護模式。",
   "restore_not_staged": "沒有等待套用的還原。",
-  "restore_pending": "有一份還原正等待套用。請先套用或捨棄它。"
+  "restore_pending": "有一份還原正等待套用。請先套用或捨棄它。",
+  "backup_invalid": "這不是可用的 mosaicWave 備份：{{message}}",
+  "backup_path_required": "請輸入或瀏覽伺服器上的備份 zip。",
+  "backup_not_a_file": "該路徑不是檔案：{{path}}",
+  "upload_too_large": "檔案太大（上限為 {{max_gb}} GB）。",
+  "backup_no_space": "可用空間不足：需要約 {{need_mb}} MB，目前只有 {{free_mb}} MB。"
 }

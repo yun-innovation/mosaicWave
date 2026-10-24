@@ -409,6 +409,13 @@ def clear_result(settings: Settings) -> bool:
     return existed
 
 
+def _remove_stale_uploads(settings: Settings) -> None:
+    """Half-received uploads left by a server that stopped mid-upload. Only safe at start-up."""
+    if settings.backup_dir.is_dir():
+        for entry in settings.backup_dir.glob(".upload-*"):
+            _remove(entry)
+
+
 def _remove_stale_stages(settings: Settings) -> None:
     for folder, prefix in (
         (settings.database_path.parent, APP_STAGE_PREFIX),
@@ -425,6 +432,7 @@ def apply_pending(settings: Settings) -> str | None:
     With no staged restore it only clears leftover staging folders. Otherwise it swaps the staged data
     in and leaves a result record for the admin; a failure puts the old data back and is recorded too.
     """
+    _remove_stale_uploads(settings)
     record = _read_json(pending_path(settings))
     if record is None and not pending_path(settings).exists():
         _remove_stale_stages(settings)

@@ -31,7 +31,7 @@
     "confirmYes": "Yes, unpack it",
     "needsMaintenance": "Restoring needs maintenance mode, so nobody changes the data meanwhile.",
     "turnOn": "Turn on maintenance mode",
-    "idle": "To restore, turn on maintenance mode, then choose Restore on an archive above. The archive is unpacked and checked first; nothing is replaced until you apply it.",
+    "idle": "Restore a backup listed above (Restore…), or choose one on the server or on this device. It is unpacked and checked first; nothing is replaced until you apply it.",
     "pending": {
       "title": "Ready to apply",
       "summary": "{{archive}}: {{summary}}.",
@@ -60,6 +60,23 @@
       "help": "A restore can also run offline with the API stopped. Stop mosaicWave, then run this on the host:",
       "check": "Add --check to only validate the archive; nothing is changed.",
       "keep": "Your current data is kept beside it as *.before-restore-<time> until you delete it."
+    },
+    "source": {
+      "server": "On the server",
+      "device": "On this device",
+      "pathLabel": "Backup zip on the server",
+      "pathPlaceholder": "Path to a mosaicwave-site-….zip on the server",
+      "pickerTitle": "Choose the backup zip",
+      "pickerIntro": "Open folders on the server, then choose a zip file. It is restored from where it is; nothing is copied.",
+      "deviceLabel": "Backup zip on this device",
+      "deviceHint": "Choose a mosaicwave-site-….zip. It is uploaded to the server first (it stays in the list above), so large backups take a while and need free space for the upload and for unpacking.",
+      "deviceSelected": "{{name}} ({{size}})",
+      "restore": "Restore",
+      "upload": "Upload and restore",
+      "uploading": "Uploading… {{percent}}%",
+      "cancelUpload": "Cancel upload",
+      "uploadCancelled": "Upload cancelled.",
+      "uploadedKept": "The backup was uploaded and is in the list above, but the restore did not start: {{message}}"
     }
   }
 }
