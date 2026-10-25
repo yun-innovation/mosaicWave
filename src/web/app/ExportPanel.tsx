@@ -142,7 +142,7 @@ export function ExportPanel({ importer }: { importer: TakeoutImport }) {
 
   return (
     <div className="import library-export">
-      <label>{t("backup:export.title")}</label>
+      <h3 className="section-title">{t("backup:export.title")}</h3>
       <p className="detail">{t("backup:export.intro")}</p>
       <ExportStarter
         scope={{ all: true }}

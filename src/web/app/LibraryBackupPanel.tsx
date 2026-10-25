@@ -92,7 +92,7 @@ export function LibraryBackupPanel({ importer, isAdmin }: { importer: TakeoutImp
 
   return (
     <div className="import library-backup">
-      <label>{t("backup:library.title")}</label>
+      <h3 className="section-title">{t("backup:library.title")}</h3>
       <p className="detail">{t("backup:library.intro")}</p>
       <div className="button-row">
         <button type="button" disabled={disabled} onClick={() => void post("/api/v1/me/backups")}>

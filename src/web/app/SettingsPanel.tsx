@@ -49,17 +49,19 @@ export function SettingsPanel({ me, importer, onMe }: Props) {
 
   const library = sources?.find((row) => row.owned) ?? sources?.[0];
   return (
-    <section className="card settings">
+    <section className="card settings personal-settings">
       <div className="gallery-head">
         <h2>{t("settings:title")}</h2>
       </div>
       <div className="import">
-        <label htmlFor="ui_locale">{t("settings:language.label")}</label>
+        <label htmlFor="ui_locale" className="section-title">
+          {t("settings:language.label")}
+        </label>
         <p className="detail">{t("settings:language.help")}</p>
         <LocaleSelect id="ui_locale" me={me} onMe={onMe} />
       </div>
       <div className="import">
-        <label>{t("settings:thumbnails.label")}</label>
+        <h3 className="section-title">{t("settings:thumbnails.label")}</h3>
         <p className="detail">{t("settings:thumbnails.help")}</p>
         <div className="button-row">
           <button
