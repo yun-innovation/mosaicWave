@@ -44,6 +44,16 @@ Switching it on twice replaces the message and keeps `since`. The message is pla
 - **An admin** sees a banner with the message and a **Manage** link, the upload button and Settings link are hidden, and the sidebar shrinks to Backup, Maintenance and Activity. Any other URL shows Backup.
 - Strings: namespace `maintenance`, `nav.maintenance` in `common`, and `errors:maintenance`.
 
+## Move library under maintenance (milestone 13, planned)
+
+Today **Move library** (Server page, `PUT /api/v1/settings`) runs in one long request while users keep working. It detaches the library, copies `libraries/`, `blobs/`, `backups/` and `exports/`, and re-attaches; requests that arrive in between fail, a crash mid-copy can leave the files split, and a multi-hundred-GB copy can outlast the HTTP request. Milestone 13 puts it under this mode:
+
+- **Gate:** the move is refused unless the state is `on` (`409 maintenance_required`; `draining`, a staged restore or a running job also refuse). The Server page disables Move library and links to the Maintenance page. The destination checks (absolute path, not occupied, writable, free space) run before any copy, as now.
+- **Job:** the copy is a cancellable job of kind `data_dir_move`: progress counts only, never file names, shown in the status bar and Activity. `data_dir` and `config.json` change only after the copy is complete and verified (file count and byte sizes per top-level folder). Cancelling or failing removes the partial copy and leaves the old folder in use.
+- **Detached library:** while it is detached, every library request answers `503 data_dir_moving` with `Retry-After`, admins included (milestone 12 still lets an admin into the app; this closes the window for the admin's own library).
+- **Crash safety:** a journal `data-dir-move.json` in the app folder is written before anything is copied or deleted and removed at the end. At start, a leftover journal rolls back (partial copy removed, old folder kept) when the switch had not happened, or finishes deleting the old files when it had. The old files are deleted only after the new folder is attached and answering.
+- **Afterwards:** maintenance stays on; the admin turns it off after checking.
+
 ## Tests
 
 `tests/test_maintenance.py`: the guard for admin, member and anonymous; sign-in rules; `draining` then `on`; blocked job start while draining; an admin seeing another user's running job without file names; reason trimming; flag written by another process; unreadable flag; start from the environment; the command line.
