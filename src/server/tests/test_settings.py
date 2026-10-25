@@ -267,7 +267,7 @@ def _app_folder_settings(tmp_path: Path) -> Settings:
     return Settings(data_dir=boot, takeout_dir=None, source_dir=None, bootstrap_dir=boot)
 
 
-def test_move_from_app_folder_leaves_databases_backups_exports(tmp_path: Path) -> None:
+def test_move_from_app_folder_carries_backups_exports_not_databases(tmp_path: Path) -> None:
     settings = _app_folder_settings(tmp_path)
     client = authed_client(settings)
     lib = library_dir(settings, client)
@@ -285,13 +285,66 @@ def test_move_from_app_folder_leaves_databases_backups_exports(tmp_path: Path) -
     res = client.put("/api/v1/settings", json={"data_dir": str(dest)})
     assert res.status_code == 200, res.text
     assert sorted(p.name for p in (boot / "accounts").iterdir()) == accounts
-    assert (boot / "backups" / "site.zip").is_file()
-    assert (boot / "exports" / "1" / "e.zip").is_file()
-    assert sorted(p.name for p in dest.iterdir()) == ["blobs", "libraries"] or sorted(
-        p.name for p in dest.iterdir()
-    ) == ["libraries"]
+    assert (boot / "library.db").is_file()
+    assert not (boot / "backups").exists() and not (boot / "exports").exists()
+    assert (dest / "backups" / "site.zip").read_bytes() == b"backup"
+    assert (dest / "exports" / "1" / "e.zip").read_bytes() == b"export"
+    assert not (dest / "accounts").exists() and not (dest / "library.db").exists()
     assert (dest / "libraries" / lib.name / "kept.jpg").is_file()
     assert len(client.get("/api/v1/assets").json()["items"]) == 1
+    # The moved site backup is still listed and downloadable from the new place.
+    assert client.get("/api/v1/settings").json()["backup_dir"] == str((dest / "backups").resolve())
+    from mosaicwave.backup import backup_site
+
+    live = client.app.state.settings
+    made = backup_site(live, live.backup_dir).path
+    assert made.parent == (dest / "backups").resolve()
+    names = [b["name"] for b in client.get("/api/v1/backups").json()]
+    assert names == [made.name]
+    assert client.get(f"/api/v1/backups/{made.name}").status_code == 200
+
+
+def test_move_refused_when_new_folder_lacks_space(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    settings = _app_folder_settings(tmp_path)
+    client = authed_client(settings)
+    boot = settings.bootstrap_dir
+    (boot / "backups").mkdir(exist_ok=True)
+    (boot / "backups" / "site.zip").write_bytes(b"x" * 4096)
+
+    class Usage:
+        total = used = 0
+        free = 100
+
+    monkeypatch.setattr("mosaicwave.config.shutil.disk_usage", lambda _p: Usage)
+    dest = tmp_path / "small"
+    res = client.put("/api/v1/settings", json={"data_dir": str(dest)})
+    assert res.status_code == 400, res.text
+    assert "not enough free space" in res.json()["detail"]
+    assert (boot / "backups" / "site.zip").is_file()
+    assert read_data_dir_config(boot) is None
+    assert client.get("/api/v1/settings").status_code == 200
+    assert not list(dest.rglob("*.zip"))
+
+
+def test_legacy_backups_and_exports_are_adopted_into_the_data_folder(tmp_path: Path) -> None:
+    from mosaicwave.config import adopt_legacy_data_folders
+
+    settings = _settings(tmp_path)  # data folder differs from the app folder
+    app, data = settings.bootstrap_dir, settings.data_dir
+    (app / "backups").mkdir(parents=True)
+    (app / "backups" / "a.zip").write_bytes(b"a")
+    (app / "exports" / "u").mkdir(parents=True)
+    (app / "exports" / "u" / "e.zip").write_bytes(b"e")
+    (data / "exports" / "u").mkdir(parents=True)  # a non-empty target is never merged into
+    (data / "exports" / "u" / "mine.zip").write_bytes(b"m")
+
+    assert adopt_legacy_data_folders(settings) == ["backups"]
+    assert (data / "backups" / "a.zip").is_file() and not (app / "backups").exists()
+    assert (app / "exports" / "u" / "e.zip").is_file()
+    assert (data / "exports" / "u" / "mine.zip").is_file()
+    assert adopt_legacy_data_folders(settings) == []
 
 
 def test_settings_while_library_detached_is_503(tmp_path: Path) -> None:

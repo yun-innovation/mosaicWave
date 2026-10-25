@@ -324,7 +324,7 @@ def test_databases_in_the_app_folder_and_photos_in_the_data_folder(tmp_path: Pat
     )
     client = _seed(src)
     archive = backup_site(src, src.backup_dir)
-    assert archive.path.parent == tmp_path / "app-a" / "backups"
+    assert archive.path.parent == tmp_path / "nas-a" / "backups"
     _dispose(client)
 
     dst = Settings(
@@ -339,10 +339,10 @@ def test_databases_in_the_app_folder_and_photos_in_the_data_folder(tmp_path: Pat
     assert len(items) == 2
     assert restored.get(f"/api/v1/assets/{items[0]['id']}/file").status_code == 200
 
-def test_backup_folder_follows_the_site_database(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    # Normal install: the site DB is in the app folder, so are the backups.
+def test_backup_folder_follows_the_data_folder(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # Backups live in the data folder (with the photos), so Move library takes them along.
     split = Settings(data_dir=tmp_path / 'nas', bootstrap_dir=tmp_path / 'app', takeout_dir=None, source_dir=None)
-    assert split.backup_dir == tmp_path / 'app' / 'backups'
+    assert split.backup_dir == tmp_path / 'nas' / 'backups'
     # QPKG style: MOSAICWAVE_DATA_DIR puts the site DB in the data folder, and the backups go beside it.
     monkeypatch.setenv('MOSAICWAVE_DATA_DIR', str(tmp_path / 'nas'))
     assert split.database_path == tmp_path / 'nas' / 'library.db'

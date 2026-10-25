@@ -4,7 +4,7 @@ Milestone 12. An admin locks everyone else out of the server so a backup or rest
 
 ## What it does
 
-- **Flag file:** `maintenance.json` beside the site database (the app folder; with `MOSAICWAVE_DATA_DIR` set, the data folder), the same place `backups/` lives. It holds `reason`, `since` and `by` (a user id, `cli` or `env`). It survives a restart and is never part of an archive.
+- **Flag file:** `maintenance.json` beside the site database (the app folder; with `MOSAICWAVE_DATA_DIR` set, the data folder). `backups/` and `exports/` live in the data folder. It holds `reason`, `since` and `by` (a user id, `cli` or `env`). It survives a restart and is never part of an archive.
 - **State is derived, not stored:**
 
 | State | Meaning |

@@ -173,7 +173,7 @@ Illustrative v1 surface (names can change; behavior should not):
 | GET | `/api/v1/jobs/{id}` | One job + progress / result (own jobs only) |
 | GET | `/api/v1/jobs/{id}/events` | Job audit log (own jobs only) |
 | POST | `/api/v1/backups` | **Admin.** Start a site backup job (`include_thumbs` optional); [backup.md](backup.md) |
-| GET | `/api/v1/backups` | **Admin.** List site archives in the app folder's `backups/` |
+| GET | `/api/v1/backups` | **Admin.** List site archives in the data folder's `backups/` |
 | GET | `/api/v1/backups/{name}` | **Admin.** Download one archive |
 | DELETE | `/api/v1/backups/{name}` | **Admin.** Delete one archive |
 | POST | `/api/v1/backups/{name}/restore` | **Admin.** Stage an online restore as a cancellable `site_restore` job; needs maintenance mode (`maintenance_required`) |
