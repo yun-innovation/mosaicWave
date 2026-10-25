@@ -269,7 +269,7 @@ export function ServerView({ me, platform }: Props) {
 
   const storageLocked = host?.env_override === true;
   return (
-    <section className="card settings">
+    <section className="card settings titled-sections">
       <div className="gallery-head">
         <h2>{t("settings:server.title")}</h2>
       </div>
@@ -279,7 +279,9 @@ export function ServerView({ me, platform }: Props) {
       {host === null && !error && <p className="detail">{t("common:loading")}</p>}
       {host && (
         <div className="import">
-          <label htmlFor="app_dir">{t("settings:appDir.label")}</label>
+          <label htmlFor="app_dir" className="section-title">
+            {t("settings:appDir.label")}
+          </label>
           <p className="detail">{t("settings:appDir.help")}</p>
           <div className="path-row">
             <input
@@ -292,7 +294,9 @@ export function ServerView({ me, platform }: Props) {
             />
           </div>
           <p className="detail">{t("settings:appDir.schema", { version: host.schema_version })}</p>
-          <label htmlFor="library_dir">{t("settings:current.label")}</label>
+          <label htmlFor="library_dir" className="section-title divided">
+            {t("settings:current.label")}
+          </label>
           <p className="detail">{t("settings:current.help")}</p>
           <div className="path-row">
             <input
@@ -304,7 +308,7 @@ export function ServerView({ me, platform }: Props) {
               autoComplete="off"
             />
           </div>
-          <label>{t("settings:move.label")}</label>
+          <h3 className="section-title divided">{t("settings:move.label")}</h3>
           <p className="detail">{t("settings:move.help")}</p>
           <div className="dest-tabs" role="tablist" aria-label={t("settings:move.label")}>
             <button
@@ -548,7 +552,9 @@ export function ServerView({ me, platform }: Props) {
             <input type="password" name="password" autoComplete="current-password" tabIndex={-1} />
           </form>
           <form className="import" autoComplete="off" onSubmit={createUser}>
-            <label htmlFor="add_username">{t("settings:users.addMember")}</label>
+            <label htmlFor="add_username" className="section-title divided">
+              {t("settings:users.addMember")}
+            </label>
             {users && users.length > 0 && (
               <p className="detail">
                 {users

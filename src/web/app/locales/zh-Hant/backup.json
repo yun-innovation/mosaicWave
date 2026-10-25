@@ -97,5 +97,40 @@
       "pathPlaceholder": "伺服器上 mosaicwave-library-….zip 的路徑",
       "deviceHint": "選擇由這個或其他 mosaicWave 產生的 mosaicwave-library-….zip。它會先上傳（保留在上方清單中），所以大型備份需要一些時間。"
     }
+  },
+  "export": {
+    "title": "匯出我的相片",
+    "intro": "將你的相片和影片複製成一般檔案，以便保存在別處或用其他應用程式開啟。匯出不是備份，無法還原；要備份請使用「我的相簿備份」。",
+    "layout": {
+      "label": "資料夾",
+      "plain": "一般資料夾（每個相簿一個資料夾，其餘放在 Photos）",
+      "takeout": "Google Takeout 格式（以 .json 檔記錄日期和地點）"
+    },
+    "split": {
+      "label": "zip 大小",
+      "one": "單一 zip 檔",
+      "gb": "每份 {{count}} GB",
+      "help": "超過 zip 大小的檔案不會放進 zip，而是存放在 zip 旁邊。"
+    },
+    "all": "匯出我所有的相片",
+    "album": "匯出相簿",
+    "start": "匯出",
+    "started": "已開始匯出。可在狀態列查看進度；完成後會列在「設定」的「匯出我的相片」中。",
+    "list": {
+      "title": "你的匯出",
+      "empty": "還沒有匯出。"
+    },
+    "layoutName": {
+      "plain": "一般資料夾",
+      "takeout": "Takeout 格式"
+    },
+    "zips_one": "{{count, number}} 個 zip",
+    "zips_other": "{{count, number}} 個 zip",
+    "unzipped_one": "{{count, number}} 個檔案未壓縮",
+    "unzipped_other": "{{count, number}} 個檔案未壓縮",
+    "notZipped": "未壓縮",
+    "confirmDelete": "要刪除這份匯出嗎？",
+    "deleted": "已刪除匯出。",
+    "files": "檔案"
   }
 }

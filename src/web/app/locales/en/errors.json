@@ -19,6 +19,7 @@
   "data_dir_env_locked": "MOSAICWAVE_DATA_DIR is set, so the folder cannot be changed on the Server page.",
   "data_dir_occupied": "That destination already has a mosaicWave library.",
   "data_dir_job_running": "Cannot move the library while a job is running.",
+  "data_dir_moving": "The library is being moved. Try again in a moment.",
 
   "folder_not_found": "Folder not found: {{message}}",
   "folder_forbidden": "No permission to open that folder: {{message}}",
@@ -87,5 +88,9 @@
   "upload_too_large": "That file is too large (the limit is {{max_gb}} GB).",
   "backup_no_space": "Not enough free space for that file: it needs about {{need_mb}} MB and {{free_mb}} MB is free.",
   "library_restoring": "Your library is being restored. Try again in a moment.",
-  "backup_wrong_kind": "That is the wrong kind of backup: use a site backup on the admin Backup page and a library backup in Settings."
+  "backup_wrong_kind": "That is the wrong kind of backup: use a site backup on the admin Backup page and a library backup in Settings.",
+  "export_nothing_selected": "Choose what to export.",
+  "export_scope": "Choose all photos, or albums and photos, not both.",
+  "export_not_found": "Export not found.",
+  "export_empty": "There is nothing to export."
 }

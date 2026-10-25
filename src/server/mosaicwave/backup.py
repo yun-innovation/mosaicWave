@@ -132,7 +132,8 @@ def backup_site(
     on_progress: Progress | None = None,
 ) -> BackupResult:
     out_dir.mkdir(parents=True, exist_ok=True)
-    final = out_dir / archive_name()
+    started = datetime.now(timezone.utc).replace(microsecond=0)  # one clock for the name and the manifest
+    final = out_dir / archive_name(started)
     part = final.with_name(final.name + ".part")
     work = Path(tempfile.mkdtemp(prefix="mosaicwave-backup-"))
     try:
@@ -191,7 +192,7 @@ def backup_site(
             manifest = {
                 "format": FORMAT,
                 "kind": KIND_SITE,
-                "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                "created_at": started.isoformat(timespec="seconds"),
                 "app_version": __version__,
                 "include_thumbs": include_thumbs,
                 "schema_version": site_version,

@@ -107,6 +107,22 @@ export type LibraryBackupItem = {
   warnings: string[];
 };
 
+export type ExportFile = { path: string; size: number; zipped: boolean };
+
+/** One export under `GET /api/v1/me/exports`: zip parts plus any file too big to zip. */
+export type ExportItem = {
+  name: string;
+  created_at: string;
+  layout: "plain" | "takeout";
+  split_bytes: number | null;
+  assets: number;
+  albums: number;
+  total_bytes: number;
+  size: number;
+  warnings: string[];
+  files: ExportFile[];
+};
+
 export type RestoreSummary = {
   created_at: string | null;
   app_version: string | null;

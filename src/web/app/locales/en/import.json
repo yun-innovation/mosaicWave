@@ -72,7 +72,8 @@
       "unknown": "job",
       "site_restore": "Site restore",
       "library_backup": "Library backup",
-      "library_restore": "Library restore"
+      "library_restore": "Library restore",
+      "export": "Export"
     },
     "status": {
       "idle": "idle",

@@ -78,16 +78,23 @@ def switch_data_dir(
         clear_bootstrap_library_payload(boot, dest)
     except Exception as exc:
         dispose_runtime(app)
-        if dest != src:
-            boot_db = boot / "library.db"
-            if boot_db.is_file():
+        try:
+            if dest != src:
+                boot_db = boot / "library.db"
+                if boot_db.is_file():
+                    try:
+                        _rewrite_library_root_uris(boot_db, dest, src)
+                    except Exception:
+                        pass
+            if copied:
                 try:
-                    _rewrite_library_root_uris(boot_db, dest, src)
+                    _delete_named(dest, copied)
                 except Exception:
                     pass
-        if copied:
-            _delete_named(dest, copied)
-        attach_runtime(app, settings, recover=False)
+        finally:
+            # Whatever the cleanup did, the old library must come back, or the
+            # server keeps answering 500 with no engine.
+            attach_runtime(app, settings, recover=False)
         if secret:
             app.state.session_secret = secret
         if isinstance(exc, ValueError):

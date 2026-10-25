@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { apiFetch, Me, readDetail, Source } from "./api";
+import { ExportPanel } from "./ExportPanel";
 import i18n from "./i18n";
 import { LibraryBackupPanel } from "./LibraryBackupPanel";
 import { LocaleSelect } from "./LocaleSelect";
@@ -16,8 +17,8 @@ type Props = {
 };
 
 /**
- * Personal options, the same for everyone including admins: language, thumbnails and backing up your
- * own library. Options for the whole server (folders, people) are on the admin Server page.
+ * Personal options, the same for everyone including admins: language, thumbnails, backing up your
+ * own library and exporting your photos as ordinary files. Options for the whole server (folders, people) are on the admin Server page.
  */
 export function SettingsPanel({ me, importer, onMe }: Props) {
   const { t } = useTranslation(["settings", "common", "gallery"]);
@@ -48,17 +49,19 @@ export function SettingsPanel({ me, importer, onMe }: Props) {
 
   const library = sources?.find((row) => row.owned) ?? sources?.[0];
   return (
-    <section className="card settings">
+    <section className="card settings titled-sections">
       <div className="gallery-head">
         <h2>{t("settings:title")}</h2>
       </div>
       <div className="import">
-        <label htmlFor="ui_locale">{t("settings:language.label")}</label>
+        <label htmlFor="ui_locale" className="section-title">
+          {t("settings:language.label")}
+        </label>
         <p className="detail">{t("settings:language.help")}</p>
         <LocaleSelect id="ui_locale" me={me} onMe={onMe} />
       </div>
       <div className="import">
-        <label>{t("settings:thumbnails.label")}</label>
+        <h3 className="section-title divided">{t("settings:thumbnails.label")}</h3>
         <p className="detail">{t("settings:thumbnails.help")}</p>
         <div className="button-row">
           <button
@@ -75,6 +78,7 @@ export function SettingsPanel({ me, importer, onMe }: Props) {
         {thumbsError && <p className="status fail">{thumbsError}</p>}
       </div>
       <LibraryBackupPanel importer={importer} isAdmin={me.role === "admin"} />
+      <ExportPanel importer={importer} />
       {error && <p className="status fail">{error}</p>}
       {sources === null && !error && <p className="detail">{t("common:loading")}</p>}
       {library && (

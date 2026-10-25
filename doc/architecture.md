@@ -173,7 +173,7 @@ Illustrative v1 surface (names can change; behavior should not):
 | GET | `/api/v1/jobs/{id}` | One job + progress / result (own jobs only) |
 | GET | `/api/v1/jobs/{id}/events` | Job audit log (own jobs only) |
 | POST | `/api/v1/backups` | **Admin.** Start a site backup job (`include_thumbs` optional); [backup.md](backup.md) |
-| GET | `/api/v1/backups` | **Admin.** List site archives in the app folder's `backups/` |
+| GET | `/api/v1/backups` | **Admin.** List site archives in the data folder's `backups/` |
 | GET | `/api/v1/backups/{name}` | **Admin.** Download one archive |
 | DELETE | `/api/v1/backups/{name}` | **Admin.** Delete one archive |
 | POST | `/api/v1/backups/{name}/restore` | **Admin.** Stage an online restore as a cancellable `site_restore` job; needs maintenance mode (`maintenance_required`) |
@@ -189,6 +189,10 @@ Illustrative v1 surface (names can change; behavior should not):
 | PUT | `/api/v1/me/backups/upload` | Raw zip body from the browser; `400 backup_wrong_kind` for a site archive |
 | POST | `/api/v1/me/backups/restore` | **Admin.** `{path}`: replace your library from a zip anywhere on the server; refuses other users' library and archive folders (`403 folder_not_allowed`) |
 | POST | `/api/v1/me/backups/{name}/restore` | Replace your library with this archive while the server runs (job `library_restore`: stage, then swap; no maintenance mode, other users unaffected, `503 library_restoring` for your own requests during the swap) |
+| POST | `/api/v1/me/exports` | Start an export of **your own** photos as ordinary files (job `export`): `{all}` or `{album_ids, asset_ids}`, `layout` `plain`\|`takeout`, `split_gb`; [backup.md](backup.md) |
+| GET | `/api/v1/me/exports` | List your exports (kept in `exports/{your id}/`) with their files |
+| GET | `/api/v1/me/exports/{name}/files/{path}` | Download one file of an export (a zip part, or a file too big to zip) |
+| DELETE | `/api/v1/me/exports/{name}` | Delete an export |
 | GET | `/api/v1/maintenance` | **Public.** `{state: off\|draining\|on, reason, since}`; [maintenance.md](maintenance.md) |
 | PUT | `/api/v1/maintenance` | **Admin.** `{enabled, reason}`: switch maintenance mode. While it is on, everyone but an admin gets `503 maintenance` |
 | GET | `/api/v1/sync/changes` | Metadata pull (`since_rev`, tombstones). Push is `/albums` + `base_rev`, not this URL. Covered vs later: [schema.md](schema.md) Sync protocol |

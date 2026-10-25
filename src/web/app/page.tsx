@@ -190,6 +190,7 @@ export default function Home() {
           albumId={route.albumId}
           albums={albums}
           libraryRev={libraryRev}
+          importer={importer}
           go={go}
           onAlbumsChanged={onAlbumsChanged}
           onLibraryChanged={onLibraryChanged}

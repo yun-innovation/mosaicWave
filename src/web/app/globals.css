@@ -1002,6 +1002,35 @@ main.app-main {
   margin-top: 1.5rem;
 }
 
+/* Settings, Server and Backup: a section title stands out, a subsection title is smaller, and a
+   divided title starts a new section under a thin line. */
+.titled-sections .section-title,
+.titled-sections .import label.section-title {
+  display: block;
+  margin: 0 0 0.35rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--fg);
+}
+
+.titled-sections .section-title.divided,
+.titled-sections .import label.section-title.divided {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #2a2a30;
+}
+
+.titled-sections .backup-heading,
+.titled-sections .restore-box h3 {
+  margin: 1.25rem 0 0.5rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.titled-sections .restore-box h3 {
+  margin-top: 0;
+}
+
 .import .check-row {
   display: flex;
   align-items: center;
@@ -1062,6 +1091,35 @@ main.app-main {
   background: #3d4454;
   color: var(--fg);
   text-decoration: none;
+}
+
+.export-box {
+  margin: 0.75rem 0;
+  padding: 0.75rem 1rem;
+  border: 1px solid #2a2a30;
+  border-radius: 8px;
+}
+
+.export-options label {
+  display: block;
+  margin-top: 0.6rem;
+}
+
+.export-options select {
+  max-width: 100%;
+}
+
+.export-files {
+  margin-top: 0.4rem;
+}
+
+.export-files summary {
+  cursor: pointer;
+  color: var(--muted, inherit);
+}
+
+.export-files .backup-list {
+  margin-top: 0.4rem;
 }
 
 .restore-box {

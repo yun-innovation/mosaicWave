@@ -140,6 +140,7 @@ When we reverse a decision in these docs, add a one-line note here.
 | 2026-10-23 | Dependabot security updates enabled (were off, so the patch-ignore rule could have hidden a security fix). Next.js 16.4.2 and sharp 0.35.5 for the advisories reported against Next 16.0.0-16.4.0 |
 | 2026-10-23 | CI added (GitHub Actions on pull requests), reversing "no CI for now". Dependabot: weekly check, 28-day cooldown, patch bumps ignored, grouped, 2 open PRs max |
 | 2026-10-23 | `main` ruleset now requires the `server` and `web` checks; bypass list cleared |
+| 2026-10-26 | New milestone 13, Protected Move library: moving the data folder requires maintenance mode, runs as a cancellable job and is journaled. Prompted by a move that copied for minutes with the library detached and answered `500` to the web page |
 | 2026-10-24 | Share links moved out of milestone 6 into new milestone 11 (SaaS, deferred): no value while self-hosted installs are not reachable from the internet. Milestone 6 is two PRs |
 | 2026-10-23 | New milestone 6 per-library databases (SaaS isolation; own `rev` per user; share links replace `source_grant`). Backup/restore/export moves to 7. ARM64 QPKG moves to 10 and is frozen (no ARM hardware) |
 | 2026-09-02 | Phase 3 is job workflow/audit (`workflow.md`). Gallery is Phase 4. Sync HTTP is Phase 7 |

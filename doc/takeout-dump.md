@@ -4,7 +4,7 @@ Google does **not** give you one folder of photos. A Photos Takeout is a **downl
 
 Point mosaicWave at the **folder you selected** — the directory that **contains** `takeout-*.zip` (Google usually names it `20260831T100949Z`). Do not point at a parent that only wraps that folder. **On this server:** Browse… lists folders on the **host** (`GET /api/v1/fs/list`), not the browser computer. On QNAP, Browse starts at `/share`. **On this device / mobile:** the client uploads that folder via `POST /import/takeout/push` (the dump does not need to be copied to the NAS first). Import opens the zip central directories, walks photos inside the archives, and attaches oversized files that Google left beside the zips.
 
-Related: [takeout.md](takeout.md) (dedup and API), [filestore.md](filestore.md).
+Related: [takeout.md](takeout.md) (dedup and API), [filestore.md](filestore.md). mosaicWave's own **export** can write this same layout (zips named `takeout-<stamp>-NNN.zip`, oversized files beside them as `<name>-NNN.<ext>`, `.json` sidecars inside the zips), so an export imports back here: [backup.md](backup.md#export-any-signed-in-user-settings-and-the-album-page).
 
 ## What Google puts in the download folder
 

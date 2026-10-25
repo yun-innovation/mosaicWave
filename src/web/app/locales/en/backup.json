@@ -97,5 +97,40 @@
       "pathPlaceholder": "Path to a mosaicwave-library-….zip on the server",
       "deviceHint": "Choose a mosaicwave-library-….zip made by this or another mosaicWave. It is uploaded first (it stays in the list above), so large backups take a while."
     }
+  },
+  "export": {
+    "title": "Export my photos",
+    "intro": "Copy your photos and videos out as ordinary files, to keep somewhere else or open in other apps. An export is not a backup: it cannot be restored. Use My library backup for that.",
+    "layout": {
+      "label": "Folders",
+      "plain": "Plain folders (one folder per album, the rest in Photos)",
+      "takeout": "Google Takeout style (with .json files for dates and places)"
+    },
+    "split": {
+      "label": "Zip size",
+      "one": "One zip file",
+      "gb": "{{count}} GB parts",
+      "help": "A file bigger than the zip size is not put in a zip; it is saved next to the zips."
+    },
+    "all": "Export all my photos",
+    "album": "Export album",
+    "start": "Export",
+    "started": "Export started. Follow it in the status bar. When it is done it is listed under Settings, Export my photos.",
+    "list": {
+      "title": "Your exports",
+      "empty": "No exports yet."
+    },
+    "layoutName": {
+      "plain": "plain folders",
+      "takeout": "Takeout style"
+    },
+    "zips_one": "{{count, number}} zip",
+    "zips_other": "{{count, number}} zips",
+    "unzipped_one": "{{count, number}} file not zipped",
+    "unzipped_other": "{{count, number}} files not zipped",
+    "notZipped": "not zipped",
+    "confirmDelete": "Delete this export?",
+    "deleted": "Export deleted.",
+    "files": "Files"
   }
 }

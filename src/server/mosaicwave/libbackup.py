@@ -100,7 +100,8 @@ def backup_library(
     if not (settings.accounts_dir / user_id / DB_ENTRY).is_file():
         raise ArchiveError("this library has nothing to back up yet")
     out_dir.mkdir(parents=True, exist_ok=True)
-    final = out_dir / library_archive_name()
+    started = datetime.now(timezone.utc).replace(microsecond=0)  # one clock for the name and the manifest
+    final = out_dir / library_archive_name(started)
     part = final.with_name(final.name + ".part")
     work = Path(tempfile.mkdtemp(prefix="mosaicwave-libbackup-"))
     try:
@@ -149,7 +150,7 @@ def backup_library(
             manifest = {
                 "format": FORMAT,
                 "kind": KIND_LIBRARY,
-                "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                "created_at": started.isoformat(timespec="seconds"),
                 "app_version": __version__,
                 "include_thumbs": False,
                 "user_id": user_id,

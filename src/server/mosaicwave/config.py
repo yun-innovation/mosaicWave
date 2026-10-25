@@ -44,6 +44,9 @@ _SKIP_COPY_NAMES = {
 }
 _SQLITE_FILE_NAMES = {"library.db"}
 _FILE_PAYLOAD_NAMES = {"blobs", "libraries"}
+# What Move library carries to the new data folder: the photo payload plus the
+# site/library backups and the exports. The databases stay in the app folder.
+_DATA_DIR_NAMES = _FILE_PAYLOAD_NAMES | {"backups", "exports"}
 
 
 def _skip_copy_name(name: str) -> bool:
@@ -331,6 +334,69 @@ def recover_library_db_to_bootstrap(bootstrap: Path, data_dir: Path) -> None:
             _rm_path(extra)
 
 
+def adopt_legacy_data_folders(settings: Settings) -> list[str]:
+    """Bring ``backups/`` and ``exports/`` from the app folder into the data folder.
+
+    They used to live beside the site database. Each one is renamed (instant, never a
+    long copy at startup) only when the data folder has none or an empty one; when the
+    folders are on different disks the rename fails and they stay where they are.
+    """
+    app_dir = settings.database_path.parent
+    data_dir = settings.data_dir
+    adopted: list[str] = []
+    try:
+        if app_dir.resolve() == data_dir.resolve():
+            return adopted
+    except OSError:
+        return adopted
+    for name in ("backups", "exports"):
+        legacy = app_dir / name
+        target = data_dir / name
+        try:
+            if not legacy.is_dir() or legacy.is_symlink() or not any(legacy.iterdir()):
+                continue
+            if target.exists() and (not target.is_dir() or any(target.iterdir())):
+                continue
+            if target.is_dir():
+                target.rmdir()
+            data_dir.mkdir(parents=True, exist_ok=True)
+            legacy.rename(target)
+            adopted.append(name)
+        except OSError:
+            continue
+    return adopted
+
+
+def _tree_bytes(path: Path) -> int:
+    if path.is_symlink():
+        return 0
+    if path.is_file():
+        return path.stat().st_size
+    total = 0
+    for root, _dirs, files in os.walk(path):
+        for name in files:
+            try:
+                total += (Path(root) / name).stat().st_size
+            except OSError:
+                pass
+    return total
+
+
+def _require_free_space(dest: Path, items: list[Path]) -> None:
+    """Refuse a move that cannot fit, before anything is copied."""
+    need = sum(_tree_bytes(item) for item in items)
+    try:
+        free = shutil.disk_usage(dest).free
+    except OSError:
+        return  # some network mounts cannot report free space; the copy itself will tell
+    if need > free:
+        gb = 1024**3
+        raise ValueError(
+            f"not enough free space in the new folder: need {need / gb:.1f} GB, "
+            f"{free / gb:.1f} GB free"
+        )
+
+
 def copy_data_dir(
     src: Path,
     dest: Path,
@@ -370,7 +436,9 @@ def copy_data_dir(
                 _rm_path(leftover)
     items = [p for p in src.iterdir() if not _skip_copy_name(p.name)]
     if not move_sqlite:
-        items = [p for p in items if p.name not in _SQLITE_FILE_NAMES]
+        # The databases stay in the app folder. The photo payload, backups and
+        # exports move with the data folder.
+        items = [p for p in items if p.name in _DATA_DIR_NAMES]
     for item in items:
         target = dest / item.name
         if not target.exists():
@@ -389,6 +457,7 @@ def copy_data_dir(
                         _rm_path(extra)
             continue
         raise ValueError(f"destination already contains {item.name}")
+    _require_free_space(dest, items)
     copied: list[str] = []
     rewritten = False
     try:
@@ -841,8 +910,13 @@ class Settings:
 
     @property
     def backup_dir(self) -> Path:
-        """Site backups live beside the site database (the app folder), not in the library they back up."""
-        return self.database_path.parent / "backups"
+        """Site and library backups. In the data folder, so Move library takes them along."""
+        return self.data_dir / "backups"
+
+    @property
+    def export_dir(self) -> Path:
+        """Exports (ordinary files, one folder per export under ``{user_id}/``) beside the backups."""
+        return self.data_dir / "exports"
 
     @classmethod
     def from_env(cls) -> Settings:

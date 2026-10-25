@@ -1,6 +1,6 @@
 # Backup and restore
 
-Milestone 7, four PRs: **site backup + offline restore**, **online site restore from the Backup page**, **per-user backup + online restore of one library**, and **export**. Sync JSON is never a backup ([schema.md](schema.md)). The data it backs up is laid out by milestone 6 ([per-library-db.md](per-library-db.md)).
+Milestone 7, five PRs: **site backup + offline restore**, **online site restore from the Backup page**, **per-user backup + online restore of one library**, **export** (ordinary files, [below](#export-any-signed-in-user-settings-and-the-album-page)) and, still to do, **split backups** for libraries too big for one zip. Sync JSON is never a backup ([schema.md](schema.md)). The data it backs up is laid out by milestone 6 ([per-library-db.md](per-library-db.md)).
 
 > **An archive of the whole site contains password hashes** (`local_credential`) and every user's originals. Site backup and restore are **admin only**. Store archives like the data folder itself.
 
@@ -22,7 +22,7 @@ The manifest holds counts and byte totals, not a per-file list: the zip's own di
 
 ## Make a backup
 
-- **Web (admin):** the **Backup** page (`#/backup`) starts a backup (optional thumbnails), shows progress, lists the archives with date, size and counts, and downloads or deletes them. It also restores (below). Behind it, `POST /api/v1/backups` starts a job (kind `site_backup`, also visible in Activity). Archives go to `backups/` beside the site database (the app folder; with `MOSAICWAVE_DATA_DIR` set, the data folder), outside the libraries they protect. `GET /api/v1/settings` reports the folder as `backup_dir`. `GET /api/v1/backups` lists them, `GET /api/v1/backups/{name}` downloads, `DELETE` removes. A backup cannot run while another job (import, thumbnails) is running.
+- **Web (admin):** the **Backup** page (`#/backup`) starts a backup (optional thumbnails), shows progress, lists the archives with date, size and counts, and downloads or deletes them. It also restores (below). Behind it, `POST /api/v1/backups` starts a job (kind `site_backup`, also visible in Activity). Archives go to `backups/` in the data folder (`Settings.backup_dir`, next to `libraries/` and `blobs/`, outside the libraries they protect), so **Move library** takes them along (`backups/`, `exports/`, `libraries/` and `blobs/` are copied; the databases stay in the app folder). A move first checks the new folder has room for everything and refuses otherwise (`400`, "not enough free space", nothing copied). Installs from before this change had `backups/` and `exports/` in the app folder; at start they are renamed into the data folder when it has none (a rename, never a long copy), and otherwise left where they are. `GET /api/v1/settings` reports the folder as `backup_dir`. `GET /api/v1/backups` lists them, `GET /api/v1/backups/{name}` downloads, `DELETE` removes. A backup cannot run while another job (import, thumbnails) is running.
 - **Command line:** `python -m mosaicwave.backup [--out FOLDER] [--include-thumbs]`. Uses the same data folder as the API. The archive is written as `*.part` and renamed when complete, so a crash never leaves a half archive with the final name.
 
 ## Restore online (admin, from the Backup page)
@@ -84,3 +84,39 @@ Any user, admins included, can back up and restore **their own** library from **
 5. **Crash safety.** Before moving anything the swap writes `library-swap-<id>.json` beside the site database and deletes it when the new library is in place. At start (`recover_library_swaps`, before any database opens) a leftover journal puts the old library back; leftover staging folders are removed (`remove_stale_user_staging`).
 
 Not covered here: restoring one user out of a site archive, thumbnails inside a user archive, and a cap on how many archives a user may keep (all tied to the storage-space item in [roadmap.md](roadmap.md)).
+
+## Export (any signed-in user, Settings and the album page)
+
+An export copies your photos and videos out as **ordinary files**: no database, no thumbnails, nothing to restore from. It is not a backup (use *My library backup* for that). Code: `mosaicwave/export.py`, `api/v1/exports.py`, `ExportPanel.tsx`.
+
+**What goes in.** Your own library only (each user's database holds just their library, so there is nothing of anyone else's to read). Deleted photos are skipped. Three ways to ask, all through `POST /api/v1/me/exports`: `{all: true}` (Settings → Export my photos → *Export all my photos*), `{album_ids: [...]}` (*Export album* on the album page) and `{asset_ids: [...]}` (the API is ready for the gallery's select-many, milestone 9; no screen picks photos yet). Albums and photos can be combined; `all` stands alone (`400 export_scope`), nothing chosen is `400 export_nothing_selected`, an unknown album `404 album_not_found`, an empty library `400 export_empty`. A photo in albums is written into each of them; a photo in no album, or picked on its own, is written once into the `Photos` folder (a photo in an exported album is not written twice).
+
+**Layout** (`layout`, default `plain`):
+
+| | `plain` | `takeout` |
+| --- | --- | --- |
+| In an album | `<album>/<file>` | `Takeout/Google Photos/<album>/<file>` |
+| In no album | `Photos/<file>` | `Takeout/Google Photos/Photos from <year>/<file>` |
+| Sidecar | none | `<file>.json` beside each file |
+| Same name twice | `name (2).jpg` | `name(1).jpg` |
+
+Folder and file names are cleaned for every file system (`<>:"/\|?*` and control characters become `_`, no trailing dots or spaces, at most 120 characters), and two albums whose names differ only in case get distinct folders. Every entry keeps the photo's date (`taken_at`, else the file's modified time) as its zip time. The Takeout sidecar is what mosaicWave's own import reads: `title`, `description` (caption), `photoTakenTime` and `creationTime` (`timestamp` and `formatted`) and, when the photo has a location, `geoData`. It is modelled on Google's format and is best-effort, not an official specification.
+
+**Splitting follows Google Takeout's** (`split_gb`: the web offers 2, 4, 10 (default), 50 or one zip; the API takes any number from 0.0001 to 1024, empty for one zip):
+
+- Files are added to the open zip until the next would pass the size; then a new zip starts. A file is never cut across zips, and a zip may hold one album's photos while the rest of the album is in the next.
+- A file **bigger than the size is not zipped**. In the Takeout layout it sits beside the zips as `<name>-NNN.<ext>`, where NNN is the zip number it would have had (it takes a number of its own, so zips 001, 002, 003 and a file `clip-004.mov` are normal: Google does the same), and its `.json` sidecar stays inside a zip, in the album folder. mosaicWave's Takeout import and *Check folder* ([takeout-dump.md](takeout-dump.md)) already read exactly this, so an export imports back with its albums, including the big files. In the plain layout the big file sits beside the zips under the path it would have had inside one (`Photos/clip.mov`), so unzipping every zip into one folder and copying the loose files over gives the whole tree.
+- With *one zip* nothing is oversized. Files are stored uncompressed (media is already compressed) and the zips use ZIP64.
+- Zip names: `takeout-<stamp>-001.zip` (Takeout layout) or `mosaicwave-<stamp>-001.zip` (plain), `<stamp>` is `YYYYMMDDTHHMMSSZ` in UTC as in Google's own folder names.
+
+**Where it lives.** `exports/<user_id>/export-<stamp>/` in the data folder (`Settings.export_dir`, beside `backups/`; Move library takes it along), outside `libraries/` and `backups/`, so no backup contains an export. The folder holds the zips, the files that are not zipped, and `mosaicwave-export.json` (layout, split, counts, warnings). It is built in `.export-<stamp>.part` and renamed when complete, so a cancel, a failure or a crash never leaves something that looks finished; leftovers are removed at start (`remove_stale_exports`).
+
+**Job.** `POST /me/exports` starts a job of kind `export` (cancellable, in the status bar and Activity; progress counts only, never file names; one job at a time server-wide). It checks free space for the whole export first (`not enough free space`, nothing written), skips an original that has gone missing and says so (`warnings`), and a cancel removes the whole export. `GET /me/exports` lists yours with the layout, counts, size and every file (`{path, size, zipped}`), `GET /me/exports/{name}/files/{path}` downloads one file (the zips, or a file that is not zipped; `404 export_not_found` for anything outside the export), `DELETE /me/exports/{name}` removes the set. Exports are kept until you delete them, so they use disk space; there is no automatic expiry or quota yet (the storage-space item in [roadmap.md](roadmap.md)).
+
+**Privacy.** A user only sees their own exports. The folder picker (`GET /fs/list`) and *Restore from the server* refuse another user's `exports/<id>/` (`403 folder_not_allowed`) as they do for `libraries/<id>/` and `backups/users/<id>/`, and the parent folder lists only your own.
+
+Not covered here: choosing photos on screen (milestone 9), converting HEIC or other formats, a layout that keeps the original folder tree, and splitting **backups** (PR 5, below).
+
+## Split backups (planned, milestone 7 PR 5)
+
+A backup is still one zip (ZIP64, so far past 4 GB), restored whole from the Backup page or Settings; the upload cap is 256 GB. A library or site too big for one file needs a **set of parts**: a set manifest, an "all parts present" check, multi-file upload and restore, and the server-folder path. That is its own PR after export; nothing of it is built.

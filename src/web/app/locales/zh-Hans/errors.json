@@ -19,6 +19,7 @@
   "data_dir_env_locked": "已设置 MOSAICWAVE_DATA_DIR，因此无法在“服务器”页更改文件夹。",
   "data_dir_occupied": "该目标已经有 mosaicWave 照片库。",
   "data_dir_job_running": "有任务正在运行时无法移动照片库。",
+  "data_dir_moving": "照片库正在移动，请稍后再试。",
 
   "folder_not_found": "找不到文件夹：{{message}}",
   "folder_forbidden": "没有权限打开该文件夹：{{message}}",
@@ -85,5 +86,9 @@
   "upload_too_large": "文件太大（上限为 {{max_gb}} GB）。",
   "backup_no_space": "可用空间不足：需要约 {{need_mb}} MB，当前只有 {{free_mb}} MB。",
   "library_restoring": "你的相册正在还原中，请稍后再试。",
-  "backup_wrong_kind": "这是不同类型的备份：整站备份请到管理员的“备份”页使用，相册备份请在“设置”中使用。"
+  "backup_wrong_kind": "这是不同类型的备份：整站备份请到管理员的“备份”页使用，相册备份请在“设置”中使用。",
+  "export_nothing_selected": "请选择要导出的内容。",
+  "export_scope": "请选择全部照片，或选择单个相册与照片，不要两者并用。",
+  "export_not_found": "找不到这份导出。",
+  "export_empty": "没有可导出的内容。"
 }

@@ -22,6 +22,7 @@ type Keeps =
   | "site_restore"
   | "library_backup"
   | "library_restore"
+  | "export"
   | "other";
 
 function keepsKey(kind: string | null): Keeps {
@@ -30,7 +31,8 @@ function keepsKey(kind: string | null): Keeps {
     kind === "site_backup" ||
     kind === "site_restore" ||
     kind === "library_backup" ||
-    kind === "library_restore"
+    kind === "library_restore" ||
+    kind === "export"
     ? kind
     : "other";
 }
