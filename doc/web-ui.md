@@ -51,6 +51,7 @@ Shared types and URL helpers (`thumbSrc`, `stillSrc`, `isVideo`) are in `app/typ
 
 ## Moved from the old single page
 
+- **Section titles** on Settings, Server and Backup (`titled-sections`) are bright and semi-bold (`section-title`), a subsection title (`backup-heading`, the pending-restore box) is smaller, and each section after the first starts under a thin line (`divided`). Field labels inside a form stay dim.
 - **Generate thumbs** is in Settings (a Thumbnails section for every user), not the gallery header or Activity.
 - **Upload** is in the top bar, not the gallery header.
 - **Settings** is a view; it has no Close button.

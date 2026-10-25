@@ -215,7 +215,7 @@ export function BackupView({ importer, maintenance }: { importer: TakeoutImport;
   const archivePath = folder ? `${folder}${folder.includes("\\") ? "\\" : "/"}${newest}` : newest;
 
   return (
-    <section className="card backup">
+    <section className="card backup titled-sections">
       <div className="gallery-head">
         <h2>{t("backup:title")}</h2>
       </div>
@@ -239,7 +239,7 @@ export function BackupView({ importer, maintenance }: { importer: TakeoutImport;
         {notice && <p className={notice.ok ? "detail import-progress" : "status fail"}>{notice.text}</p>}
       </div>
 
-      <h2 className="backup-heading">{t("backup:list.title")}</h2>
+      <h3 className="section-title divided">{t("backup:list.title")}</h3>
       {items === null && <p className="detail">{t("backup:list.loading")}</p>}
       {items && items.length === 0 && <p className="detail">{t("backup:list.empty")}</p>}
       {items && items.length > 0 && (
@@ -303,7 +303,7 @@ export function BackupView({ importer, maintenance }: { importer: TakeoutImport;
         </ul>
       )}
 
-      <h2 className="backup-heading">{t("backup:restore.title")}</h2>
+      <h3 className="section-title divided">{t("backup:restore.title")}</h3>
       {!maintenanceOn && !waiting && (
         <p className="detail">
           {t("backup:restore.needsMaintenance")}{" "}
@@ -397,7 +397,7 @@ export function BackupView({ importer, maintenance }: { importer: TakeoutImport;
         </>
       )}
 
-      <h3 className="backup-heading">{t("backup:restore.offline.title")}</h3>
+      <h3 className="section-title divided">{t("backup:restore.offline.title")}</h3>
       <p className="detail">{t("backup:restore.offline.help")}</p>
       <pre className="backup-command">{`python -m mosaicwave.restore "${archivePath}"`}</pre>
       <p className="detail">{t("backup:restore.offline.check")}</p>

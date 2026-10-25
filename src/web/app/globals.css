@@ -1002,9 +1002,10 @@ main.app-main {
   margin-top: 1.5rem;
 }
 
-/* Settings: a section title stands out, a subsection title is smaller, and sections are separated. */
-.personal-settings .section-title,
-.personal-settings .import label.section-title {
+/* Settings, Server and Backup: a section title stands out, a subsection title is smaller, and a
+   divided title starts a new section under a thin line. */
+.titled-sections .section-title,
+.titled-sections .import label.section-title {
   display: block;
   margin: 0 0 0.35rem;
   font-size: 1.05rem;
@@ -1012,16 +1013,22 @@ main.app-main {
   color: var(--fg);
 }
 
-.personal-settings .import + .import {
+.titled-sections .section-title.divided,
+.titled-sections .import label.section-title.divided {
   margin-top: 1.5rem;
   padding-top: 1.5rem;
   border-top: 1px solid #2a2a30;
 }
 
-.personal-settings .backup-heading {
+.titled-sections .backup-heading,
+.titled-sections .restore-box h3 {
   margin: 1.25rem 0 0.5rem;
   font-size: 0.95rem;
   font-weight: 600;
+}
+
+.titled-sections .restore-box h3 {
+  margin-top: 0;
 }
 
 .import .check-row {

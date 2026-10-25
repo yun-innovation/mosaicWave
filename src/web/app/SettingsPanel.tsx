@@ -49,7 +49,7 @@ export function SettingsPanel({ me, importer, onMe }: Props) {
 
   const library = sources?.find((row) => row.owned) ?? sources?.[0];
   return (
-    <section className="card settings personal-settings">
+    <section className="card settings titled-sections">
       <div className="gallery-head">
         <h2>{t("settings:title")}</h2>
       </div>
@@ -61,7 +61,7 @@ export function SettingsPanel({ me, importer, onMe }: Props) {
         <LocaleSelect id="ui_locale" me={me} onMe={onMe} />
       </div>
       <div className="import">
-        <h3 className="section-title">{t("settings:thumbnails.label")}</h3>
+        <h3 className="section-title divided">{t("settings:thumbnails.label")}</h3>
         <p className="detail">{t("settings:thumbnails.help")}</p>
         <div className="button-row">
           <button
