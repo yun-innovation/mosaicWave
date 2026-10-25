@@ -19,10 +19,12 @@
       "other": "已完成的部分會保留。",
       "site_restore": "不會保留任何內容，你的相簿維持原樣。",
       "library_backup": "不會保留任何封存檔。",
-      "library_restore": "不會變更任何內容，你的相簿維持原樣。一旦開始取代你的相簿，就無法中止。"
+      "library_restore": "不會變更任何內容，你的相簿維持原樣。一旦開始取代你的相簿，就無法中止。",
+      "export": "不會保留任何內容，匯出的檔案會被移除。"
     }
   },
   "restoreStaged": "還原已就緒，可以套用。",
   "libraryBackupDone": "相簿備份完成。",
-  "libraryRestored": "相簿已還原。"
+  "libraryRestored": "相簿已還原。",
+  "exportDone": "匯出完成。"
 }

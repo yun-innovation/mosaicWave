@@ -844,6 +844,11 @@ class Settings:
         """Site backups live beside the site database (the app folder), not in the library they back up."""
         return self.database_path.parent / "backups"
 
+    @property
+    def export_dir(self) -> Path:
+        """Exports (ordinary files, one folder per export under ``{user_id}/``) beside the backups."""
+        return self.database_path.parent / "exports"
+
     @classmethod
     def from_env(cls) -> Settings:
         boot = _platform_bootstrap_dir()

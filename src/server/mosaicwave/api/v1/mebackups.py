@@ -21,6 +21,7 @@ from mosaicwave.api.v1.library import ImportOut, _busy_error, _job_out
 from mosaicwave.api.v1.maintenance import job_running
 from mosaicwave.archive import LIBRARIES, LIBRARY_NAME, ArchiveError, read_manifest
 from mosaicwave.auth.deps import require_user, require_user_brief
+from mosaicwave.export import export_user_dir
 from mosaicwave.libbackup import check_library_archive, user_backup_dir
 from mosaicwave.library.importjob import ImportBusy, ImportJobRunner
 from mosaicwave.models import User
@@ -134,6 +135,7 @@ def _refuse_foreign(request: Request, user: User, path: Path) -> None:
     for shared, own in (
         (settings.data_dir / LIBRARIES, settings.data_dir / LIBRARIES / user.id),
         (user_backup_dir(settings, user.id).parent, user_backup_dir(settings, user.id)),
+        (export_user_dir(settings, user.id).parent, export_user_dir(settings, user.id)),
     ):
         if _is_under(path, shared) and not _is_under(path, own):
             raise ApiError(403, "folder_not_allowed", "not allowed")

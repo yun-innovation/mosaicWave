@@ -194,6 +194,13 @@ SAVE_LIBRARY_BACKUP = [
     "var b = pm.response.json();",
     "if (Array.isArray(b) && b[0]) { pm.collectionVariables.set('libraryBackupName', b[0].name); }",
 ]
+SAVE_EXPORT = [
+    "var b = pm.response.json();",
+    "if (Array.isArray(b) && b[0]) {",
+    "  pm.collectionVariables.set('exportName', b[0].name);",
+    "  if (b[0].files && b[0].files[0]) { pm.collectionVariables.set('exportFile', b[0].files[0].path); }",
+    "}",
+]
 SAVE_BACKUP = [
     "if (pm.response.code === 200) {",
     "  const b = pm.response.json();",
@@ -230,6 +237,8 @@ Hit FastAPI directly (`http://127.0.0.1:8000` debug, `:8090` MSI/QPKG), not the 
 
 **My library backup (any signed-in user):** folder **My library backups**. Back up my library starts a job; List my backups saves `{{libraryBackupName}}` for Download / Delete / Restore. Restore replaces only your own library while the server runs (a job; your previous library is deleted once the restore succeeds, so back up first).
 
+**My exports (any signed-in user):** folder **My exports**. Export my photos starts a job that writes your photos as ordinary files (plain or Google Takeout layout, split into zips by size; a file bigger than the size is left unzipped beside them). List my exports saves `{{exportName}}` and `{{exportFile}}` for Download / Delete. An export is not a backup.
+
 **Maintenance:** folder **Maintenance**. Status is public; Turn on/off need an admin session. While it is on, other users get `503 maintenance`.
 
 OpenAPI at `{{baseUrl}}/docs` stays the living spec; this collection is a snapshot for manual tests.""",
@@ -247,6 +256,8 @@ OpenAPI at `{{baseUrl}}/docs` stays the living spec; this collection is a snapsh
         {"key": "jobId", "value": ""},
         {"key": "backupName", "value": ""},
         {"key": "libraryBackupName", "value": ""},
+        {"key": "exportName", "value": ""},
+        {"key": "exportFile", "value": ""},
         {"key": "sinceRev", "value": "0"},
         {"key": "syncCursor", "value": ""},
         {"key": "albumId", "value": ""},
@@ -852,6 +863,46 @@ OpenAPI at `{{baseUrl}}/docs` stays the living spec; this collection is a snapsh
                     "/api/v1/me/backups/{{libraryBackupName}}/restore",
                     description="Replaces your library with the backup while the server runs: a job (kind library_restore) that unpacks and checks it, then swaps your database and originals (cancellable until the swap starts). Your previous library is deleted once the restore succeeds (back it up first); a failed restore changes nothing. Other users are not affected; your own requests get 503 library_restoring for a moment during the swap. 409 job_running or restore_pending. Saves {{jobId}}.",
                     tests=SAVE_JOB,
+                ),
+            ],
+        ),
+        folder(
+            "My exports",
+            [
+                req(
+                    "Export all my photos",
+                    "POST",
+                    "/api/v1/me/exports",
+                    description="Any signed-in user. Starts a job (kind export, cancellable; poll it in Jobs) that writes your photos as ordinary files under your own exports folder. Body: all (whole library) or album_ids and/or asset_ids; layout plain or takeout (Google Takeout tree with .json sidecars); split_gb (empty for one zip) - a file bigger than that is not zipped but saved beside the zips. 400 export_nothing_selected, export_scope or export_empty, 404 album_not_found, 409 job_running. Saves {{jobId}}.",
+                    body="{\n  \"all\": true,\n  \"layout\": \"takeout\",\n  \"split_gb\": 4\n}",
+                    tests=SAVE_JOB,
+                ),
+                req(
+                    "Export one album",
+                    "POST",
+                    "/api/v1/me/exports",
+                    description="Same job for chosen albums (and/or photo ids). Needs {{albumId}} from List albums. A photo in an exported album is written once, into that album's folder. Saves {{jobId}}.",
+                    body="{\n  \"album_ids\": [\"{{albumId}}\"],\n  \"layout\": \"plain\",\n  \"split_gb\": null\n}",
+                    tests=SAVE_JOB,
+                ),
+                req(
+                    "List my exports",
+                    "GET",
+                    "/api/v1/me/exports",
+                    description="Only your own exports, newest first, each with layout, counts, size and files ({path, size, zipped}). Saves {{exportName}} and {{exportFile}} from the first export.",
+                    tests=SAVE_EXPORT,
+                ),
+                req(
+                    "Download an export file",
+                    "GET",
+                    "/api/v1/me/exports/{{exportName}}/files/{{exportFile}}",
+                    description="One zip part, or a file that was too big to zip. 404 export_not_found for a name or path that is not yours or not in the export. Use Send and Download in Postman.",
+                ),
+                req(
+                    "Delete my export",
+                    "DELETE",
+                    "/api/v1/me/exports/{{exportName}}",
+                    description="Removes the whole export (every zip and unzipped file). 404 export_not_found if it is not yours.",
                 ),
             ],
         ),

@@ -1064,6 +1064,35 @@ main.app-main {
   text-decoration: none;
 }
 
+.export-box {
+  margin: 0.75rem 0;
+  padding: 0.75rem 1rem;
+  border: 1px solid #2a2a30;
+  border-radius: 8px;
+}
+
+.export-options label {
+  display: block;
+  margin-top: 0.6rem;
+}
+
+.export-options select {
+  max-width: 100%;
+}
+
+.export-files {
+  margin-top: 0.4rem;
+}
+
+.export-files summary {
+  cursor: pointer;
+  color: var(--muted, inherit);
+}
+
+.export-files .backup-list {
+  margin-top: 0.4rem;
+}
+
 .restore-box {
   margin: 0.75rem 0;
   padding: 0.75rem 1rem;

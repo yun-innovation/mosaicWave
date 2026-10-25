@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { apiFetch, Me, readDetail, Source } from "./api";
+import { ExportPanel } from "./ExportPanel";
 import i18n from "./i18n";
 import { LibraryBackupPanel } from "./LibraryBackupPanel";
 import { LocaleSelect } from "./LocaleSelect";
@@ -16,8 +17,8 @@ type Props = {
 };
 
 /**
- * Personal options, the same for everyone including admins: language, thumbnails and backing up your
- * own library. Options for the whole server (folders, people) are on the admin Server page.
+ * Personal options, the same for everyone including admins: language, thumbnails, backing up your
+ * own library and exporting your photos as ordinary files. Options for the whole server (folders, people) are on the admin Server page.
  */
 export function SettingsPanel({ me, importer, onMe }: Props) {
   const { t } = useTranslation(["settings", "common", "gallery"]);
@@ -75,6 +76,7 @@ export function SettingsPanel({ me, importer, onMe }: Props) {
         {thumbsError && <p className="status fail">{thumbsError}</p>}
       </div>
       <LibraryBackupPanel importer={importer} isAdmin={me.role === "admin"} />
+      <ExportPanel importer={importer} />
       {error && <p className="status fail">{error}</p>}
       {sources === null && !error && <p className="detail">{t("common:loading")}</p>}
       {library && (

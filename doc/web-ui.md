@@ -24,13 +24,13 @@ Each view has a hash URL, so links, reload and Back / Forward work without a ser
 | --- | --- | --- |
 | `#/photos` | Timeline of every photo and video, grouped by day or month, Load more | `TimelineView.tsx` (inside `page.tsx`) |
 | `#/albums` | Album tiles and the create-album form | `AlbumsView.tsx` |
-| `#/albums/{id}` | One album: back to all albums, Delete album, the album timeline | `AlbumsView.tsx` + `TimelineView.tsx` |
+| `#/albums/{id}` | One album: back to all albums, **Export album** (layout and zip size, then a job), Delete album, the album timeline | `AlbumsView.tsx` + `TimelineView.tsx` |
 | `#/import` | Google Takeout: folder path or browser folder, Check folder, Start import | `ImportView.tsx` |
 | `#/activity` | Job list (import, push, thumbs, site backup); read-only | `ActivityView.tsx` |
 | `#/maintenance` | **Admin only.** The maintenance switch, the message shown to users and the current state ([maintenance.md](maintenance.md)) | `MaintenanceView.tsx` (alert page: `MaintenanceScreen.tsx`) |
 | `#/backup` | **Admin only.** Back up now (optional thumbnails), progress, archive list with download, **Restore…** and delete, the restore source form (on the server with Browse, or upload from this device), the staged-restore box (Restart and apply / Discard), the last restore result, and the offline restore command ([backup.md](backup.md)) | `BackupView.tsx` |
 | `#/server` | **Admin only.** Options for the whole server: app folder, current library folder, **Move library** (local folder, SMB or NAS, Save folder), and users (add a member). Not shown during maintenance | `ServerView.tsx` |
-| `#/settings` | **Personal, the same for everyone (admins included):** language, **Generate thumbs**, **My library backup** (back up, list with download / **Restore…** / delete, **Restore from a file**: on this device, or on the server for admins, with a confirmation first; `LibraryBackupPanel.tsx`, `RestoreSourceForm.tsx`) and a one-line library summary | `SettingsPanel.tsx` |
+| `#/settings` | **Personal, the same for everyone (admins included):** language, **Generate thumbs**, **My library backup** (back up, list with download / **Restore…** / delete, **Restore from a file**: on this device, or on the server for admins, with a confirmation first; `LibraryBackupPanel.tsx`, `RestoreSourceForm.tsx`), **Export my photos** (all photos as ordinary files, plain or Takeout layout, split by zip size, list of exports with per-file download and delete; `ExportPanel.tsx`) and a one-line library summary | `SettingsPanel.tsx` |
 
 An empty or unknown hash shows Photos. Routing is `app/hashRoute.ts`: `useRoute()` reads `location.hash` with `useSyncExternalStore` on `hashchange`, and navigation sets `location.hash` (one history entry per view). The file is not called `route.ts` because that name is reserved by the Next App Router.
 

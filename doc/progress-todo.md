@@ -17,11 +17,12 @@ Open items only. Roadmap: ordered milestones in [roadmap.md](roadmap.md). The ea
   - [x] PR 2: cutover: per-request site/library sessions, v2 to v3 migration, API/jobs/sync on the library DB, `source_grant` removed
 - [ ] Share links for SaaS (`share` table, public read-only route, Share UI) (**milestone 11, deferred**: only useful when a host is open to the internet)
 - [x] Maintenance mode (**milestone 12**; [maintenance.md](maintenance.md)): flag file, `503 maintenance` for non-admins, public status + full-page alert, simplified admin menu, `python -m mosaicwave.maintenance`, start with `MOSAICWAVE_MAINTENANCE=1` (built; not yet marked done)
-- [ ] Backup / restore / export (**milestone 7**, four PRs; [backup.md](backup.md))
+- [ ] Backup / restore / export (**milestone 7**, five PRs; [backup.md](backup.md))
   - [x] PR 1: site backup (`POST/GET/DELETE /backups`, `python -m mosaicwave.backup`), admin Backup page, offline restore (`python -m mosaicwave.restore`); Generate thumbs moved to Settings; one status bar for job progress on every view; offline restore bumps `thumb_rev` when the archive has no thumbnails ([PR #40](https://github.com/yun-innovation/mosaicWave/pull/40))
   - [x] PR 2: online site restore from the Backup page: stage as a cancellable `site_restore` job, then Restart and apply swaps it in at start-up (`restore-pending.json`, `restore-result.json`); needs maintenance mode
   - [x] PR 3: per-user backup and online exact-swap restore of one library: Settings → My library backup (`library_backup` / `library_restore` jobs, `/me/backups`), restore into any account, previous library kept aside, sync clients re-pull everything; journal recovery at start
-  - [ ] PR 4: export selected albums/photos as ordinary files
+  - [x] PR 4: export as ordinary files (`export` job, `/me/exports`): whole library or one album (the API also takes photo ids, for milestone 9's select-many), plain or Google Takeout layout (`.json` sidecars), split into zips Google-style with oversized files left unzipped, per-file download; Settings → Export my photos and Export album
+  - [ ] PR 5: split backups: a backup set of several zips for a library or site too big for one file (set manifest, all-parts check, multi-file upload and restore)
 - [ ] ARM64 QPKG sideload on a QTS 5 ARM64 NAS (**milestone 10, frozen**: no ARM hardware)
 - [ ] Multilingual API: language code on requests; translated messages and locale-formatted date/time in responses; sync and ordering timestamps stay UTC; response language and switch target kept separate, tags normalized to canonical codes (**milestone 8**)
 - [ ] Gallery tools: select many, timeline scrubber, search (new API), light theme (**milestone 9**)

@@ -65,6 +65,7 @@ Keep Takeout routes as the **start** buttons; they create a job:
 | `site_restore` | Nothing: the staging folders are removed and the library is unchanged |
 | `library_backup` | Nothing: the `.part` file is removed and no archive is written |
 | `library_restore` | Nothing while it is unpacking and checking: the staging folders are removed and the library is unchanged. Once the swap starts it is not cancellable (it takes moments, and rolls itself back on failure) |
+| `export` | Nothing: the `.export-<stamp>.part` folder is removed and no export is written |
 | `takeout_import` | Every finished item (committed before the job ends); importing again skips what is there (same SHA-256) |
 | `takeout_import` in `push` mode, still receiving | Cancelled at once by `/import/takeout/push/{id}/cancel` (ends as `error`, `cancelled`); `/jobs/{id}/cancel` hands over to it |
 

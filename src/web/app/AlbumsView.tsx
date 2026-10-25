@@ -4,23 +4,27 @@ import { FormEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { apiFetch, readDetail } from "./api";
+import { ExportStarter } from "./ExportPanel";
 import { Route, routeHash } from "./hashRoute";
 import { TimelineView } from "./TimelineView";
 import { LibraryAlbum, Notice } from "./types";
+import type { TakeoutImport } from "./useTakeoutImport";
 
 type Props = {
   albumId: string | null;
   albums: LibraryAlbum[] | null;
   libraryRev: number;
+  importer: TakeoutImport;
   go: (route: Route) => void;
   onAlbumsChanged: () => void;
   onLibraryChanged: () => void;
 };
 
-export function AlbumsView({ albumId, albums, libraryRev, go, onAlbumsChanged, onLibraryChanged }: Props) {
-  const { t } = useTranslation(["gallery", "common"]);
+export function AlbumsView({ albumId, albums, libraryRev, importer, go, onAlbumsChanged, onLibraryChanged }: Props) {
+  const { t } = useTranslation(["gallery", "backup", "common"]);
   const [newName, setNewName] = useState("");
   const [busy, setBusy] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
 
   async function onCreate(event: FormEvent) {
@@ -73,12 +77,29 @@ export function AlbumsView({ albumId, albums, libraryRev, go, onAlbumsChanged, o
           </div>
           {album && (
             <div className="button-row">
+              <button type="button" disabled={busy} onClick={() => setExporting((open) => !open)}>
+                {t("backup:export.album")}
+              </button>
               <button type="button" disabled={busy} onClick={() => void onDelete(album)}>
                 {t("gallery:deleteAlbum")}
               </button>
             </div>
           )}
         </div>
+        {album && exporting && (
+          <div className="import export-box">
+            <ExportStarter
+              scope={{ album_ids: [album.id] }}
+              startLabel={t("backup:export.start")}
+              blocked={importer.busy}
+              onNotice={setNotice}
+              onStarted={() => {
+                setExporting(false);
+                importer.refreshJobs();
+              }}
+            />
+          </div>
+        )}
         {notice && <p className={notice.ok ? "status ok" : "status fail"}>{notice.text}</p>}
         {album && (
           <TimelineView

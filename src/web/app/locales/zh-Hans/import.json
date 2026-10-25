@@ -65,7 +65,8 @@
       "unknown": "任务",
       "site_restore": "整站还原",
       "library_backup": "相册备份",
-      "library_restore": "相册还原"
+      "library_restore": "相册还原",
+      "export": "导出"
     },
     "status": {
       "idle": "空闲",

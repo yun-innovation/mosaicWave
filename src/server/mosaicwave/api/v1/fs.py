@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from mosaicwave.api.errors import ApiError, wrapped
 from mosaicwave.auth.deps import get_library_session, require_user
+from mosaicwave.export import export_user_dir
 from mosaicwave.libbackup import user_backup_dir
 from mosaicwave.library.fsbrowse import list_host_dir
 from mosaicwave.library.ownership import library_root, user_library
@@ -68,7 +69,12 @@ def fs_list(
         raise wrapped(400, "folder_unreadable", exc) from exc
     current = Path(listing.path).resolve() if listing.path else None
     own_backups = user_backup_dir(settings, user.id).resolve()
-    shared = ((libraries, mine), (own_backups.parent, own_backups))
+    own_exports = export_user_dir(settings, user.id).resolve()
+    shared = (
+        (libraries, mine),
+        (own_backups.parent, own_backups),
+        (own_exports.parent, own_exports),
+    )
     if current is not None:
         for parent, own_dir in shared:
             if own_dir is None and parent == libraries:

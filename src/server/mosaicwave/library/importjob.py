@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from mosaicwave.backup import backup_site
 from mosaicwave.config import Settings
+from mosaicwave.export import export_library
 from mosaicwave.libbackup import backup_library, stage_library, swap_library, user_backup_dir
 from mosaicwave.library.dbs import LibraryDbs, LibraryLocked
 from mosaicwave.restore import pending_exists, stage_site, write_pending
@@ -29,6 +30,7 @@ KIND_BACKUP = "site_backup"
 KIND_RESTORE = "site_restore"
 KIND_LIBRARY_BACKUP = "library_backup"
 KIND_LIBRARY_RESTORE = "library_restore"
+KIND_EXPORT = "export"
 INTERRUPTED = "interrupted (process stopped)"
 
 
@@ -1006,6 +1008,92 @@ class ImportJobRunner:
         except Exception as exc:  # ArchiveError, OSError, sqlite errors: all end the job the same way
             self._fail(session, job_id, exc)
         finally:
+            session.close()
+            self._release(job_id)
+
+    def start_export(
+        self,
+        *,
+        user_id: str,
+        layout: str,
+        split_bytes: int | None,
+        album_ids: list[str],
+        asset_ids: list[str],
+        everything: bool,
+    ) -> dict:
+        """Write the user's photos as ordinary files under ``exports/{user_id}/`` (doc/backup.md)."""
+        if self._settings is None:
+            raise RuntimeError("export needs the app settings")
+        # The selection stays in memory: it can be thousands of ids and is not worth keeping in the job row.
+        inp = {
+            "layout": layout,
+            "split_bytes": split_bytes,
+            "scope": "all" if everything else ("albums" if album_ids and not asset_ids else "photos"),
+            "albums": len(album_ids),
+            "photos": len(asset_ids),
+        }
+        job_id, view = self._begin(KIND_EXPORT, user_id, inp, "Export started")
+        threading.Thread(
+            target=self._run_export,
+            args=(job_id, user_id, layout, split_bytes, album_ids, asset_ids, everything),
+            daemon=True,
+        ).start()
+        return view
+
+    def _run_export(
+        self,
+        job_id: str,
+        user_id: str,
+        layout: str,
+        split_bytes: int | None,
+        album_ids: list[str],
+        asset_ids: list[str],
+        everything: bool,
+    ) -> None:
+        assert self._settings is not None
+        session = self._factory()
+        lib: Session | None = None
+        try:
+            lib = self._libraries.factory(user_id)()
+            result = export_library(
+                self._settings,
+                lib,
+                user_id,
+                layout=layout,
+                split_bytes=split_bytes,
+                album_ids=album_ids,
+                asset_ids=asset_ids,
+                everything=everything,
+                on_progress=self._progress(session, job_id),
+                check=lambda: self._check_cancel(job_id),
+            )
+            info = result.info
+            self._finish(
+                session,
+                job_id,
+                {
+                    "export": result.folder.name,
+                    "assets": info["assets"],
+                    "albums": info["albums"],
+                    "zips": info["zips"],
+                    "unzipped": info["unzipped"],
+                },
+                f"Export {result.folder.name}: {info['assets']} files in {info['zips']} zip(s)"
+                + (f" and {info['unzipped']} too big to zip" if info["unzipped"] else ""),
+            )
+            for warning in info["warnings"]:
+                session.add(JobEvent(id=new_id(), job_id=job_id, level="info", message=warning))
+            session.commit()
+        except JobCancelled:
+            try:
+                self._mark_cancelled(session, job_id, "nothing was exported")
+            except Exception:
+                session.rollback()
+        except Exception as exc:  # ExportError, OSError, sqlite errors: all end the job the same way
+            self._fail(session, job_id, exc)
+        finally:
+            if lib is not None:
+                lib.close()
             session.close()
             self._release(job_id)
 
