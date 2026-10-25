@@ -392,3 +392,33 @@ def test_restore_with_thumbnails_keeps_thumbnail_versions(tmp_path: Path) -> Non
     assert restored.get(f"/api/v1/assets/{asset_id}/thumb").status_code == 200
     assert _thumb_revs(restored) == before  # served from the restored file, not rebuilt
     client.close()
+
+
+def test_archive_name_matches_manifest_time_even_when_the_clock_ticks(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A slow backup crossing a second boundary must not name the file one second off its manifest."""
+    from datetime import datetime, timedelta, timezone
+
+    from mosaicwave import backup as backup_mod
+    from mosaicwave import libbackup as lib_mod
+
+    class Ticking(datetime):
+        calls = 0
+
+        @classmethod
+        def now(cls, tz=None):  # type: ignore[override]
+            cls.calls += 1
+            return datetime(2026, 1, 1, 0, 0, 0, tzinfo=timezone.utc) + timedelta(seconds=cls.calls)
+
+    settings = _settings(tmp_path)
+    client = _seed(settings)
+    monkeypatch.setattr(backup_mod, "datetime", Ticking)
+    monkeypatch.setattr(lib_mod, "datetime", Ticking)
+    site = backup_site(settings, tmp_path / "site-out").path
+    user_id = client.get("/api/v1/me").json()["id"]
+    mine = lib_mod.backup_library(settings, user_id, tmp_path / "lib-out").path
+    for archive in (site, mine):
+        with zipfile.ZipFile(archive) as zf:
+            created = datetime.fromisoformat(json.loads(zf.read("manifest.json"))["created_at"])
+        assert archive.stem.endswith(created.strftime("%Y%m%d-%H%M%S")), archive.name
