@@ -260,3 +260,67 @@ def test_get_settings_never_surfaces_a_notice(tmp_path: Path) -> None:
     res = admin.get("/api/v1/settings")
     assert res.status_code == 200, res.text
     assert res.json()["notice"] is None
+
+
+def _app_folder_settings(tmp_path: Path) -> Settings:
+    boot = tmp_path / "boot"
+    return Settings(data_dir=boot, takeout_dir=None, source_dir=None, bootstrap_dir=boot)
+
+
+def test_move_from_app_folder_leaves_databases_backups_exports(tmp_path: Path) -> None:
+    settings = _app_folder_settings(tmp_path)
+    client = authed_client(settings)
+    lib = library_dir(settings, client)
+    (lib / "kept.jpg").write_bytes(_jpeg_bytes())
+    scan_library(client)
+    boot = settings.bootstrap_dir
+    (boot / "backups").mkdir(exist_ok=True)
+    (boot / "backups" / "site.zip").write_bytes(b"backup")
+    (boot / "exports" / "1").mkdir(parents=True, exist_ok=True)
+    (boot / "exports" / "1" / "e.zip").write_bytes(b"export")
+    accounts = sorted(p.name for p in (boot / "accounts").iterdir())
+    assert accounts
+
+    dest = tmp_path / "mosaic" / "dev"
+    res = client.put("/api/v1/settings", json={"data_dir": str(dest)})
+    assert res.status_code == 200, res.text
+    assert sorted(p.name for p in (boot / "accounts").iterdir()) == accounts
+    assert (boot / "backups" / "site.zip").is_file()
+    assert (boot / "exports" / "1" / "e.zip").is_file()
+    assert sorted(p.name for p in dest.iterdir()) == ["blobs", "libraries"] or sorted(
+        p.name for p in dest.iterdir()
+    ) == ["libraries"]
+    assert (dest / "libraries" / lib.name / "kept.jpg").is_file()
+    assert len(client.get("/api/v1/assets").json()["items"]) == 1
+
+
+def test_settings_while_library_detached_is_503(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    client = authed_client(settings)
+    engine = client.app.state.engine
+    client.app.state.engine = None
+    try:
+        res = client.get("/api/v1/settings")
+    finally:
+        client.app.state.engine = engine
+    assert res.status_code == 503, res.text
+    assert res.json()["code"] == "data_dir_moving"
+
+
+def test_failed_move_cleanup_error_still_reattaches_library(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    settings = _settings(tmp_path)
+    client = authed_client(settings)
+
+    def boom(_src: Path, _dest: Path, **_kwargs: object) -> None:
+        raise ValueError("disk full")
+
+    monkeypatch.setattr("mosaicwave.runtime.copy_data_dir", boom)
+    monkeypatch.setattr(
+        "mosaicwave.runtime._rewrite_library_root_uris",
+        lambda *a, **k: (_ for _ in ()).throw(OSError("locked")),
+    )
+    res = client.put("/api/v1/settings", json={"data_dir": str(tmp_path / "nas")})
+    assert res.status_code == 400, res.text
+    assert client.get("/api/v1/settings").status_code == 200

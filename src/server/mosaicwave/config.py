@@ -370,7 +370,9 @@ def copy_data_dir(
                 _rm_path(leftover)
     items = [p for p in src.iterdir() if not _skip_copy_name(p.name)]
     if not move_sqlite:
-        items = [p for p in items if p.name not in _SQLITE_FILE_NAMES]
+        # The databases, backups and exports stay in the app folder. Only the
+        # photo payload (originals, thumbnails) goes to the new data folder.
+        items = [p for p in items if p.name in _FILE_PAYLOAD_NAMES]
     for item in items:
         target = dest / item.name
         if not target.exists():

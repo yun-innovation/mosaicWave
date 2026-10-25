@@ -78,7 +78,11 @@ def _out(
     boot_path = Path(settings.bootstrap_dir or settings.data_dir).expanduser().resolve()
     boot = str(boot_path)
     smb = read_data_dir_smb(boot_path)
-    with request.app.state.engine.connect() as conn:
+    engine = request.app.state.engine
+    if engine is None:
+        # The library is detached while the data folder is being moved.
+        raise ApiError(503, "data_dir_moving", "the library is being moved; try again shortly")
+    with engine.connect() as conn:
         schema_version = int(conn.exec_driver_sql("PRAGMA user_version").scalar_one())
     return HostSettingsOut(
         data_dir=str(settings.data_dir.expanduser().resolve()),

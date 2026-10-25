@@ -19,6 +19,7 @@
   "data_dir_env_locked": "MOSAICWAVE_DATA_DIR is set, so the folder cannot be changed on the Server page.",
   "data_dir_occupied": "That destination already has a mosaicWave library.",
   "data_dir_job_running": "Cannot move the library while a job is running.",
+  "data_dir_moving": "The library is being moved. Try again in a moment.",
 
   "folder_not_found": "Folder not found: {{message}}",
   "folder_forbidden": "No permission to open that folder: {{message}}",

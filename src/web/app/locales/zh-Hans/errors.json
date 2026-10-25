@@ -19,6 +19,7 @@
   "data_dir_env_locked": "已设置 MOSAICWAVE_DATA_DIR，因此无法在“服务器”页更改文件夹。",
   "data_dir_occupied": "该目标已经有 mosaicWave 照片库。",
   "data_dir_job_running": "有任务正在运行时无法移动照片库。",
+  "data_dir_moving": "照片库正在移动，请稍后再试。",
 
   "folder_not_found": "找不到文件夹：{{message}}",
   "folder_forbidden": "没有权限打开该文件夹：{{message}}",
