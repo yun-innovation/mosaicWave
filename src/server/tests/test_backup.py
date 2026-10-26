@@ -422,3 +422,29 @@ def test_archive_name_matches_manifest_time_even_when_the_clock_ticks(
         with zipfile.ZipFile(archive) as zf:
             created = datetime.fromisoformat(json.loads(zf.read("manifest.json"))["created_at"])
         assert archive.stem.endswith(created.strftime("%Y%m%d-%H%M%S")), archive.name
+
+
+def test_times_in_the_zip_and_after_a_restore_are_utc(tmp_path: Path) -> None:
+    import os
+    from datetime import datetime, timezone
+
+    from authutil import me_id
+
+    src = _settings(tmp_path / "a")
+    client = _seed(src)
+    uid = me_id(client)
+    photo = src.data_dir / "libraries" / uid / "red.jpg"
+    moment = int(datetime(2024, 3, 9, 13, 5, 7, tzinfo=timezone.utc).timestamp())  # an odd second
+    os.utime(photo, (moment, moment))
+
+    result = backup_site(src, tmp_path / "out")
+    with zipfile.ZipFile(result.path) as zf:
+        # the zip says UTC (not this computer's local time), whatever zone the computer is in
+        assert zf.getinfo(f"libraries/{uid}/red.jpg").date_time == (2024, 3, 9, 13, 5, 6)
+        assert zf.getinfo("manifest.json").date_time[0] >= 2026
+
+    dst = _settings(tmp_path / "b")
+    restore_site(result.path, dst)
+    restored = dst.data_dir / "libraries" / uid / "red.jpg"
+    assert int(restored.stat().st_mtime) == moment  # to the second, not shifted by a zone
+    client.close()

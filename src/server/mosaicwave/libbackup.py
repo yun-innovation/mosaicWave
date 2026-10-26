@@ -36,6 +36,7 @@ from mosaicwave.archive import (
     big_media,
     check_library_manifest,
     copy_loose,
+    entry_mtime,
     hash_loose,
     iter_files,
     open_set,
@@ -320,7 +321,7 @@ def stage_library(
                         raise ArchiveError(f"archive is damaged at {name!r}: {exc}") from exc
                     if name != DB_ENTRY:
                         try:
-                            stamp_time = datetime(*info.date_time, tzinfo=timezone.utc).timestamp()
+                            stamp_time = entry_mtime(info)  # UTC, as the backup wrote it
                             os.utime(dest, (stamp_time, stamp_time))
                         except (ValueError, OSError):
                             pass

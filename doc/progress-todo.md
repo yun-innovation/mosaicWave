@@ -27,5 +27,6 @@ Open items only. Roadmap: ordered milestones in [roadmap.md](roadmap.md). The ea
   - [x] PR 1: Move library needs maintenance mode `on` (`409 maintenance_required`), the Server page disables it with a link to Maintenance; a detached library answers `503 data_dir_moving` on every library request
   - [x] PR 2: the move as a cancellable `data_dir_move` job (progress, free-space check, verify before switching `data_dir`), with a `data-dir-move.json` journal rolled back or finished at start; old files deleted only after the new folder answers
 - [ ] ARM64 QPKG sideload on a QTS 5 ARM64 NAS (**milestone 10, frozen**: no ARM hardware)
+- [ ] Time zone for display: every stored time is UTC (done for backups: zip entries are UTC); the user picks the zone that dates and times are shown in (web and API formatting), saved with the account (**milestone 8**)
 - [ ] Multilingual API: language code on requests; translated messages and locale-formatted date/time in responses; sync and ordering timestamps stay UTC; response language and switch target kept separate, tags normalized to canonical codes (**milestone 8**)
 - [ ] Gallery tools: select many, timeline scrubber, search (new API), light theme (**milestone 9**)

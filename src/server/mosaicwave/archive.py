@@ -12,8 +12,12 @@ import hashlib
 import json
 import os
 import re
+import shutil
+import struct
+import time
 import zipfile
 import zlib
+from datetime import datetime, timezone
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
@@ -419,6 +423,40 @@ def copy_loose(loose: LooseFile, dest: Path) -> None:
             pass
 
 
+# --- times in a zip: always UTC -----------------------------------------------------------------
+#
+# A zip entry has a time without a zone, and tools disagree on what it means (most say local time).
+# mosaicWave keeps every time in UTC, in the databases and in the files, so an entry is written with
+# its modified time in UTC, and exactly: the Info-ZIP "extended timestamp" field holds the UTC epoch
+# second, and the plain zip time (which has two-second steps) is the same moment in UTC.
+
+_UT_FIELD = 0x5455
+_ZIP_MIN = 315532800  # 1980-01-01, the first time a zip entry can hold
+_ZIP_MAX = 4354819198  # 2107-12-31 23:59:58, the last
+
+
+def utc_zipinfo(path: Path, arcname: str, kind: int) -> zipfile.ZipInfo:
+    """A zip entry for ``path`` with its modified time in UTC."""
+    stat = path.stat()
+    mtime = int(stat.st_mtime)
+    info = zipfile.ZipInfo(arcname, time.gmtime(min(max(mtime, _ZIP_MIN), _ZIP_MAX))[:6])
+    info.compress_type = kind
+    info.external_attr = (stat.st_mode & 0xFFFF) << 16
+    info.extra = struct.pack("<HHBI", _UT_FIELD, 5, 1, max(mtime, 0) & 0xFFFFFFFF)
+    return info
+
+
+def entry_mtime(info: zipfile.ZipInfo) -> float:
+    """The modified time (UTC epoch) of a zip entry: the exact one if it has it, else its zip time read as UTC."""
+    extra, pos = info.extra, 0
+    while pos + 4 <= len(extra):
+        field, size = struct.unpack_from("<HH", extra, pos)
+        if field == _UT_FIELD and size >= 5 and extra[pos + 4] & 1:
+            return float(struct.unpack_from("<I", extra, pos + 5)[0])
+        pos += 4 + size
+    return datetime(*info.date_time, tzinfo=timezone.utc).timestamp()
+
+
 def is_media_name(name: str) -> bool:
     """A photo or thumbnail entry (the rest are the databases)."""
     return name.startswith((f"{LIBRARIES}/", f"{BLOBS}/"))
@@ -572,9 +610,11 @@ def write_archive(
                 for piece in group:
                     try:
                         kind = zipfile.ZIP_DEFLATED if piece.deflate else zipfile.ZIP_STORED
-                        zf.write(piece.path, piece.arcname, compress_type=kind)
+                        entry = utc_zipinfo(piece.path, piece.arcname, kind)
+                        with open(piece.path, "rb") as src, zf.open(entry, "w", force_zip64=True) as out:
+                            shutil.copyfileobj(src, out, _COPY)
                         if is_media_name(piece.arcname):  # the databases are not counted
-                            total_bytes += zf.getinfo(piece.arcname).file_size
+                            total_bytes += entry.file_size
                             written += 1
                     except FileNotFoundError:
                         vanished += is_media_name(piece.arcname)
@@ -594,7 +634,10 @@ def write_archive(
                 if count > 1:
                     manifest["part"] = index + 1
                     manifest["parts"] = count
-                zf.writestr(MANIFEST, json.dumps(manifest, indent=2, sort_keys=True), zipfile.ZIP_DEFLATED)
+                note = zipfile.ZipInfo(MANIFEST, time.gmtime()[:6])
+                note.compress_type = zipfile.ZIP_DEFLATED
+                note.external_attr = 0o600 << 16
+                zf.writestr(note, json.dumps(manifest, indent=2, sort_keys=True))
             manifests.append(manifest)
         for _entry, tmp, final in copied:
             os.replace(tmp, final)

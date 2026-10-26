@@ -43,6 +43,7 @@ from mosaicwave.archive import (
     big_media,
     check_manifest,
     copy_loose,
+    entry_mtime,
     hash_loose,
     is_media_name,
     open_set,
@@ -208,7 +209,7 @@ def _extract(
         if _is_media(name):
             media += 1
             try:
-                stamp = datetime(*info.date_time, tzinfo=timezone.utc).timestamp()
+                stamp = entry_mtime(info)  # UTC, as the backup wrote it
                 os.utime(target, (stamp, stamp))
             except (ValueError, OSError):
                 pass

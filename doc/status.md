@@ -1,6 +1,6 @@
 # Status
 
-**Updated:** 2026-10-24  
+**Updated:** 2026-10-26  
 **Keep in sync with:** [`.cursor/rules/mosaicwave-status.mdc`](../.cursor/rules/mosaicwave-status.mdc) (same date, same next step).
 
 Short onboarding snapshot for agents. **Session start:** always read [index.md](index.md) first (For AI Agents + Planning). Names: [naming.md](naming.md).
@@ -13,7 +13,7 @@ Short onboarding snapshot for agents. **Session start:** always read [index.md](
 
 ## Next
 
-**Milestone 7** is **built** (PR 1 site backup + admin Backup page + offline restore, PR 2 online site restore staged from the Backup page and applied at restart, PR 3 per-user library backup + online exact-swap restore in Settings, PR 4 export as ordinary files with plain or Takeout layout and Google-style splitting, PR 5 split backups: a backup too big for one zip is a set of parts; [backup.md](backup.md); site restore needs maintenance mode, **milestone 12**, built: [maintenance.md](maintenance.md)) and stays open until you say `milestone 7 done`. Then 8 multilingual API (translated messages and locale date/time in responses), 9 gallery tools (select many, scrubber, search, light theme). 10 ARM64 QPKG is **frozen** (no ARM hardware) and 11 share links (SaaS) is **deferred**; both are skipped.
+**Milestone 7** is **built** (PR 1 site backup + admin Backup page + offline restore, PR 2 online site restore staged from the Backup page and applied at restart, PR 3 per-user library backup + online exact-swap restore in Settings, PR 4 export as ordinary files with plain or Takeout layout and Google-style splitting, PR 5 split backups: a backup too big for one zip is a set of parts; [backup.md](backup.md); site restore needs maintenance mode, **milestone 12**, built: [maintenance.md](maintenance.md)) and stays open until you say `milestone 7 done`. Then 8 multilingual API (translated messages and locale date/time in responses, shown in a time zone the user chooses; all stored times are UTC), 9 gallery tools (select many, scrubber, search, light theme). 10 ARM64 QPKG is **frozen** (no ARM hardware) and 11 share links (SaaS) is **deferred**; both are skipped.
 
 ## Constraints
 
