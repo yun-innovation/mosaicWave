@@ -172,6 +172,9 @@ class ImportOut(BaseModel):
     phase: str | None = None
     error: str | None = None
     warnings: list[DumpWarningOut] = Field(default_factory=list)
+    # Move library only: the API restarts itself when it is done / a note about the mount.
+    restarting: bool = False
+    notice: str | None = None
 
 
 class JobEventOut(BaseModel):
@@ -344,6 +347,8 @@ def _job_out(view: dict) -> ImportOut:
         phase=view.get("phase"),
         error=view.get("error"),
         warnings=_warning_outs(view.get("warnings") or []),
+        restarting=bool(view.get("restarting")),
+        notice=view.get("notice"),
     )
 
 

@@ -7,7 +7,7 @@ import { apiFetch, AppUser, HostSettings, Me, readDetail } from "./api";
 import { FolderPicker } from "./FolderPicker";
 import { routeHash } from "./hashRoute";
 import i18n from "./i18n";
-import type { MaintenanceStatus } from "./types";
+import type { ImportJob, MaintenanceStatus } from "./types";
 
 type SmbParts = { host: string; share: string; folder: string; user: string };
 
@@ -106,6 +106,29 @@ async function waitForApiAfterRestart() {
   throw new Error(
     isDebugWeb() ? i18n.t("settings:save.noRestartDebug") : i18n.t("settings:save.noRestart"),
   );
+}
+
+/** Poll a job until it ends. A restart in the middle of the poll (the move is finishing) is not an error. */
+async function followJob(id: string | null): Promise<ImportJob> {
+  let last: ImportJob | null = null;
+  for (;;) {
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    try {
+      const res = await apiFetch(`/api/v1/jobs/${encodeURIComponent(id ?? "")}`);
+      if (res.ok) {
+        last = (await res.json()) as ImportJob;
+        if (last.status !== "running" && last.status !== "queued") {
+          return last;
+        }
+      } else if (res.status === 404 && last) {
+        return { ...last, status: "done" };
+      }
+    } catch {
+      if (last && last.restarting) {
+        return last;
+      }
+    }
+  }
 }
 
 type Props = {
@@ -246,15 +269,29 @@ export function ServerView({ me, platform, maintenance }: Props) {
         }
         return;
       }
-      const saved = (await res.json()) as HostSettings;
-      applyHost(saved);
+      // The move is a job: the status bar shows its progress and Cancel on every page. This page
+      // follows it to the end so it can report the result and wait for the API when it restarts.
+      const started = (await res.json()) as ImportJob;
       setSmbPasswordDraft("");
-      if (saved.restarting) {
+      setNotice(t("settings:save.moving"));
+      const finished = await followJob(started.id);
+      if (finished.status === "cancelled") {
+        setNotice(t("settings:save.cancelled"));
+        await load();
+        return;
+      }
+      if (finished.status !== "done") {
+        setNotice(null);
+        setError(finished.error || t("settings:save.failed"));
+        await load();
+        return;
+      }
+      if (finished.restarting) {
         setNotice(t("settings:save.restarting"));
         await waitForApiAfterRestart();
-        await load();
       }
-      setNotice(saved.notice || null);
+      await load();
+      setNotice(finished.notice || null);
     } catch (err: unknown) {
       setNotice(null);
       const msg = err instanceof Error ? err.message : t("settings:save.failed");
@@ -315,7 +352,7 @@ export function ServerView({ me, platform, maintenance }: Props) {
           </div>
           <h3 className="section-title divided">{t("settings:move.label")}</h3>
           <p className="detail">{t("settings:move.help")}</p>
-          {!storageLocked && maintenance.state !== "on" && (
+          {!storageLocked && !busy && maintenance.state !== "on" && (
             <p className="detail">
               {maintenance.state === "draining" ? t("settings:move.needsMaintenanceDraining") : t("settings:move.needsMaintenance")}{" "}
               <a href={routeHash({ view: "maintenance", albumId: null })}>{t("settings:move.openMaintenance")}</a>

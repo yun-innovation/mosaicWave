@@ -55,6 +55,9 @@ export type ImportJob = {
   phase: string | null;
   error: string | null;
   warnings: DumpWarning[];
+  /** Move library only: the API restarts itself after the job / a note about the mount. */
+  restarting?: boolean;
+  notice?: string | null;
 };
 
 export type Notice = { text: string; ok: boolean };

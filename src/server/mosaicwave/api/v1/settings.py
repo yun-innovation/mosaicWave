@@ -5,15 +5,16 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
-from sqlalchemy.orm import Session
 
 from mosaicwave import maintenance
 from mosaicwave.api.errors import ApiError, wrapped
+from mosaicwave.api.v1.library import ImportOut, _job_out
 from mosaicwave.auth.deps import require_admin
 from mosaicwave.config import (
     data_dir_env_override,
     data_dir_occupied,
     ensure_writable_dir,
+    preflight_move,
     read_data_dir_mount,
     read_data_dir_smb,
     schedule_api_restart,
@@ -27,7 +28,6 @@ from mosaicwave.storage.smbpath import (
     share_mount_dest,
     smb_url_for_host_path,
 )
-from mosaicwave.db import get_session
 from mosaicwave.library.importjob import ImportBusy, ImportJobRunner
 from mosaicwave.models import User
 from mosaicwave.runtime import switch_data_dir
@@ -105,13 +105,13 @@ def get_settings(request: Request, _admin: User = Depends(require_admin)) -> Hos
     return _out(request)
 
 
-@router.put("/settings", response_model=HostSettingsOut)
+@router.put("/settings", response_model=ImportOut)
 def put_settings(
     request: Request,
     body: HostSettingsIn,
-    session: Session = Depends(get_session),
-    _admin: User = Depends(require_admin),
-) -> HostSettingsOut:
+    admin: User = Depends(require_admin),
+) -> ImportOut:
+    """Start moving the data folder as a job (needs maintenance mode); follow it with ``GET /jobs/{id}``."""
     if data_dir_env_override():
         raise ApiError(
             409,
@@ -156,24 +156,38 @@ def put_settings(
             ensure_writable_dir(dest)
         except ValueError as exc:
             raise _bad_request(exc) from exc
-    runner: ImportJobRunner = request.app.state.import_jobs
     try:
-        with runner.idle_exclusive(session):
-            session.close()
-            request.app.state.moving = True
-            try:
-                switch_data_dir(request.app, dest, smb_url=smb, mount_point=stored_mount)
-            finally:
-                request.app.state.moving = False
+        preflight_move(src, dest)
+    except ValueError as exc:
+        raise _bad_request(exc) from exc
+    app = request.app
+
+    def mover(on_progress, check):  # type: ignore[no-untyped-def]
+        try:
+            switch_data_dir(
+                app, dest, smb_url=smb, mount_point=stored_mount, on_progress=on_progress, check=check
+            )
+        finally:
+            app.state.moving = False
+        # Keep a live SMB mount. Killing the API here remounts from config and, when
+        # that fails, leaves Settings on the app folder. Local-folder moves still restart.
+        restarting = False if smb else schedule_api_restart(boot)
+        return {"restarting": restarting, "notice": mount_notice}
+
+    runner: ImportJobRunner = app.state.import_jobs
+    if app.state.moving:  # a second request must not end the first one's protection
+        raise ApiError(
+            409, "data_dir_job_running", "cannot move the data folder while a job is running"
+        )
+    app.state.moving = True  # library requests wait from here until the job ends (api/v1/moving.py)
+    try:
+        view = runner.start_move(user_id=admin.id, mover=mover)
     except ImportBusy:
+        app.state.moving = False
         raise ApiError(
             409, "data_dir_job_running", "cannot move the data folder while a job is running"
         ) from None
-    except ValueError as exc:
-        raise _bad_request(exc) from exc
-    except OSError as exc:
-        raise _bad_request(OSError(f"could not move the data folder: {exc}")) from exc
-    # Keep a live SMB mount. Killing the API here remounts from config and, when
-    # that fails, leaves Settings on the app folder. Local-folder moves still restart.
-    restarting = False if smb else schedule_api_restart(boot)
-    return _out(request, restarting=restarting, notice=mount_notice)
+    except BaseException:
+        app.state.moving = False
+        raise
+    return _job_out(view)

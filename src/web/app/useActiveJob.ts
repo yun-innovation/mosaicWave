@@ -41,6 +41,7 @@ export function jobKindLabel(kind: string | null): string {
   if (kind === "library_backup") return i18n.t("import:jobs.kind.library_backup");
   if (kind === "library_restore") return i18n.t("import:jobs.kind.library_restore");
   if (kind === "export") return i18n.t("import:jobs.kind.export");
+  if (kind === "data_dir_move") return i18n.t("import:jobs.kind.data_dir_move");
   return kind || i18n.t("import:jobs.kind.unknown");
 }
 
@@ -73,6 +74,9 @@ function summary(job: ImportJob): FinishedJob {
   }
   if (job.kind === "export") {
     return { id, kind: job.kind, ok: true, text: i18n.t("jobbar:exportDone") };
+  }
+  if (job.kind === "data_dir_move") {
+    return { id, kind: job.kind, ok: true, text: i18n.t("jobbar:moveDone") };
   }
   const counts = {
     assets: i18n.t("import:result.assets", { count: job.assets }),

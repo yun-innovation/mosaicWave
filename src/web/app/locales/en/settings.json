@@ -57,6 +57,8 @@
     "passwordPlaceholder": "required on first Save folder"
   },
   "save": {
+    "moving": "Moving the library. Progress is shown in the status bar.",
+    "cancelled": "The move was cancelled. The library is still in its original folder.",
     "enterHostShare": "Enter host and share",
     "chooseFolder": "Choose a folder",
     "confirmHome": "Move the library back to the app folder? Leftover library files there are replaced. Config and login stay. Browse and typing do not move anything until you confirm here.",

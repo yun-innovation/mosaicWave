@@ -20,11 +20,14 @@
       "site_restore": "Nothing is kept; your library stays as it is.",
       "library_backup": "No archive is kept.",
       "library_restore": "Nothing is changed; your library stays as it is. Once your library is being replaced it cannot be stopped.",
-      "export": "Nothing is kept: the export is removed."
+      "export": "Nothing is kept: the export is removed.",
+      "data_dir_move": "Nothing is moved: the library stays in its folder. Once the new folder is being switched on, it cannot be stopped."
     }
   },
   "restoreStaged": "Restore is ready to apply.",
   "libraryBackupDone": "Library backup finished.",
   "libraryRestored": "Library restored.",
-  "exportDone": "Export finished."
+  "exportDone": "Export finished.",
+  "moveDone": "Library moved.",
+  "mb": "{{processed}} / {{total}} MB"
 }

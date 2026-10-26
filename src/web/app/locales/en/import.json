@@ -73,7 +73,8 @@
       "site_restore": "Site restore",
       "library_backup": "Library backup",
       "library_restore": "Library restore",
-      "export": "Export"
+      "export": "Export",
+      "data_dir_move": "Move library"
     },
     "status": {
       "idle": "idle",

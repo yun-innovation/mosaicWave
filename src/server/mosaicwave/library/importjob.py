@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import shutil
 import threading
+from collections.abc import Callable
 from contextlib import contextmanager
 from pathlib import Path
 from typing import BinaryIO
@@ -31,6 +32,7 @@ KIND_RESTORE = "site_restore"
 KIND_LIBRARY_BACKUP = "library_backup"
 KIND_LIBRARY_RESTORE = "library_restore"
 KIND_EXPORT = "export"
+KIND_MOVE = "data_dir_move"
 INTERRUPTED = "interrupted (process stopped)"
 
 
@@ -171,6 +173,8 @@ def job_view(row: Job) -> dict:
         "phase": inp.get("phase"),
         "error": row.error,
         "warnings": _warnings_from_result(result),
+        "restarting": bool(result.get("restarting")),
+        "notice": result.get("notice"),
     }
 
 
@@ -195,6 +199,8 @@ def idle_view() -> dict:
         "phase": None,
         "error": None,
         "warnings": [],
+        "restarting": False,
+        "notice": None,
     }
 
 
@@ -1011,6 +1017,40 @@ class ImportJobRunner:
             session.close()
             self._release(job_id)
 
+    def start_move(self, *, user_id: str, mover: Callable[[Callable[[int, int, int, int], None], Callable[[], None]], dict]) -> dict:
+        """Run ``mover(on_progress, check)`` as the server's one running job (Move library, doc/maintenance.md).
+
+        ``mover`` copies the data folder and returns the result for the job row; ``check`` raises to
+        cancel while it is still copying. Progress is in MiB and never names a file.
+        """
+        job_id, view = self._begin(KIND_MOVE, user_id, {}, "Move library started")
+        threading.Thread(target=self._run_move, args=(job_id, mover), daemon=True).start()
+        return view
+
+    def _run_move(self, job_id: str, mover) -> None:  # type: ignore[no-untyped-def]
+        session = self._factory()
+        mib = 1024 * 1024
+        try:
+            row = session.get(Job, job_id)
+
+            def on_progress(done_bytes: int, total_bytes: int, _done_files: int, _total_files: int) -> None:
+                if row is not None:
+                    row.total = (total_bytes + mib - 1) // mib
+                    row.processed = min(done_bytes // mib, row.total)
+                    session.commit()  # no lock held between updates: the Activity page reads this row
+
+            result = mover(on_progress, lambda: self._check_cancel(job_id))
+            self._finish(session, job_id, result, "Library moved to the new folder")
+        except JobCancelled:
+            try:
+                self._mark_cancelled(session, job_id, "the library stays in its folder")
+            except Exception:
+                session.rollback()
+        except Exception as exc:  # ValueError (refused, mismatch), OSError, sqlite errors
+            self._fail(session, job_id, exc)
+        finally:
+            session.close()
+            self._release(job_id)
     def start_export(
         self,
         *,

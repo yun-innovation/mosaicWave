@@ -20,11 +20,14 @@
       "site_restore": "不会保留任何内容，你的相册保持原样。",
       "library_backup": "不会保留任何归档文件。",
       "library_restore": "不会更改任何内容，你的相册保持原样。一旦开始替换你的相册，就无法中止。",
-      "export": "不会保留任何内容，导出的文件会被移除。"
+      "export": "不会保留任何内容，导出的文件会被移除。",
+      "data_dir_move": "不会移动任何内容，照片库保留在原文件夹。一旦开始切换到新文件夹，就无法中止。"
     }
   },
   "restoreStaged": "还原已就绪，可以应用。",
   "libraryBackupDone": "相册备份完成。",
   "libraryRestored": "相册已还原。",
-  "exportDone": "导出完成。"
+  "exportDone": "导出完成。",
+  "moveDone": "照片库已移动。",
+  "mb": "{{processed}} / {{total}} MB"
 }
