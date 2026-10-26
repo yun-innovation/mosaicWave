@@ -88,8 +88,8 @@ const NAV_MAIN: View[] = ["photos", "albums", "import", "activity", "settings"];
 /** Views only an admin sees: the lower part of the sidebar, below a separator. */
 const NAV_ADMIN: View[] = ["server", "backup", "maintenance"];
 
-/** While maintenance is on an admin gets only these (see `maintenanceRoute` in page.tsx). */
-export const MAINTENANCE_VIEWS: View[] = ["backup", "maintenance", "activity"];
+/** While maintenance is on an admin gets only these (Server is here because Move library needs maintenance mode) (see `maintenanceRoute` in page.tsx). */
+export const MAINTENANCE_VIEWS: View[] = ["backup", "maintenance", "activity", "server"];
 
 type Props = {
   me: Me;

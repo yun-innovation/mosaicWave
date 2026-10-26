@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from mosaicwave import maintenance
 from mosaicwave.api.errors import ApiError, wrapped
 from mosaicwave.auth.deps import require_admin
 from mosaicwave.config import (
@@ -117,6 +118,9 @@ def put_settings(
             "data_dir_env_locked",
             "MOSAICWAVE_DATA_DIR is set; the data folder cannot be changed in Settings",
         )
+    if maintenance.read(request.app.state.settings) is None:
+        # Moving copies the whole library; nobody else may be using it meanwhile (milestone 13).
+        raise ApiError(409, "maintenance_required", "Turn maintenance mode on first")
     typed = (body.data_dir or "").strip()
     smb_user = (body.smb_user or "").strip()
     smb_password = body.smb_password or ""
@@ -156,7 +160,11 @@ def put_settings(
     try:
         with runner.idle_exclusive(session):
             session.close()
-            switch_data_dir(request.app, dest, smb_url=smb, mount_point=stored_mount)
+            request.app.state.moving = True
+            try:
+                switch_data_dir(request.app, dest, smb_url=smb, mount_point=stored_mount)
+            finally:
+                request.app.state.moving = False
     except ImportBusy:
         raise ApiError(
             409, "data_dir_job_running", "cannot move the data folder while a job is running"

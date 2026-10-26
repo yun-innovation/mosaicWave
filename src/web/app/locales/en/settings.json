@@ -23,6 +23,9 @@
   },
   "move": {
     "label": "Move library",
+    "needsMaintenance": "Moving the library needs maintenance mode, so nobody else is using it while it is copied.",
+    "needsMaintenanceDraining": "Maintenance mode is waiting for the running job to finish. Moving needs it to be on.",
+    "openMaintenance": "Open Maintenance",
     "help": "One destination: a local folder, or an SMB share. Photos and thumbnails move only when you click Save folder. SQLite stays in the App folder. Returning to the app folder replaces leftover library files there; config and login stay. If the move fails, mosaicWave keeps the original folder.",
     "folder": "Folder",
     "smb": "SMB",
