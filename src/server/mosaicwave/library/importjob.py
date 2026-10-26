@@ -646,7 +646,7 @@ class ImportJobRunner:
         thread.start()
         return view
 
-    def start_backup(self, *, user_id: str, include_thumbs: bool) -> dict:
+    def start_backup(self, *, user_id: str, include_thumbs: bool, split_bytes: int | None = None) -> dict:
         if self._settings is None:
             raise RuntimeError("backup needs the app settings")
         with self._lock:
@@ -661,7 +661,7 @@ class ImportJobRunner:
                     created_at=now,
                     started_at=now,
                     user_id=user_id,
-                    input_json=json.dumps({"include_thumbs": include_thumbs}, sort_keys=True),
+                    input_json=json.dumps({"include_thumbs": include_thumbs, "split_bytes": split_bytes}, sort_keys=True),
                     result_json="{}",
                 )
                 session.add(row)
@@ -674,11 +674,11 @@ class ImportJobRunner:
             finally:
                 session.close()
             self._running_id = job_id
-        thread = threading.Thread(target=self._run_backup, args=(job_id, include_thumbs), daemon=True)
+        thread = threading.Thread(target=self._run_backup, args=(job_id, include_thumbs, split_bytes), daemon=True)
         thread.start()
         return view
 
-    def _run_backup(self, job_id: str, include_thumbs: bool) -> None:
+    def _run_backup(self, job_id: str, include_thumbs: bool, split_bytes: int | None = None) -> None:
         assert self._settings is not None
         session = self._factory()
         try:
@@ -698,6 +698,7 @@ class ImportJobRunner:
                 self._settings,
                 self._settings.backup_dir,
                 include_thumbs=include_thumbs,
+                split_bytes=split_bytes,
                 on_progress=on_progress,
             )
             manifest = result.manifest
@@ -707,7 +708,12 @@ class ImportJobRunner:
             row.processed = row.total
             row.error = None
             row.result_json = json.dumps(
-                {"backup": result.path.name, "assets": manifest["assets"], "albums": manifest["albums"]},
+                {
+                    "backup": result.path.name,
+                    "parts": len(result.paths),
+                    "assets": manifest["assets"],
+                    "albums": manifest["albums"],
+                },
                 sort_keys=True,
             )
             session.add(
@@ -715,7 +721,10 @@ class ImportJobRunner:
                     id=new_id(),
                     job_id=row.id,
                     level="info",
-                    message=f"Backup {result.path.name}: {manifest['assets']} assets, {manifest['file_count']} files",
+                    message=(
+                        f"Backup {result.path.name}: {manifest['assets']} assets, {manifest['file_count']} files"
+                        + (f", {len(result.paths)} parts" if len(result.paths) > 1 else "")
+                    ),
                 )
             )
             for warning in manifest["warnings"]:
@@ -930,14 +939,18 @@ class ImportJobRunner:
 
         return on_progress
 
-    def start_library_backup(self, *, user_id: str) -> dict:
+    def start_library_backup(self, *, user_id: str, split_bytes: int | None = None) -> dict:
         if self._settings is None:
             raise RuntimeError("backup needs the app settings")
-        job_id, view = self._begin(KIND_LIBRARY_BACKUP, user_id, {}, "Library backup started")
-        threading.Thread(target=self._run_library_backup, args=(job_id, user_id), daemon=True).start()
+        job_id, view = self._begin(
+            KIND_LIBRARY_BACKUP, user_id, {"split_bytes": split_bytes}, "Library backup started"
+        )
+        threading.Thread(
+            target=self._run_library_backup, args=(job_id, user_id, split_bytes), daemon=True
+        ).start()
         return view
 
-    def _run_library_backup(self, job_id: str, user_id: str) -> None:
+    def _run_library_backup(self, job_id: str, user_id: str, split_bytes: int | None = None) -> None:
         assert self._settings is not None
         session = self._factory()
         try:
@@ -945,14 +958,21 @@ class ImportJobRunner:
                 self._settings,
                 user_id,
                 user_backup_dir(self._settings, user_id),
+                split_bytes=split_bytes,
                 on_progress=self._progress(session, job_id),
             )
             manifest = result.manifest
             self._finish(
                 session,
                 job_id,
-                {"backup": result.path.name, "assets": manifest["assets"], "albums": manifest["albums"]},
-                f"Backup {result.path.name}: {manifest['assets']} assets, {manifest['file_count']} files",
+                {
+                    "backup": result.path.name,
+                    "parts": len(result.paths),
+                    "assets": manifest["assets"],
+                    "albums": manifest["albums"],
+                },
+                f"Backup {result.path.name}: {manifest['assets']} assets, {manifest['file_count']} files"
+                + (f", {len(result.paths)} parts" if len(result.paths) > 1 else ""),
             )
             for warning in manifest["warnings"]:
                 session.add(JobEvent(id=new_id(), job_id=job_id, level="info", message=warning))

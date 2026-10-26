@@ -172,17 +172,17 @@ Illustrative v1 surface (names can change; behavior should not):
 | GET | `/api/v1/jobs/running` | **Admin.** The one running job on the server, any owner, without file names; [maintenance.md](maintenance.md) |
 | GET | `/api/v1/jobs/{id}` | One job + progress / result (own jobs only) |
 | GET | `/api/v1/jobs/{id}/events` | Job audit log (own jobs only) |
-| POST | `/api/v1/backups` | **Admin.** Start a site backup job (`include_thumbs` optional); [backup.md](backup.md) |
-| GET | `/api/v1/backups` | **Admin.** List site archives in the data folder's `backups/` |
-| GET | `/api/v1/backups/{name}` | **Admin.** Download one archive |
-| DELETE | `/api/v1/backups/{name}` | **Admin.** Delete one archive |
+| POST | `/api/v1/backups` | **Admin.** Start a site backup job (`include_thumbs` and `split_gb` optional; a big backup is written as several zips, [backup.md](backup.md#split-backups-milestone-7-pr-5)) |
+| GET | `/api/v1/backups` | **Admin.** List site archives in the data folder's `backups/`; a split backup is one entry (`parts`, `part_files`, `missing`) |
+| GET | `/api/v1/backups/{name}` | **Admin.** Download one archive (one part of a split backup) |
+| DELETE | `/api/v1/backups/{name}` | **Admin.** Delete one archive (every part of a split backup) |
 | POST | `/api/v1/backups/{name}/restore` | **Admin.** Stage an online restore as a cancellable `site_restore` job; needs maintenance mode (`maintenance_required`) |
 | POST | `/api/v1/backups/restore` | **Admin.** `{path}`: stage a restore from a zip anywhere on the server (maintenance mode required) |
-| PUT | `/api/v1/backups/upload` | **Admin.** Raw zip body from the browser into `backups/`; checked and stored under the standard name |
+| PUT | `/api/v1/backups/upload` | **Admin.** Raw zip body from the browser into `backups/`; checked and stored under the standard name (a part of a split backup is stored as `-NNN.zip`; send every part; a `…-NNN.big` file is sent with `?name=` after a zip of its backup) |
 | GET | `/api/v1/backups/restore` | **Admin.** `{pending, result}`: the staged restore and the last start-up swap |
 | POST | `/api/v1/backups/restore/apply` | **Admin.** Restart the API; the staged restore is swapped in at start-up |
 | DELETE | `/api/v1/backups/restore` | **Admin.** Discard the staged restore and clear the result |
-| POST | `/api/v1/me/backups` | Start a backup of **your own** library (job `library_backup`); [backup.md](backup.md) |
+| POST | `/api/v1/me/backups` | Start a backup of **your own** library (job `library_backup`; optional `split_gb`); [backup.md](backup.md) |
 | GET | `/api/v1/me/backups` | List your library archives (kept in `backups/users/{your id}/`) |
 | GET | `/api/v1/me/backups/{name}` | Download one of your archives |
 | DELETE | `/api/v1/me/backups/{name}` | Delete one of your archives |

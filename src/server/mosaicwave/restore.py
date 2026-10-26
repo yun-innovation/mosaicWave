@@ -37,9 +37,17 @@ from mosaicwave.archive import (
     LIBRARIES,
     MANIFEST,
     ArchiveError,
+    ArchiveSet,
+    LooseFile,
     account_entry,
+    big_media,
     check_manifest,
-    read_manifest,
+    copy_loose,
+    entry_mtime,
+    hash_loose,
+    is_media_name,
+    open_set,
+    read_manifest_file,
     safe_member,
 )
 from mosaicwave.config import Settings, _checkpoint_library_db, ensure_data_dir_exists
@@ -79,7 +87,9 @@ class RestoreResult:
     discarded: list[Path] = field(default_factory=list)
 
 
-def _members(zf: zipfile.ZipFile, manifest: dict) -> list[zipfile.ZipInfo]:
+def _members(zf: zipfile.ZipFile) -> list[zipfile.ZipInfo]:
+    """The entries of one zip, each checked for a safe name. Whether the databases are all there is a
+    question for the whole set (``_check_databases``)."""
     infos = [i for i in zf.infolist() if not i.filename.endswith("/")]
     seen: set[str] = set()
     for info in infos:
@@ -87,26 +97,65 @@ def _members(zf: zipfile.ZipFile, manifest: dict) -> list[zipfile.ZipInfo]:
         if info.filename in seen:
             raise ArchiveError(f"duplicate name in archive: {info.filename!r}")
         seen.add(info.filename)
-    if DB_ENTRY not in seen:
-        raise ArchiveError("archive has no library.db")
-    wanted = {account_entry(user_id) for user_id in manifest["user_ids"]}
-    found = {name for name in seen if name.startswith(f"{ACCOUNTS}/")}
-    if wanted != found:
-        raise ArchiveError("the library databases in the archive do not match its manifest")
     return infos
 
 
-def check_archive(archive: Path, *, full: bool = False) -> dict:
-    """Validate ``archive`` and return its manifest. ``full`` also reads every byte (CRC)."""
+def _check_databases(names: set[str], manifest: dict) -> None:
+    """The site database and one per user, whichever zip or big file they are in."""
+    if DB_ENTRY not in names:
+        raise ArchiveError("archive has no library.db")
+    found = {n for n in names if n.startswith(f"{ACCOUNTS}/")}
+    if {account_entry(user_id) for user_id in manifest["user_ids"]} != found:
+        raise ArchiveError("the library databases in the archive do not match its manifest")
+
+
+def _check_manifest(manifest: dict) -> None:
+    check_manifest(manifest, schema.CURRENT_VERSION, LIBRARY_CURRENT_VERSION)
+
+
+def check_archive(archive: Path, *, full: bool = False, part_only: bool = False) -> dict:
+    """Validate ``archive`` and return its manifest. ``full`` also reads every byte (CRC, checksums).
+
+    A split backup is checked whole: every part must sit beside ``archive``. ``part_only`` checks just
+    this file (an upload, before the other parts have arrived) and returns its own manifest.
+    """
     try:
-        with zipfile.ZipFile(archive) as zf:
-            manifest = read_manifest(zf)
-            check_manifest(manifest, schema.CURRENT_VERSION, LIBRARY_CURRENT_VERSION)
-            _members(zf, manifest)
-            if full:
-                bad = zf.testzip()
-                if bad is not None:
-                    raise ArchiveError(f"archive is damaged: {bad!r} fails its checksum")
+        loose: list[LooseFile] = []
+        if part_only:
+            own = read_manifest_file(archive)
+            _check_manifest(own)
+            paths, manifests, manifest = [archive], [own], own
+        else:
+            found = open_set(archive, _check_manifest)
+            paths, manifests, manifest, loose = found.paths, found.manifests, found.manifest, found.loose
+        names: set[str] = set()
+        for path, part_manifest in zip(paths, manifests):
+            with zipfile.ZipFile(path) as zf:
+                infos = _members(zf)
+                media = big_media(part_manifest)
+                for info in infos:
+                    if info.filename == MANIFEST:
+                        continue
+                    media += _is_media(info.filename)
+                    if info.filename in names:
+                        raise ArchiveError(f"{info.filename!r} is in two parts of the backup")
+                    names.add(info.filename)
+                if media != part_manifest.get("file_count"):
+                    raise ArchiveError(
+                        f"{path.name} lists {part_manifest.get('file_count')} files but holds {media}"
+                    )
+                if full:
+                    bad = zf.testzip()
+                    if bad is not None:
+                        raise ArchiveError(f"archive is damaged: {bad!r} fails its checksum")
+        for big in loose:
+            if big.entry.name in names:
+                raise ArchiveError(f"{big.entry.name!r} is in two parts of the backup")
+            names.add(big.entry.name)
+            if full and hash_loose(big) != big.entry.sha256:
+                raise ArchiveError(f"{big.path.name} is damaged: it does not match the backup")
+        if not part_only:
+            _check_databases(names, manifest)
     except zipfile.BadZipFile as exc:
         raise ArchiveError(f"not a zip file or damaged: {exc}") from exc
     return manifest
@@ -127,7 +176,7 @@ def _require_unlocked(db: Path) -> None:
 
 
 def _is_media(name: str) -> bool:
-    return name.startswith((f"{LIBRARIES}/", f"{BLOBS}/"))
+    return is_media_name(name)
 
 
 def _extract(
@@ -136,11 +185,17 @@ def _extract(
     app_stage: Path,
     data_stage: Path,
     on_progress: Progress | None,
+    *,
+    before: int = 0,
+    total: int | None = None,
 ) -> int:
-    """Copy members into the stages (CRC is checked as each file is read). Returns media count."""
-    total = len(infos)
+    """Copy members into the stages (CRC is checked as each file is read). Returns media count.
+
+    ``before`` members of earlier parts are done and ``total`` counts every part, for the progress.
+    """
+    total = len(infos) if total is None else total
     media = 0
-    for index, info in enumerate(infos, start=1):
+    for index, info in enumerate(infos, start=before + 1):
         name = info.filename
         if name == MANIFEST:
             continue
@@ -154,7 +209,7 @@ def _extract(
         if _is_media(name):
             media += 1
             try:
-                stamp = datetime(*info.date_time, tzinfo=timezone.utc).timestamp()
+                stamp = entry_mtime(info)  # UTC, as the backup wrote it
                 os.utime(target, (stamp, stamp))
             except (ValueError, OSError):
                 pass
@@ -283,17 +338,46 @@ def stage_site(
     stamp = _stamp()
     app_stage, data_stage = _stage_dirs(settings, stamp)
     try:
-        with zipfile.ZipFile(archive) as zf:
-            manifest = read_manifest(zf)
-            check_manifest(manifest, schema.CURRENT_VERSION, LIBRARY_CURRENT_VERSION)
-            infos = _members(zf, manifest)
-            _require_space(
-                settings.database_path.parent, sum(i.file_size for i in infos if not _is_media(i.filename))
-            )
-            _require_space(data_dir, sum(i.file_size for i in infos if _is_media(i.filename)))
-            app_stage.mkdir(parents=True)
-            data_stage.mkdir(parents=True)
-            media = _extract(zf, infos, app_stage, data_stage, on_progress)
+        found: ArchiveSet = open_set(archive, _check_manifest)
+        manifest = found.manifest
+        parts = list(zip(found.paths, found.manifests))
+        sizes = {"app": 0, "data": 0}
+        total = len(found.loose)
+        names: set[str] = set()
+        for path, part_manifest in parts:
+            with zipfile.ZipFile(path) as zf:
+                infos = _members(zf)
+            for info in infos:
+                if info.filename != MANIFEST and info.filename in names:
+                    raise ArchiveError(f"{info.filename!r} is in two parts of the backup")
+                names.add(info.filename)
+            total += len(infos)
+            for info in infos:
+                sizes["data" if _is_media(info.filename) else "app"] += info.file_size
+        for big in found.loose:
+            if big.entry.name in names:
+                raise ArchiveError(f"{big.entry.name!r} is in two parts of the backup")
+            names.add(big.entry.name)
+            sizes["data" if _is_media(big.entry.name) else "app"] += big.entry.size
+        _check_databases(names, manifest)
+        _require_space(settings.database_path.parent, sizes["app"])
+        _require_space(data_dir, sizes["data"])
+        app_stage.mkdir(parents=True)
+        data_stage.mkdir(parents=True)
+        media = 0
+        done = 0
+        for path, part_manifest in parts:
+            with zipfile.ZipFile(path) as zf:
+                infos = _members(zf)
+                media += _extract(zf, infos, app_stage, data_stage, on_progress, before=done, total=total)
+                done += len(infos)
+        for big in found.loose:
+            name = big.entry.name
+            copy_loose(big, (data_stage if _is_media(name) else app_stage) / name)
+            media += _is_media(name)
+            done += 1
+            if on_progress is not None:
+                on_progress(done, total, name)
         if media != manifest.get("file_count"):
             raise ArchiveError(f"archive lists {manifest.get('file_count')} files but holds {media}")
         site_upgrade_from = _prepare_site(app_stage / DB_ENTRY, manifest)
@@ -640,6 +724,7 @@ def main(argv: list[str] | None = None) -> int:
                 f"ok: {manifest['assets']} photos/videos, {manifest['albums']} albums, "
                 f"{manifest['users']} users, {manifest['file_count']} files, "
                 f"schema v{manifest['schema_version']} / library v{manifest['library_schema_version']}"
+                + (f", all {manifest['parts']} parts present" if manifest.get("parts") else "")
             )
             return 0
         if not args.force and _api_listening(settings):

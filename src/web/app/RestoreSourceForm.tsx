@@ -47,14 +47,14 @@ export function RestoreSourceForm({
   const [from, setFrom] = useState<From>(serverEnabled ? "server" : "device");
   const [confirming, setConfirming] = useState(false);
   const [path, setPath] = useState("");
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [working, setWorking] = useState(false);
-  const [sent, setSent] = useState<{ sent: number; total: number } | null>(null);
+  const [sent, setSent] = useState<{ sent: number; total: number; index: number; count: number } | null>(null);
   const upload = useRef<BackupUpload | null>(null);
 
   const idle = !blocked && !working;
-  const ready = maintenanceOn && idle && (from === "server" ? path.trim() !== "" : file !== null);
+  const ready = maintenanceOn && idle && (from === "server" ? path.trim() !== "" : files.length > 0);
 
   async function postRestore(url: string, body?: unknown): Promise<string | null> {
     const res = await apiFetch(url, {
@@ -72,13 +72,25 @@ export function RestoreSourceForm({
     else onStarted();
   }
 
-  async function fromDevice(chosen: File) {
-    const sending = uploadBackup(chosen, (done, total) => setSent({ sent: done, total }), urls.upload);
-    upload.current = sending;
-    setSent({ sent: 0, total: chosen.size });
-    let name: string;
+  /** Upload the chosen file, or every part of a split backup one after the other, then restore it. */
+  async function fromDevice(picked: File[]) {
+    // The zips first: a big file (.big) is kept only once a zip of its backup is there.
+    const chosen = [...picked].sort((a, b) => Number(a.name.endsWith(".big")) - Number(b.name.endsWith(".big")));
+    const total = chosen.reduce((sum, f) => sum + f.size, 0);
+    let before = 0;
+    let name = "";
     try {
-      name = (await sending.done).name;
+      for (const [i, one] of chosen.entries()) {
+        const sending = uploadBackup(
+          one,
+          (done) => setSent({ sent: before + done, total, index: i + 1, count: chosen.length }),
+          urls.upload,
+        );
+        upload.current = sending;
+        setSent({ sent: before, total, index: i + 1, count: chosen.length });
+        name = (await sending.done).name;
+        before += one.size;
+      }
     } catch (err: unknown) {
       onNotice(
         isAbortError(err)
@@ -113,7 +125,7 @@ export function RestoreSourceForm({
     onNotice(null);
     try {
       if (from === "server") await fromServer();
-      else if (file) await fromDevice(file);
+      else if (files.length > 0) await fromDevice(files);
     } catch (err: unknown) {
       onNotice({ text: err instanceof Error ? err.message : i18n.t("common:networkError"), ok: false });
     } finally {
@@ -173,21 +185,29 @@ export function RestoreSourceForm({
             <input
               id="restore-device"
               type="file"
-              accept=".zip,application/zip"
-              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              accept=".zip,.big,application/zip"
+              multiple
+              onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
               disabled={!idle}
             />
             <p className="detail">
-              {file
-                ? t("backup:restore.source.deviceSelected", { name: file.name, size: formatBytes(file.size) })
-                : t(library ? "backup:library.source.deviceHint" : "backup:restore.source.deviceHint")}
+              {files.length === 1
+                ? t("backup:restore.source.deviceSelected", { name: files[0].name, size: formatBytes(files[0].size) })
+                : files.length > 1
+                  ? t("backup:restore.source.deviceSelectedMany", {
+                      count: files.length,
+                      size: formatBytes(files.reduce((sum, f) => sum + f.size, 0)),
+                    })
+                  : t(library ? "backup:library.source.deviceHint" : "backup:restore.source.deviceHint")}
             </p>
           </>
         )}
         {sent && (
           <p className="detail import-progress">
             <progress className="status-bar-meter" max={sent.total} value={sent.sent} />{" "}
-            {t("backup:restore.source.uploading", { percent })}
+            {sent.count > 1
+              ? t("backup:restore.source.uploadingFile", { index: sent.index, count: sent.count, percent })
+              : t("backup:restore.source.uploading", { percent })}
           </p>
         )}
         {confirming && <p className="detail">{t("backup:library.restore.confirm")}</p>}

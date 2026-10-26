@@ -8,15 +8,13 @@ are. Command line: ``python -m mosaicwave.backup [--include-thumbs] [--out DIR]`
 from __future__ import annotations
 
 import argparse
-import json
 import os
 import shutil
 import sqlite3
 import sys
 import tempfile
-import zipfile
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -25,14 +23,15 @@ from mosaicwave.archive import (
     BLOBS,
     DATA_PREFIX,
     DB_ENTRY,
-    FORMAT,
     KIND_SITE,
     LIBRARIES,
-    MANIFEST,
     ArchiveError,
     account_entry,
     iter_files,
+    deflated_size,
+    plan_parts,
     safe_member,
+    write_archive,
 )
 from mosaicwave.config import Settings
 from mosaicwave.db import _connect_sqlite
@@ -44,8 +43,9 @@ Progress = Callable[[int, int, str], None]
 
 @dataclass(frozen=True)
 class BackupResult:
-    path: Path
-    manifest: dict
+    path: Path  # the archive, or the first part of a split backup
+    manifest: dict  # for the whole backup
+    paths: list[Path] = field(default_factory=list)
 
 
 def archive_name(now: datetime | None = None) -> str:
@@ -129,12 +129,12 @@ def backup_site(
     out_dir: Path,
     *,
     include_thumbs: bool = False,
+    split_bytes: int | None = None,
     on_progress: Progress | None = None,
 ) -> BackupResult:
     out_dir.mkdir(parents=True, exist_ok=True)
     started = datetime.now(timezone.utc).replace(microsecond=0)  # one clock for the name and the manifest
-    final = out_dir / archive_name(started)
-    part = final.with_name(final.name + ".part")
+    base = archive_name(started)[: -len(".zip")]
     work = Path(tempfile.mkdtemp(prefix="mosaicwave-backup-"))
     try:
         warnings: list[str] = []
@@ -170,50 +170,34 @@ def backup_site(
         if skipped_names:
             warnings.append(f"{skipped_names} file(s) with unsupported names were left out")
 
-        total = len(files)
-        written = 0
-        total_bytes = 0
-        vanished = 0
-        part.unlink(missing_ok=True)
-        with zipfile.ZipFile(part, "w", allowZip64=True, strict_timestamps=False) as zf:
-            for db_file, arcname in db_files:
-                zf.write(db_file, arcname, compress_type=zipfile.ZIP_DEFLATED)
-            for index, (path, arcname) in enumerate(files, start=1):
-                try:
-                    zf.write(path, arcname, compress_type=zipfile.ZIP_STORED)
-                    written += 1
-                    total_bytes += zf.getinfo(arcname).file_size
-                except FileNotFoundError:
-                    vanished += 1
-                if on_progress is not None:
-                    on_progress(index, total, arcname)
-            if vanished:
-                warnings.append(f"{vanished} file(s) disappeared while the backup ran")
-            manifest = {
-                "format": FORMAT,
-                "kind": KIND_SITE,
-                "created_at": started.isoformat(timespec="seconds"),
-                "app_version": __version__,
-                "include_thumbs": include_thumbs,
-                "schema_version": site_version,
-                "library_schema_version": max(
-                    [f["schema_version"] for f in libraries.values()] or [LIBRARY_CURRENT_VERSION]
-                ),
-                "user_ids": user_ids,
-                "libraries": libraries,
-                "users": users,
-                "assets": sum(f["assets"] for f in libraries.values()),
-                "albums": sum(f["albums"] for f in libraries.values()),
-                "file_count": written,
-                "total_bytes": total_bytes,
-                "warnings": warnings,
-            }
-            zf.writestr(MANIFEST, json.dumps(manifest, indent=2, sort_keys=True), zipfile.ZIP_DEFLATED)
-        os.replace(part, final)
-        return BackupResult(final, manifest)
-    except BaseException:
-        part.unlink(missing_ok=True)
-        raise
+        sized: list[tuple[Path, str, int]] = []
+        for path, arcname in files:
+            try:
+                sized.append((path, arcname, path.stat().st_size))
+            except OSError:
+                sized.append((path, arcname, 0))
+        everything = [(f, arcname, f.stat().st_size) for f, arcname in db_files] + sized
+        limit = split_bytes if split_bytes and split_bytes > 0 else None
+        # What a database takes in a zip is its deflated size; that is what counts against the part size.
+        stored = {arcname: deflated_size(f) for f, arcname in db_files} if limit else None
+        plan = plan_parts(everything, limit, stored)
+        common = {
+            "kind": KIND_SITE,
+            "created_at": started.isoformat(timespec="seconds"),
+            "app_version": __version__,
+            "include_thumbs": include_thumbs,
+            "schema_version": site_version,
+            "library_schema_version": max(
+                [f["schema_version"] for f in libraries.values()] or [LIBRARY_CURRENT_VERSION]
+            ),
+            "user_ids": user_ids,
+            "libraries": libraries,
+            "users": users,
+            "assets": sum(f["assets"] for f in libraries.values()),
+            "albums": sum(f["albums"] for f in libraries.values()),
+        }
+        paths, manifest = write_archive(out_dir, base, plan, common, warnings, on_progress)
+        return BackupResult(paths[0], manifest, paths)
     finally:
         shutil.rmtree(work, ignore_errors=True)
 
@@ -229,6 +213,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--include-thumbs", action="store_true", help="Also store thumbnails (regenerable; can be large)"
     )
+    parser.add_argument(
+        "--split-gb",
+        type=float,
+        help="Split into zips of about this many GB (default: one zip). Keep all the parts together",
+    )
     args = parser.parse_args(argv)
     settings = Settings.from_env()
     out_dir = args.out if args.out else settings.backup_dir
@@ -238,13 +227,17 @@ def main(argv: list[str] | None = None) -> int:
             print(f"\r{done}/{total} files", end="", file=sys.stderr, flush=True)
 
     try:
-        result = backup_site(settings, out_dir, include_thumbs=args.include_thumbs, on_progress=show)
+        split = int(args.split_gb * 2**30) if args.split_gb and args.split_gb > 0 else None
+        result = backup_site(
+            settings, out_dir, include_thumbs=args.include_thumbs, split_bytes=split, on_progress=show
+        )
     except (ArchiveError, OSError, sqlite3.Error) as exc:
         print(f"\nbackup failed: {exc}", file=sys.stderr)
         return 1
     print(file=sys.stderr)
     m = result.manifest
-    print(result.path)
+    for path in result.paths:
+        print(path)
     print(f"{m['assets']} photos/videos, {m['albums']} albums, {m['users']} users, {m['file_count']} files")
     for warning in m["warnings"]:
         print(f"warning: {warning}", file=sys.stderr)

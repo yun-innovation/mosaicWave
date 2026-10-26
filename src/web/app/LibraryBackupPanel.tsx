@@ -6,7 +6,9 @@ import { useTranslation } from "react-i18next";
 import { apiFetch, apiMediaUrl, errorText, readDetail } from "./api";
 import { formatBytes, formatDateTime } from "./format";
 import i18n from "./i18n";
+import { BackupParts } from "./BackupParts";
 import { RestoreSourceForm } from "./RestoreSourceForm";
+import { SplitSelect } from "./SplitSelect";
 import { isAbortError, LibraryBackupItem, Notice } from "./types";
 import type { TakeoutImport } from "./useTakeoutImport";
 
@@ -22,6 +24,7 @@ export function LibraryBackupPanel({ importer, isAdmin }: { importer: TakeoutImp
   const [items, setItems] = useState<LibraryBackupItem[] | null>(null);
   const [working, setWorking] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
+  const [split, setSplit] = useState("");
   const [confirming, setConfirming] = useState<Confirm | null>(null);
   const { busy, finished, refreshJobs } = importer;
   const disabled = busy || working;
@@ -51,11 +54,15 @@ export function LibraryBackupPanel({ importer, isAdmin }: { importer: TakeoutImp
     return () => ctrl.abort();
   }, [loadList, lastFinished]);
 
-  async function post(url: string): Promise<boolean> {
+  async function post(url: string, body?: unknown): Promise<boolean> {
     setWorking(true);
     setNotice(null);
     try {
-      const res = await apiFetch(url, { method: "POST" });
+      const res = await apiFetch(url, {
+        method: "POST",
+        headers: body === undefined ? undefined : { "Content-Type": "application/json" },
+        body: body === undefined ? undefined : JSON.stringify(body),
+      });
       if (!res.ok) {
         setNotice({ text: errorText(await res.json().catch(() => null), res.status), ok: false });
         return false;
@@ -94,8 +101,13 @@ export function LibraryBackupPanel({ importer, isAdmin }: { importer: TakeoutImp
     <div className="import library-backup">
       <h3 className="section-title divided">{t("backup:library.title")}</h3>
       <p className="detail">{t("backup:library.intro")}</p>
+      <SplitSelect value={split} onChange={setSplit} disabled={disabled} />
       <div className="button-row">
-        <button type="button" disabled={disabled} onClick={() => void post("/api/v1/me/backups")}>
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={() => void post("/api/v1/me/backups", { split_gb: split ? Number(split) : null })}
+        >
           {disabled ? t("common:working") : t("backup:library.start")}
         </button>
       </div>
@@ -116,11 +128,13 @@ export function LibraryBackupPanel({ importer, isAdmin }: { importer: TakeoutImp
                     formatBytes(item.size),
                     t("backup:assets", { count: item.assets }),
                     t("backup:albums", { count: item.albums }),
+                    item.parts > 1 ? t("backup:parts", { count: item.parts }) : null,
                     item.warnings.length > 0 ? t("backup:warnings", { count: item.warnings.length }) : null,
                   ]
                     .filter(Boolean)
                     .join(" · ")}
                 </p>
+                <BackupParts item={item} url="/api/v1/me/backups" />
               </div>
               <div className="import backup-actions">
                 {confirming?.name === item.name ? (
@@ -141,14 +155,20 @@ export function LibraryBackupPanel({ importer, isAdmin }: { importer: TakeoutImp
                   </>
                 ) : (
                   <>
-                    <a
-                      className="button-link"
-                      href={apiMediaUrl(`/api/v1/me/backups/${encodeURIComponent(item.name)}`)}
-                      download
+                    {item.parts <= 1 && (
+                      <a
+                        className="button-link"
+                        href={apiMediaUrl(`/api/v1/me/backups/${encodeURIComponent(item.name)}`)}
+                        download
+                      >
+                        {t("backup:download")}
+                      </a>
+                    )}
+                    <button
+                      type="button"
+                      disabled={disabled || item.missing.length > 0}
+                      onClick={() => setConfirming({ name: item.name, kind: "restore" })}
                     >
-                      {t("backup:download")}
-                    </a>
-                    <button type="button" disabled={disabled} onClick={() => setConfirming({ name: item.name, kind: "restore" })}>
                       {t("backup:restore.button")}
                     </button>
                     <button type="button" disabled={disabled} onClick={() => setConfirming({ name: item.name, kind: "delete" })}>

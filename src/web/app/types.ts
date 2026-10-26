@@ -95,6 +95,12 @@ export type BackupItem = {
   file_count: number;
   total_bytes: number;
   warnings: string[];
+  /** How many files the backup has when complete; 1 is a single zip. */
+  parts: number;
+  /** The files that are here, in order (empty for a single zip). */
+  part_files: { name: string; size: number }[];
+  /** Part numbers that are not here yet. */
+  missing: number[];
 };
 
 export type LibraryBackupItem = {
@@ -108,6 +114,12 @@ export type LibraryBackupItem = {
   file_count: number;
   total_bytes: number;
   warnings: string[];
+  /** How many files the backup has when complete; 1 is a single zip. */
+  parts: number;
+  /** The files that are here, in order (empty for a single zip). */
+  part_files: { name: string; size: number }[];
+  /** Part numbers that are not here yet. */
+  missing: number[];
 };
 
 export type ExportFile = { path: string; size: number; zipped: boolean };

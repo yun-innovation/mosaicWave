@@ -20,7 +20,8 @@ export function uploadBackup<T = BackupItem>(
 ): BackupUpload<T> {
   const xhr = new XMLHttpRequest();
   const done = new Promise<T>((resolve, reject) => {
-    xhr.open("PUT", apiMediaUrl(url));
+    // The name matters for a big file of a split backup (…-NNN.big): the server keeps it as it is.
+    xhr.open("PUT", apiMediaUrl(`${url}?name=${encodeURIComponent(file.name)}`));
     xhr.withCredentials = true;
     xhr.setRequestHeader("Content-Type", "application/octet-stream");
     xhr.upload.onprogress = (event) => {

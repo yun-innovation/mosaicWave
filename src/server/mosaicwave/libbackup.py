@@ -20,22 +20,31 @@ import tempfile
 import time
 import zipfile
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
 from mosaicwave import __version__
 from mosaicwave.archive import (
     DB_ENTRY,
-    FORMAT,
     KIND_LIBRARY,
     LIBRARIES,
     MANIFEST,
     ArchiveError,
+    ArchiveSet,
+    LooseFile,
+    big_media,
     check_library_manifest,
+    copy_loose,
+    entry_mtime,
+    hash_loose,
     iter_files,
-    read_manifest,
+    open_set,
+    deflated_size,
+    plan_parts,
+    read_manifest_file,
     safe_member,
+    write_archive,
 )
 from mosaicwave.backup import _snapshot_library
 from mosaicwave.config import Settings, _checkpoint_library_db, ensure_data_dir_exists
@@ -61,8 +70,9 @@ SWAP_WAIT_SECONDS = 10.0
 
 @dataclass(frozen=True)
 class LibraryBackupResult:
-    path: Path
-    manifest: dict
+    path: Path  # the archive, or the first part of a split backup
+    manifest: dict  # for the whole backup
+    paths: list[Path] = field(default_factory=list)
 
 
 @dataclass
@@ -93,7 +103,12 @@ def _stamp() -> str:
 
 
 def backup_library(
-    settings: Settings, user_id: str, out_dir: Path, *, on_progress: Progress | None = None
+    settings: Settings,
+    user_id: str,
+    out_dir: Path,
+    *,
+    split_bytes: int | None = None,
+    on_progress: Progress | None = None,
 ) -> LibraryBackupResult:
     if not USER_ID.match(user_id or ""):
         raise ArchiveError(f"not a valid user id: {user_id!r}")
@@ -101,8 +116,7 @@ def backup_library(
         raise ArchiveError("this library has nothing to back up yet")
     out_dir.mkdir(parents=True, exist_ok=True)
     started = datetime.now(timezone.utc).replace(microsecond=0)  # one clock for the name and the manifest
-    final = out_dir / library_archive_name(started)
-    part = final.with_name(final.name + ".part")
+    base = library_archive_name(started)[: -len(".zip")]
     work = Path(tempfile.mkdtemp(prefix="mosaicwave-libbackup-"))
     try:
         files: list[tuple[Path, str]] = []
@@ -114,13 +128,13 @@ def backup_library(
                 skipped += 1
                 continue
             files.append((path, arcname))
-        need = 0
-        for path, _ in files:
+        sized: list[tuple[Path, str, int]] = []
+        for path, arcname in files:
             try:
-                need += path.stat().st_size
+                sized.append((path, arcname, path.stat().st_size))
             except OSError:
-                continue
-        _require_space(out_dir, need)
+                sized.append((path, arcname, 0))
+        _require_space(out_dir, sum(size for _, _, size in sized))
 
         db_file, facts, outside = _snapshot_library(settings, user_id, work, dest=work / DB_ENTRY)
         warnings: list[str] = []
@@ -129,44 +143,21 @@ def backup_library(
         if skipped:
             warnings.append(f"{skipped} file(s) with unsupported names were left out")
 
-        total = len(files)
-        written = 0
-        total_bytes = 0
-        vanished = 0
-        part.unlink(missing_ok=True)
-        with zipfile.ZipFile(part, "w", allowZip64=True, strict_timestamps=False) as zf:
-            zf.write(db_file, DB_ENTRY, compress_type=zipfile.ZIP_DEFLATED)
-            for index, (path, arcname) in enumerate(files, start=1):
-                try:
-                    zf.write(path, arcname, compress_type=zipfile.ZIP_STORED)
-                    written += 1
-                    total_bytes += zf.getinfo(arcname).file_size
-                except FileNotFoundError:
-                    vanished += 1
-                if on_progress is not None:
-                    on_progress(index, total, arcname)
-            if vanished:
-                warnings.append(f"{vanished} file(s) disappeared while the backup ran")
-            manifest = {
-                "format": FORMAT,
-                "kind": KIND_LIBRARY,
-                "created_at": started.isoformat(timespec="seconds"),
-                "app_version": __version__,
-                "include_thumbs": False,
-                "user_id": user_id,
-                "library_schema_version": facts["schema_version"],
-                "assets": facts["assets"],
-                "albums": facts["albums"],
-                "file_count": written,
-                "total_bytes": total_bytes,
-                "warnings": warnings,
-            }
-            zf.writestr(MANIFEST, json.dumps(manifest, indent=2, sort_keys=True), zipfile.ZIP_DEFLATED)
-        os.replace(part, final)
-        return LibraryBackupResult(final, manifest)
-    except BaseException:
-        part.unlink(missing_ok=True)
-        raise
+        limit = split_bytes if split_bytes and split_bytes > 0 else None
+        stored = {DB_ENTRY: deflated_size(db_file)} if limit else None  # what it takes in a zip
+        plan = plan_parts([(db_file, DB_ENTRY, db_file.stat().st_size)] + sized, limit, stored)
+        common = {
+            "kind": KIND_LIBRARY,
+            "created_at": started.isoformat(timespec="seconds"),
+            "app_version": __version__,
+            "include_thumbs": False,
+            "user_id": user_id,
+            "library_schema_version": facts["schema_version"],
+            "assets": facts["assets"],
+            "albums": facts["albums"],
+        }
+        paths, manifest = write_archive(out_dir, base, plan, common, warnings, on_progress)
+        return LibraryBackupResult(paths[0], manifest, paths)
     finally:
         shutil.rmtree(work, ignore_errors=True)
 
@@ -175,6 +166,8 @@ def backup_library(
 
 
 def _members(zf: zipfile.ZipFile, manifest: dict) -> list[zipfile.ZipInfo]:
+    """The entries of one zip, checked one by one. Whether the database is all there is a question
+    for the whole set (``_check_database``)."""
     infos = [i for i in zf.infolist() if not i.filename.endswith("/")]
     source = manifest["user_id"]
     seen: set[str] = set()
@@ -186,25 +179,71 @@ def _members(zf: zipfile.ZipFile, manifest: dict) -> list[zipfile.ZipInfo]:
         seen.add(name)
         if name in (MANIFEST, DB_ENTRY):
             continue
-        parts = name.split("/")
-        if parts[0] != LIBRARIES or len(parts) < 3 or parts[1] != source:
-            raise ArchiveError(f"unexpected name in a library archive: {name!r}")
-    if DB_ENTRY not in seen:
-        raise ArchiveError("archive has no library.db")
+        _check_source(name, source)
     return infos
 
 
-def check_library_archive(archive: Path, *, full: bool = False) -> dict:
-    """Validate a library archive and return its manifest. ``full`` also reads every byte (CRC)."""
+def _check_source(name: str, source: str) -> None:
+    parts = name.split("/")
+    if parts[0] != LIBRARIES or len(parts) < 3 or parts[1] != source:
+        raise ArchiveError(f"unexpected name in a library archive: {name!r}")
+
+
+def _check_database(names: set[str]) -> None:
+    if DB_ENTRY not in names:
+        raise ArchiveError("archive has no library.db")
+
+
+def _check_manifest(manifest: dict) -> None:
+    check_library_manifest(manifest, LIBRARY_CURRENT_VERSION)
+
+
+def check_library_archive(archive: Path, *, full: bool = False, part_only: bool = False) -> dict:
+    """Validate a library archive and return its manifest. ``full`` also reads every byte (CRC).
+
+    A split backup is checked whole: every part must sit beside ``archive``. ``part_only`` checks just
+    this file (an upload, before the other parts have arrived) and returns its own manifest.
+    """
     try:
-        with zipfile.ZipFile(archive) as zf:
-            manifest = read_manifest(zf)
-            check_library_manifest(manifest, LIBRARY_CURRENT_VERSION)
-            _members(zf, manifest)
-            if full:
-                bad = zf.testzip()
-                if bad is not None:
-                    raise ArchiveError(f"archive is damaged: {bad!r} fails its checksum")
+        loose: list[LooseFile] = []
+        if part_only:
+            own = read_manifest_file(archive)
+            _check_manifest(own)
+            paths, manifests, manifest = [archive], [own], own
+        else:
+            found = open_set(archive, _check_manifest)
+            paths, manifests, manifest, loose = found.paths, found.manifests, found.manifest, found.loose
+        names: set[str] = set()
+        for path, part_manifest in zip(paths, manifests):
+            with zipfile.ZipFile(path) as zf:
+                infos = _members(zf, part_manifest)
+                media = big_media(part_manifest)
+                for info in infos:
+                    if info.filename == MANIFEST:
+                        continue
+                    media += info.filename != DB_ENTRY
+                    if info.filename in names:
+                        raise ArchiveError(f"{info.filename!r} is in two parts of the backup")
+                    names.add(info.filename)
+                if media != part_manifest["file_count"]:
+                    raise ArchiveError(
+                        f"{path.name} lists {part_manifest['file_count']} files but holds {media}"
+                    )
+                if full:
+                    bad = zf.testzip()
+                    if bad is not None:
+                        raise ArchiveError(f"archive is damaged: {bad!r} fails its checksum")
+        for big in loose:
+            name = big.entry.name
+            if name in names:
+                raise ArchiveError(f"{name!r} is in two parts of the backup")
+            if name != DB_ENTRY:
+                _check_source(name, manifest["user_id"])
+            names.add(name)
+            if full and hash_loose(big) != big.entry.sha256:
+                raise ArchiveError(f"{big.path.name} is damaged: it does not match the backup")
+        if not part_only:
+            _check_database(names)
     except zipfile.BadZipFile as exc:
         raise ArchiveError(f"not a zip file or damaged: {exc}") from exc
     return manifest
@@ -227,45 +266,77 @@ def stage_library(
     stamp = _stamp()
     db_stage, data_stage = _stage_dirs(settings, stamp, user_id)
     try:
-        with zipfile.ZipFile(archive) as zf:
-            manifest = read_manifest(zf)
-            check_library_manifest(manifest, LIBRARY_CURRENT_VERSION)
-            infos = _members(zf, manifest)
-            _require_space(
-                settings.database_path.parent,
-                sum(i.file_size for i in infos if i.filename == DB_ENTRY) * 2,
-            )
-            _require_space(settings.data_dir, sum(i.file_size for i in infos if i.filename != DB_ENTRY))
-            db_stage.mkdir(parents=True)
-            source = manifest["user_id"]
-            target_root = data_stage / LIBRARIES / user_id
-            target_root.mkdir(parents=True)
-            total = len(infos)
-            media = 0
-            for index, info in enumerate(infos, start=1):
-                name = info.filename
-                if name == MANIFEST:
-                    continue
-                if name == DB_ENTRY:
-                    dest = db_stage / DB_ENTRY
-                else:
-                    rel = name.split("/", 2)[2]
-                    dest = target_root / rel
-                    media += 1
-                dest.parent.mkdir(parents=True, exist_ok=True)
-                try:
-                    with zf.open(info) as src, open(dest, "wb") as out:
-                        shutil.copyfileobj(src, out, 1024 * 1024)
-                except zipfile.BadZipFile as exc:
-                    raise ArchiveError(f"archive is damaged at {name!r}: {exc}") from exc
-                if name != DB_ENTRY:
+        found: ArchiveSet = open_set(archive, _check_manifest)
+        manifest = found.manifest
+        source = manifest["user_id"]
+        parts = [(path, m) for path, m in zip(found.paths, found.manifests)]
+        # First look: names, and how much room the unpacked library needs.
+        db_size = 0
+        media_size = 0
+        total = len(found.loose)
+        seen: set[str] = set()
+        for path, part_manifest in parts:
+            with zipfile.ZipFile(path) as zf:
+                infos = _members(zf, part_manifest)
+            total += len(infos)
+            seen.update(i.filename for i in infos if i.filename != MANIFEST)
+            db_size += sum(i.file_size for i in infos if i.filename == DB_ENTRY)
+            media_size += sum(i.file_size for i in infos if i.filename not in (MANIFEST, DB_ENTRY))
+        for big in found.loose:
+            name = big.entry.name
+            if name in seen:
+                raise ArchiveError(f"{name!r} is in two parts of the backup")
+            if name != DB_ENTRY:
+                _check_source(name, source)
+            seen.add(name)
+            if name == DB_ENTRY:
+                db_size += big.entry.size
+            else:
+                media_size += big.entry.size
+        _check_database(seen)
+        _require_space(settings.database_path.parent, db_size * 2)
+        _require_space(settings.data_dir, media_size)
+        db_stage.mkdir(parents=True)
+        target_root = data_stage / LIBRARIES / user_id
+        target_root.mkdir(parents=True)
+        index = 0
+        media = 0
+        for path, part_manifest in parts:
+            with zipfile.ZipFile(path) as zf:
+                for info in _members(zf, part_manifest):
+                    index += 1
+                    name = info.filename
+                    if name == MANIFEST:
+                        continue
+                    if name == DB_ENTRY:
+                        dest = db_stage / DB_ENTRY
+                    else:
+                        dest = target_root / name.split("/", 2)[2]
+                        media += 1
+                    dest.parent.mkdir(parents=True, exist_ok=True)
                     try:
-                        stamp_time = datetime(*info.date_time, tzinfo=timezone.utc).timestamp()
-                        os.utime(dest, (stamp_time, stamp_time))
-                    except (ValueError, OSError):
-                        pass
-                if on_progress is not None:
-                    on_progress(index, total, name)
+                        with zf.open(info) as src, open(dest, "wb") as out:
+                            shutil.copyfileobj(src, out, 1024 * 1024)
+                    except zipfile.BadZipFile as exc:
+                        raise ArchiveError(f"archive is damaged at {name!r}: {exc}") from exc
+                    if name != DB_ENTRY:
+                        try:
+                            stamp_time = entry_mtime(info)  # UTC, as the backup wrote it
+                            os.utime(dest, (stamp_time, stamp_time))
+                        except (ValueError, OSError):
+                            pass
+                    if on_progress is not None:
+                        on_progress(index, total, name)
+        for big in found.loose:
+            index += 1
+            name = big.entry.name
+            if name == DB_ENTRY:
+                copy_loose(big, db_stage / DB_ENTRY)
+            else:
+                copy_loose(big, target_root / name.split("/", 2)[2])
+                media += 1
+            if on_progress is not None:
+                on_progress(index, total, name)
         if media != manifest["file_count"]:
             raise ArchiveError(f"archive lists {manifest['file_count']} files but holds {media}")
         upgrade_from = _prepare_library(

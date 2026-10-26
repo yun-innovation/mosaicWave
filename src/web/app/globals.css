@@ -1084,6 +1084,16 @@ main.app-main {
   gap: 0.5rem;
 }
 
+.backup-parts .part-link {
+  display: inline-block;
+  margin-right: 0.4rem;
+  padding: 0 0.4rem;
+  border-radius: 6px;
+  background: #3d4454;
+  color: var(--fg);
+  text-decoration: none;
+}
+
 .button-link {
   display: inline-block;
   padding: 0.45rem 0.9rem;

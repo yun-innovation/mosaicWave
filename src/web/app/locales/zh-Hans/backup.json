@@ -4,6 +4,16 @@
   "folder": "备份存放在 {{folder}}",
   "start": "立即备份",
   "withThumbs": "包含缩略图（备份更大；缩略图可重新生成）",
+  "split": {
+    "label": "Zip 大小",
+    "one": "单个 zip 文件",
+    "gb": "每份 {{count}} GB",
+    "help": "比这个大的备份会分成几个属于同一组的 zip。每个 zip 都不会超过这个大小：比它大的文件（长视频、非常大的数据库）不会放进 zip，而是以 …-NNN.big 文件保存在 zip 旁边。请把所有 zip 和 .big 文件放在同一处：还原时需要每一份。"
+  },
+  "parts_one": "{{count, number}} 份",
+  "parts_other": "{{count, number}} 份",
+  "partsLabel": "分份",
+  "incomplete": "不完整：缺少第 {{missing}} 份（共 {{count}} 份）。请上传以完成这份备份。",
   "list": {
     "title": "备份文件",
     "loading": "正在加载备份…",
@@ -69,14 +79,16 @@
       "pickerTitle": "选择备份 zip",
       "pickerIntro": "打开服务器上的文件夹，再选择 zip 文件。会直接从原位置还原，不会复制。",
       "deviceLabel": "这台设备上的备份 zip",
-      "deviceHint": "选择 mosaicwave-site-….zip。它会先上传到服务器（并保留在上方列表中），因此大型备份需要一些时间，且需要足够的可用空间来上传和解开。",
+      "deviceHint": "选择 mosaicwave-site-….zip。分份备份有多个文件（…-001.zip、…-002.zip，可能还有 …-003.big）：请一并全选。它们会先上传到服务器（并保留在上方列表中），因此大型备份需要一些时间，且需要足够的可用空间来上传和解开。",
       "deviceSelected": "{{name}}（{{size}}）",
       "restore": "还原",
       "upload": "上传并还原",
       "uploading": "上传中… {{percent}}%",
       "cancelUpload": "取消上传",
       "uploadCancelled": "已取消上传。",
-      "uploadedKept": "备份已上传并列在上方列表中，但还原没有开始：{{message}}"
+      "uploadedKept": "备份已上传并列在上方列表中，但还原没有开始：{{message}}",
+      "deviceSelectedMany": "{{count}} 个文件（{{size}}）",
+      "uploadingFile": "上传第 {{index}} / {{count}} 个文件… {{percent}}%"
     }
   },
   "library": {
@@ -95,7 +107,7 @@
     "source": {
       "title": "从文件还原",
       "pathPlaceholder": "服务器上 mosaicwave-library-….zip 的路径",
-      "deviceHint": "选择由这个或其他 mosaicWave 生成的 mosaicwave-library-….zip。它会先上传（保留在上方列表中），所以大型备份需要一些时间。"
+      "deviceHint": "选择由这个或其他 mosaicWave 生成的 mosaicwave-library-….zip。分份备份有多个文件（…-001.zip、…-002.zip，可能还有 …-003.big）：请一并全选。它们会先上传（保留在上方列表中），所以大型备份需要一些时间。"
     }
   },
   "export": {

@@ -1670,7 +1670,7 @@
               }
             ],
             "url": "{{baseUrl}}/api/v1/backups",
-            "description": "Admin only. Starts a job (kind site_backup) and saves {{jobId}}; poll GET /jobs/{{jobId}}. 409 if another job is running. Archive lands in the app folder's backups/. include_thumbs adds thumbnails (can be regenerated).",
+            "description": "Admin only. Starts a job (kind site_backup) and saves {{jobId}}; poll GET /jobs/{{jobId}}. 409 if another job is running. Archive lands in the app folder's backups/. include_thumbs adds thumbnails (can be regenerated). split_gb (0.0001 to 1024) writes a backup bigger than that as several zips, mosaicwave-site-<time>-001.zip, -002.zip and so on, which must stay together; empty is one zip.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"include_thumbs\": false\n}",
@@ -1811,7 +1811,7 @@
               }
             ],
             "url": "{{baseUrl}}/api/v1/backups/upload",
-            "description": "Admin only. Raw zip body (Send and Select File). Streamed to the app folder's backups/ and checked (manifest and zip index only); stored as mosaicwave-site-<time inside the archive>.zip and returned as listed. The same file twice is one archive; a different file with the same time gets the next free second. 400 backup_invalid (deleted), 413 upload_too_large, 507 backup_no_space, 409 restore_pending or job_running. Then use Stage restore with the returned name.",
+            "description": "Admin only. Raw zip body (Send and Select File). Streamed to the app folder's backups/ and checked (manifest and zip index only); stored as mosaicwave-site-<time inside the archive>.zip and returned as listed. The same file twice is one archive; a different file with the same time gets the next free second. 400 backup_invalid (deleted), 413 upload_too_large, 507 backup_no_space, 409 restore_pending or job_running. A part of a split backup (…-NNN.zip) is stored under its own number: upload every part, in any order, then use Stage restore with the first part's name (400 backup_parts_missing lists what is not there). A big file of a split backup (…-NNN.big) is not a zip: send it with the query name set to its file name, after at least one zip of the same backup. The response lists the backup as one entry (parts, part_files, missing).",
             "body": {
               "mode": "file",
               "file": {
@@ -1858,7 +1858,7 @@
             "method": "POST",
             "header": [],
             "url": "{{baseUrl}}/api/v1/me/backups",
-            "description": "Any signed-in user. Starts a job (kind library_backup, cancellable; poll it in Jobs) that writes mosaicwave-library-<time>.zip under your own backups folder: your library database and originals, no thumbnails. 409 job_running while another job runs. Saves {{jobId}}."
+            "description": "Any signed-in user. Starts a job (kind library_backup, cancellable; poll it in Jobs) that writes mosaicwave-library-<time>.zip (or -001.zip, -002.zip … when the optional body split_gb is smaller than the library; keep the parts together) under your own backups folder: your library database and originals, no thumbnails. 409 job_running while another job runs. Saves {{jobId}}."
           },
           "event": [
             {

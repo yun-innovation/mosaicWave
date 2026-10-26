@@ -13,7 +13,7 @@ from fastapi import Request
 from starlette.requests import ClientDisconnect
 
 from mosaicwave.api.errors import ApiError, wrapped
-from mosaicwave.archive import ArchiveError, WrongKind
+from mosaicwave.archive import PART_NAME, ArchiveError, PartsMissing, WrongKind, part_info
 from mosaicwave.library.takeoutpush import MAX_PUSH_BYTES, write_upload_async
 from mosaicwave.models import new_id
 
@@ -36,13 +36,22 @@ def archive_name(prefix: str, manifest: dict) -> str:
         stamp = stamp.astimezone(timezone.utc)
     except (KeyError, ValueError):
         stamp = datetime.now(timezone.utc)
-    return f"{prefix}-{stamp:%Y%m%d-%H%M%S}.zip"
+    info = part_info(manifest)
+    suffix = f"-{info[0]:03d}" if info else ""
+    return f"{prefix}-{stamp:%Y%m%d-%H%M%S}{suffix}.zip"
 
 
 def check_error(exc: BaseException) -> ApiError:
     """``400`` for an archive that cannot be used; the wrong kind of archive has its own code."""
     if isinstance(exc, WrongKind):
         return wrapped(400, "backup_wrong_kind", exc)
+    if isinstance(exc, PartsMissing):
+        return ApiError(
+            400,
+            "backup_parts_missing",
+            str(exc),
+            {"missing": ", ".join(str(n) for n in exc.missing), "parts": exc.parts},
+        )
     return wrapped(400, "backup_invalid", exc)
 
 
@@ -52,12 +61,26 @@ async def receive_archive(
     *,
     prefix: str,
     check: Callable[[Path], dict],
+    file_name: str = "",
 ) -> Path:
     """Stream the request body to ``folder``, validate it with ``check`` and name it ``{prefix}-stamp.zip``.
 
     The caller has already refused when the server is busy. Returns the archive's final path.
+    ``file_name`` is the name the browser had for the file: it matters for a big file of a split backup
+    (``…-NNN.big``), which is not a zip and keeps its name.
     """
     folder.mkdir(parents=True, exist_ok=True)
+    big = PART_NAME.match(file_name)
+    if big and big.group(3) == "big":
+        if not big.group(1).startswith(prefix + "-"):
+            raise ApiError(400, "backup_invalid", "That is not a file of this kind of backup", {"message": file_name})
+        if not any(folder.glob(f"{big.group(1)}-???.zip")):
+            raise ApiError(
+                400,
+                "backup_invalid",
+                "Upload the zips of this backup before its big files",
+                {"message": "no zip yet"},
+            )
     raw = request.headers.get("content-length")
     declared = int(raw) if raw and raw.isdigit() else None
     if declared is not None:
@@ -72,7 +95,7 @@ async def receive_archive(
                 {"need_mb": declared >> 20, "free_mb": free >> 20},
             )
 
-    received = folder / f".upload-{new_id()}.zip"
+    received = folder / f".upload-{new_id()}.{'big' if big and big.group(3) == 'big' else 'zip'}"
     try:
         try:
             await write_upload_async(received, request.stream())
@@ -82,19 +105,24 @@ async def receive_archive(
             raise ApiError(413, "upload_too_large", str(exc), {"max_gb": MAX_PUSH_BYTES >> 30}) from exc
         except OSError as exc:
             raise wrapped(400, "upload_failed", exc) from exc
+        if big and big.group(3) == "big":  # the set check (size, checksum) happens when it is used
+            final = folder / file_name
+            os.replace(received, final)
+            return final
         try:
             manifest = check(received)
         except (ArchiveError, OSError) as exc:
             raise check_error(exc) from exc
         final = folder / archive_name(prefix, manifest)
         size = received.stat().st_size
-        while final.exists():
+        # A part belongs to its set by name: sending it again replaces it (a repaired or re-sent file).
+        while final.exists() and part_info(manifest) is None:
             if final.stat().st_size == size:  # the same file again
                 break
             found = _STAMP.search(final.name)
             stamp = datetime.strptime(found.group(1), "%Y%m%d-%H%M%S") if found else datetime.now(timezone.utc)
             final = folder / f"{prefix}-{stamp + timedelta(seconds=1):%Y%m%d-%H%M%S}.zip"
-        if not final.exists():
+        if not final.exists() or part_info(manifest) is not None:
             os.replace(received, final)
         return final
     finally:
