@@ -15,8 +15,10 @@ from mosaicwave.api.v1.backups import router as backups_router
 from mosaicwave.api.v1.exports import router as exports_router
 from mosaicwave.api.v1.mebackups import router as me_backups_router
 from mosaicwave.api.v1.maintenance import maintenance_guard, router as maintenance_router
+from mosaicwave.api.v1.moving import moving_guard
 from mosaicwave.api.v1.settings import router as settings_router
 from mosaicwave.config import Settings, adopt_legacy_data_folders, consume_restart_flag
+from mosaicwave.datamove import recover_data_dir_move
 from mosaicwave.export import remove_stale_exports
 from mosaicwave.libbackup import recover_library_swaps, remove_stale_user_staging
 from mosaicwave.maintenance import start_from_env
@@ -52,10 +54,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         consume_restart_flag()
         settings = Settings.from_env()
 
-    app = FastAPI(title="mosaicWave", version="0.1.1", dependencies=[Depends(maintenance_guard)])
+    app = FastAPI(title="mosaicWave", version="0.1.1", dependencies=[Depends(maintenance_guard), Depends(moving_guard)])
+    app.state.moving = False  # True while the data folder is being moved (api/v1/moving.py)
     start_from_env(settings)
     # A library swap a crash cut short is undone first, then a restore staged from the Backup page is
     # swapped in, all before any database is opened.
+    recover_data_dir_move(settings)  # an interrupted Move library is undone or finished first
     adopt_legacy_data_folders(settings)
     recover_library_swaps(settings)
     remove_stale_user_staging(settings)

@@ -354,12 +354,12 @@ def test_relocate_cross_device_rollback(tmp_path: Path, monkeypatch: pytest.Monk
 
     orig = mwconfig._copy_path_bytes
 
-    def flaky(src_path: Path, dest_path: Path) -> None:
+    def flaky(src_path: Path, dest_path: Path, progress: object = None) -> None:
         if src_path.name == "libraries":
             dest_path.mkdir(parents=True, exist_ok=True)
             (dest_path / "leftover.jpg").write_bytes(b"x")
             raise OSError("NAS")
-        orig(src_path, dest_path)
+        orig(src_path, dest_path, progress)
 
     monkeypatch.setattr(mwconfig, "_copy_path_bytes", flaky)
     with pytest.raises(ValueError, match="could not copy"):

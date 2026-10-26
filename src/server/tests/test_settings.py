@@ -11,12 +11,27 @@ from fastapi.testclient import TestClient
 
 from mosaicwave.config import Settings, read_data_dir_config
 from authutil import authed_client, library_dir, scan_library
+from test_cancel import _until
 
 
 def _jpeg_bytes() -> bytes:
     buf = BytesIO()
     Image.new("RGB", (8, 8), (40, 120, 200)).save(buf, format="JPEG", quality=80)
     return buf.getvalue()
+
+
+def _maintenance_on(client: TestClient) -> None:
+    """Moving the data folder needs maintenance mode (milestone 13)."""
+    res = client.put("/api/v1/maintenance", json={"enabled": True, "reason": "moving"})
+    assert res.status_code == 200, res.text
+
+
+def _move(client: TestClient, payload: dict) -> dict:
+    """Start Move library and wait for the job. Returns the finished job."""
+    res = client.put("/api/v1/settings", json=payload)
+    assert res.status_code == 200, res.text
+    assert res.json()["kind"] == "data_dir_move"
+    return _until(client, res.json()["id"], {"done", "error", "cancelled"})
 
 
 def _settings(tmp_path: Path) -> Settings:
@@ -58,6 +73,7 @@ def test_settings_admin_only(tmp_path: Path) -> None:
 def test_put_settings_relocates_library(tmp_path: Path) -> None:
     settings = _settings(tmp_path)
     client = authed_client(settings)
+    _maintenance_on(client)
     lib = library_dir(settings, client)
     (lib / "kept.jpg").write_bytes(_jpeg_bytes())
     scan_library(client)
@@ -66,12 +82,13 @@ def test_put_settings_relocates_library(tmp_path: Path) -> None:
     asset_id = listed[0]["id"]
 
     dest = tmp_path / "moved"
-    res = client.put("/api/v1/settings", json={"data_dir": str(dest)})
-    assert res.status_code == 200, res.text
-    assert res.json().get("restarting") is False
-    assert Path(res.json()["data_dir"]) == dest.resolve()
-    assert res.json().get("data_dir_smb") in (None, "")
-    assert res.json().get("data_dir_mount") in (None, "")
+    job = _move(client, {"data_dir": str(dest)})
+    assert job["status"] == "done", job
+    assert job["restarting"] is False
+    now = client.get("/api/v1/settings").json()
+    assert Path(now["data_dir"]) == dest.resolve()
+    assert now.get("data_dir_smb") in (None, "")
+    assert now.get("data_dir_mount") in (None, "")
     assert (settings.bootstrap_dir / "library.db").is_file()
     assert (dest / "libraries" / Path(lib).name / "kept.jpg").is_file()
     assert not (dest / "library.db").exists()
@@ -92,6 +109,7 @@ def test_put_settings_relocates_library(tmp_path: Path) -> None:
 def test_put_settings_rejects_occupied_and_relative(tmp_path: Path) -> None:
     settings = _settings(tmp_path)
     client = authed_client(settings)
+    _maintenance_on(client)
     relative = client.put("/api/v1/settings", json={"data_dir": "not-absolute"})
     assert relative.status_code == 400
 
@@ -112,6 +130,7 @@ def test_put_settings_rejects_occupied_and_relative(tmp_path: Path) -> None:
 def test_put_settings_move_oserror_is_400(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     settings = _settings(tmp_path)
     client = authed_client(settings)
+    _maintenance_on(client)
 
     def boom(_src: Path, _dest: Path, **_kwargs: object) -> None:
         raise OSError("NAS chmod")
@@ -120,9 +139,9 @@ def test_put_settings_move_oserror_is_400(tmp_path: Path, monkeypatch: pytest.Mo
     dest = tmp_path / "nas"
     src_db = settings.bootstrap_dir / "library.db"
     assert src_db.is_file()
-    res = client.put("/api/v1/settings", json={"data_dir": str(dest)})
-    assert res.status_code == 400, res.text
-    assert "NAS chmod" in res.json()["detail"]
+    job = _move(client, {"data_dir": str(dest)})
+    assert job["status"] == "error" and "NAS chmod" in job["error"], job
+    assert client.app.state.moving is False
     assert Path(client.get("/api/v1/settings").json()["data_dir"]) == settings.data_dir.resolve()
     assert src_db.is_file()
     assert client.get("/api/v1/me").status_code == 200
@@ -137,24 +156,28 @@ def test_put_settings_blocked_when_env_set(tmp_path: Path, monkeypatch: pytest.M
     assert res.status_code == 409
     assert client.get("/api/v1/settings").json()["env_override"] is True
     monkeypatch.delenv("MOSAICWAVE_DATA_DIR", raising=False)
+    # Without maintenance mode nothing moves (milestone 13), not even a save of the same folder.
+    gated = client.put("/api/v1/settings", json={"data_dir": str(settings.data_dir.resolve())})
+    assert gated.status_code == 409 and gated.json()["code"] == "maintenance_required"
+    _maintenance_on(client)
     # same path is a no-op relocate and writes config.json
-    same = client.put("/api/v1/settings", json={"data_dir": str(settings.data_dir.resolve())})
-    assert same.status_code == 200, same.text
+    same = _move(client, {"data_dir": str(settings.data_dir.resolve())})
+    assert same["status"] == "done", same
     assert read_data_dir_config(settings.bootstrap_dir) == settings.data_dir.resolve()
 
 
 def test_put_settings_returns_to_app_folder(tmp_path: Path) -> None:
     settings = _settings(tmp_path)
     client = authed_client(settings)
+    _maintenance_on(client)
     dest = tmp_path / "moved"
-    away = client.put("/api/v1/settings", json={"data_dir": str(dest)})
-    assert away.status_code == 200, away.text
+    assert _move(client, {"data_dir": str(dest)})["status"] == "done"
     assert (settings.bootstrap_dir / "library.db").is_file()
     (settings.bootstrap_dir / "libraries").mkdir(exist_ok=True)
     (settings.bootstrap_dir / "libraries" / "old.txt").write_text("stale", encoding="utf-8")
-    home = client.put("/api/v1/settings", json={"data_dir": str(settings.bootstrap_dir)})
-    assert home.status_code == 200, home.text
-    body = home.json()
+    home = _move(client, {"data_dir": str(settings.bootstrap_dir)})
+    assert home["status"] == "done", home
+    body = client.get("/api/v1/settings").json()
     assert Path(body["data_dir"]) == settings.bootstrap_dir.resolve()
     assert Path(body["app_dir"]) == settings.bootstrap_dir.resolve()
     assert (settings.bootstrap_dir / "library.db").is_file()
@@ -167,13 +190,14 @@ def test_put_settings_returns_to_app_folder(tmp_path: Path) -> None:
 def test_put_settings_allows_empty_leftover_dest(tmp_path: Path) -> None:
     settings = _settings(tmp_path)
     client = authed_client(settings)
+    _maintenance_on(client)
     dest = tmp_path / "emptyish"
     dest.mkdir()
     sqlite3.connect(dest / "library.db").close()
     (dest / "libraries").mkdir()
-    res = client.put("/api/v1/settings", json={"data_dir": str(dest)})
-    assert res.status_code == 200, res.text
-    assert Path(res.json()["data_dir"]) == dest.resolve()
+    job = _move(client, {"data_dir": str(dest)})
+    assert job["status"] == "done", job
+    assert Path(client.get("/api/v1/settings").json()["data_dir"]) == dest.resolve()
     assert (settings.bootstrap_dir / "library.db").is_file()
 
 
@@ -182,6 +206,7 @@ def test_put_settings_keeps_smb_source_and_mount(
 ) -> None:
     settings = _settings(tmp_path)
     client = authed_client(settings)
+    _maintenance_on(client)
     mnt = tmp_path / "mw-mnt"
     dest = mnt / "mosaicWave"
     dest.mkdir(parents=True)
@@ -196,17 +221,18 @@ def test_put_settings_keeps_smb_source_and_mount(
 
     monkeypatch.setattr("mosaicwave.api.v1.settings.coerce_host_folder", fake_coerce)
     monkeypatch.setattr("mosaicwave.api.v1.settings.share_mount_dest", lambda: str(mnt))
-    res = client.put(
-        "/api/v1/settings",
-        json={
+    job = _move(
+        client,
+        {
             "data_dir": "smb://fileserver/Public/mosaicWave",
             "smb_user": "nasuser",
             "smb_password": "secret",
             "mount_point": str(mnt),
         },
     )
-    assert res.status_code == 200, res.text
-    body = res.json()
+    assert job["status"] == "done", job
+    assert job["restarting"] is False
+    body = client.get("/api/v1/settings").json()
     assert captured["raw"] == "smb://fileserver/Public/mosaicWave"
     assert captured["user"] == "nasuser"
     assert captured["password"] == "secret"
@@ -231,6 +257,7 @@ def test_put_settings_surfaces_mount_fallback_notice(
     another mosaicWave instance), the FYI notice reaches the client."""
     settings = _settings(tmp_path)
     client = authed_client(settings)
+    _maintenance_on(client)
     mnt = tmp_path / "mw-mnt"
     dest = mnt / "mosaicWave"
     dest.mkdir(parents=True)
@@ -242,16 +269,16 @@ def test_put_settings_surfaces_mount_fallback_notice(
     monkeypatch.setattr("mosaicwave.api.v1.settings.coerce_host_folder", lambda *_a, **_k: dest)
     monkeypatch.setattr("mosaicwave.api.v1.settings.share_mount_dest", lambda: str(mnt))
     monkeypatch.setattr("mosaicwave.api.v1.settings.last_mount_notice", lambda: notice_text)
-    res = client.put(
-        "/api/v1/settings",
-        json={
+    job = _move(
+        client,
+        {
             "data_dir": "smb://fileserver/Public/mosaicWave",
             "smb_user": "nasuser",
             "smb_password": "secret",
         },
     )
-    assert res.status_code == 200, res.text
-    assert res.json()["notice"] == notice_text
+    assert job["status"] == "done", job
+    assert job["notice"] == notice_text
 
 
 def test_get_settings_never_surfaces_a_notice(tmp_path: Path) -> None:
@@ -270,6 +297,7 @@ def _app_folder_settings(tmp_path: Path) -> Settings:
 def test_move_from_app_folder_carries_backups_exports_not_databases(tmp_path: Path) -> None:
     settings = _app_folder_settings(tmp_path)
     client = authed_client(settings)
+    _maintenance_on(client)
     lib = library_dir(settings, client)
     (lib / "kept.jpg").write_bytes(_jpeg_bytes())
     scan_library(client)
@@ -282,8 +310,8 @@ def test_move_from_app_folder_carries_backups_exports_not_databases(tmp_path: Pa
     assert accounts
 
     dest = tmp_path / "mosaic" / "dev"
-    res = client.put("/api/v1/settings", json={"data_dir": str(dest)})
-    assert res.status_code == 200, res.text
+    job = _move(client, {"data_dir": str(dest)})
+    assert job["status"] == "done", job
     assert sorted(p.name for p in (boot / "accounts").iterdir()) == accounts
     assert (boot / "library.db").is_file()
     assert not (boot / "backups").exists() and not (boot / "exports").exists()
@@ -309,6 +337,7 @@ def test_move_refused_when_new_folder_lacks_space(
 ) -> None:
     settings = _app_folder_settings(tmp_path)
     client = authed_client(settings)
+    _maintenance_on(client)
     boot = settings.bootstrap_dir
     (boot / "backups").mkdir(exist_ok=True)
     (boot / "backups" / "site.zip").write_bytes(b"x" * 4096)
@@ -365,8 +394,10 @@ def test_failed_move_cleanup_error_still_reattaches_library(
 ) -> None:
     settings = _settings(tmp_path)
     client = authed_client(settings)
+    _maintenance_on(client)
 
-    def boom(_src: Path, _dest: Path, **_kwargs: object) -> None:
+    def boom(_src: Path, _dest: Path, **kwargs: object) -> None:
+        kwargs["before_rewrite"]()  # type: ignore[operator]  # the databases are detached here
         raise ValueError("disk full")
 
     monkeypatch.setattr("mosaicwave.runtime.copy_data_dir", boom)
@@ -374,6 +405,51 @@ def test_failed_move_cleanup_error_still_reattaches_library(
         "mosaicwave.runtime._rewrite_library_root_uris",
         lambda *a, **k: (_ for _ in ()).throw(OSError("locked")),
     )
-    res = client.put("/api/v1/settings", json={"data_dir": str(tmp_path / "nas")})
-    assert res.status_code == 400, res.text
+    job = _move(client, {"data_dir": str(tmp_path / "nas")})
+    assert job["status"] == "error" and "disk full" in job["error"], job
     assert client.get("/api/v1/settings").status_code == 200
+    assert client.get("/api/v1/assets").status_code == 200  # the old library is attached again
+
+
+def test_library_requests_wait_while_the_data_folder_is_moving(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    client = authed_client(settings)
+    lib = library_dir(settings, client)
+    (lib / "kept.jpg").write_bytes(_jpeg_bytes())
+    scan_library(client)
+    client.app.state.moving = True
+    try:
+        for path in ("/api/v1/assets", "/api/v1/albums", "/api/v1/users"):
+            res = client.get(path)
+            assert res.status_code == 503, (path, res.text)
+            assert res.json()["code"] == "data_dir_moving"
+            assert res.headers["Retry-After"] == "5"
+        # What the admin needs to follow the move still answers.
+        assert client.get("/api/v1/health").status_code == 200
+        assert client.get("/api/v1/me").status_code == 200
+        assert client.get("/api/v1/settings").status_code == 200
+        assert client.get("/api/v1/jobs/running").status_code == 200
+        assert client.get("/api/v1/maintenance").status_code == 200
+    finally:
+        client.app.state.moving = False
+    assert client.get("/api/v1/assets").status_code == 200
+
+
+def test_put_settings_marks_the_move_and_clears_it(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    settings = _settings(tmp_path)
+    client = authed_client(settings)
+    _maintenance_on(client)
+    seen: list[bool] = []
+
+    def fake_switch(app, dest, **_kwargs):  # type: ignore[no-untyped-def]
+        seen.append(app.state.moving)
+        raise ValueError("stop here")
+
+    monkeypatch.setattr("mosaicwave.api.v1.settings.switch_data_dir", fake_switch)
+    job = _move(client, {"data_dir": str(tmp_path / "elsewhere")})
+    assert job["status"] == "error" and "stop here" in job["error"], job
+    assert seen == [True]
+    assert client.app.state.moving is False
+    assert client.get("/api/v1/assets").status_code == 200

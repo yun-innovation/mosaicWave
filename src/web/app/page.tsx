@@ -217,7 +217,7 @@ export default function Home() {
     case "server":
       view =
         me.role === "admin" ? (
-          <ServerView me={me} platform={platform} />
+          <ServerView me={me} platform={platform} maintenance={maintenance.status} />
         ) : (
           <SettingsPanel me={me} importer={importer} onMe={setMe} />
         );

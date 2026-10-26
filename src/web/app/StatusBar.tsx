@@ -41,7 +41,11 @@ export function StatusBar({ job, finished, onDismiss, onRefresh }: Props) {
       <div className="status-bar" role="status" aria-live="polite">
         <span className="status-bar-label">{jobKindLabel(job.kind)}</span>
         <span className="status-bar-count">
-          {known ? `${formatNumber(job.processed)} / ${formatNumber(job.total)}` : t("jobbar:starting")}
+          {known
+            ? job.kind === "data_dir_move"
+              ? t("jobbar:mb", { processed: formatNumber(job.processed), total: formatNumber(job.total) })
+              : `${formatNumber(job.processed)} / ${formatNumber(job.total)}`
+            : t("jobbar:starting")}
         </span>
         {job.current && <span className="status-bar-current">{job.current}</span>}
         {known ? (

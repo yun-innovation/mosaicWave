@@ -23,9 +23,9 @@ Open items only. Roadmap: ordered milestones in [roadmap.md](roadmap.md). The ea
   - [x] PR 3: per-user backup and online exact-swap restore of one library: Settings → My library backup (`library_backup` / `library_restore` jobs, `/me/backups`), restore into any account, previous library kept aside, sync clients re-pull everything; journal recovery at start
   - [x] PR 4: export as ordinary files (`export` job, `/me/exports`): whole library or one album (the API also takes photo ids, for milestone 9's select-many), plain or Google Takeout layout (`.json` sidecars), split into zips Google-style with oversized files left unzipped, per-file download; Settings → Export my photos and Export album
   - [ ] PR 5: split backups: a backup set of several zips for a library or site too big for one file (set manifest, all-parts check, multi-file upload and restore)
-- [ ] Protected Move library (**milestone 13**; [maintenance.md](maintenance.md#move-library-under-maintenance-milestone-13-planned))
-  - [ ] PR 1: Move library needs maintenance mode `on` (`409 maintenance_required`), the Server page disables it with a link to Maintenance; a detached library answers `503 data_dir_moving` on every library request
-  - [ ] PR 2: the move as a cancellable `data_dir_move` job (progress, free-space check, verify before switching `data_dir`), with a `data-dir-move.json` journal rolled back or finished at start; old files deleted only after the new folder answers
+- [x] Protected Move library (**milestone 13**; [maintenance.md](maintenance.md#move-library-under-maintenance-milestone-13))
+  - [x] PR 1: Move library needs maintenance mode `on` (`409 maintenance_required`), the Server page disables it with a link to Maintenance; a detached library answers `503 data_dir_moving` on every library request
+  - [x] PR 2: the move as a cancellable `data_dir_move` job (progress, free-space check, verify before switching `data_dir`), with a `data-dir-move.json` journal rolled back or finished at start; old files deleted only after the new folder answers
 - [ ] ARM64 QPKG sideload on a QTS 5 ARM64 NAS (**milestone 10, frozen**: no ARM hardware)
 - [ ] Multilingual API: language code on requests; translated messages and locale-formatted date/time in responses; sync and ordering timestamps stay UTC; response language and switch target kept separate, tags normalized to canonical codes (**milestone 8**)
 - [ ] Gallery tools: select many, timeline scrubber, search (new API), light theme (**milestone 9**)

@@ -5,7 +5,9 @@ import { useTranslation } from "react-i18next";
 
 import { apiFetch, AppUser, HostSettings, Me, readDetail } from "./api";
 import { FolderPicker } from "./FolderPicker";
+import { routeHash } from "./hashRoute";
 import i18n from "./i18n";
+import type { ImportJob, MaintenanceStatus } from "./types";
 
 type SmbParts = { host: string; share: string; folder: string; user: string };
 
@@ -106,9 +108,33 @@ async function waitForApiAfterRestart() {
   );
 }
 
+/** Poll a job until it ends. A restart in the middle of the poll (the move is finishing) is not an error. */
+async function followJob(id: string | null): Promise<ImportJob> {
+  let last: ImportJob | null = null;
+  for (;;) {
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    try {
+      const res = await apiFetch(`/api/v1/jobs/${encodeURIComponent(id ?? "")}`);
+      if (res.ok) {
+        last = (await res.json()) as ImportJob;
+        if (last.status !== "running" && last.status !== "queued") {
+          return last;
+        }
+      } else if (res.status === 404 && last) {
+        return { ...last, status: "done" };
+      }
+    } catch {
+      if (last && last.restarting) {
+        return last;
+      }
+    }
+  }
+}
+
 type Props = {
   me: Me;
   platform: string;
+  maintenance: MaintenanceStatus;
 };
 
 /**
@@ -116,7 +142,7 @@ type Props = {
  * where the library is stored (and moving it), and the people who can sign in. Personal options
  * (language, thumbnails, your own library backup) are on the Settings page, the same for everyone.
  */
-export function ServerView({ me, platform }: Props) {
+export function ServerView({ me, platform, maintenance }: Props) {
   const { t } = useTranslation(["settings", "common"]);
   const [users, setUsers] = useState<AppUser[] | null>(null);
   const [host, setHost] = useState<HostSettings | null>(null);
@@ -243,15 +269,29 @@ export function ServerView({ me, platform }: Props) {
         }
         return;
       }
-      const saved = (await res.json()) as HostSettings;
-      applyHost(saved);
+      // The move is a job: the status bar shows its progress and Cancel on every page. This page
+      // follows it to the end so it can report the result and wait for the API when it restarts.
+      const started = (await res.json()) as ImportJob;
       setSmbPasswordDraft("");
-      if (saved.restarting) {
+      setNotice(t("settings:save.moving"));
+      const finished = await followJob(started.id);
+      if (finished.status === "cancelled") {
+        setNotice(t("settings:save.cancelled"));
+        await load();
+        return;
+      }
+      if (finished.status !== "done") {
+        setNotice(null);
+        setError(finished.error || t("settings:save.failed"));
+        await load();
+        return;
+      }
+      if (finished.restarting) {
         setNotice(t("settings:save.restarting"));
         await waitForApiAfterRestart();
-        await load();
       }
-      setNotice(saved.notice || null);
+      await load();
+      setNotice(finished.notice || null);
     } catch (err: unknown) {
       setNotice(null);
       const msg = err instanceof Error ? err.message : t("settings:save.failed");
@@ -268,6 +308,8 @@ export function ServerView({ me, platform }: Props) {
   }
 
   const storageLocked = host?.env_override === true;
+  // Moving copies the whole library, so it only runs while maintenance mode is on (milestone 13).
+  const moveLocked = storageLocked || maintenance.state !== "on";
   return (
     <section className="card settings titled-sections">
       <div className="gallery-head">
@@ -310,12 +352,18 @@ export function ServerView({ me, platform }: Props) {
           </div>
           <h3 className="section-title divided">{t("settings:move.label")}</h3>
           <p className="detail">{t("settings:move.help")}</p>
+          {!storageLocked && !busy && maintenance.state !== "on" && (
+            <p className="detail">
+              {maintenance.state === "draining" ? t("settings:move.needsMaintenanceDraining") : t("settings:move.needsMaintenance")}{" "}
+              <a href={routeHash({ view: "maintenance", albumId: null })}>{t("settings:move.openMaintenance")}</a>
+            </p>
+          )}
           <div className="dest-tabs" role="tablist" aria-label={t("settings:move.label")}>
             <button
               type="button"
               role="tab"
               aria-selected={destKind === "folder"}
-              disabled={storageLocked || busy}
+              disabled={moveLocked || busy}
               onClick={() => {
                 setDestKind("folder");
                 if (destKind === "nas") {
@@ -329,7 +377,7 @@ export function ServerView({ me, platform }: Props) {
               type="button"
               role="tab"
               aria-selected={destKind === "nas"}
-              disabled={storageLocked || busy}
+              disabled={moveLocked || busy}
               onClick={() => {
                 setDestKind("nas");
                 const parts = parseSmbParts(host.data_dir_smb || "");
@@ -370,7 +418,7 @@ export function ServerView({ me, platform }: Props) {
                     onKeyDown={(e) => {
                       if (e.key === "Enter") e.preventDefault();
                     }}
-                    disabled={storageLocked || busy}
+                    disabled={moveLocked || busy}
                     autoComplete="off"
                     placeholder="fileserver"
                   />
@@ -385,7 +433,7 @@ export function ServerView({ me, platform }: Props) {
                     onKeyDown={(e) => {
                       if (e.key === "Enter") e.preventDefault();
                     }}
-                    disabled={storageLocked || busy}
+                    disabled={moveLocked || busy}
                     autoComplete="off"
                     placeholder="Public"
                   />
@@ -400,7 +448,7 @@ export function ServerView({ me, platform }: Props) {
                     onKeyDown={(e) => {
                       if (e.key === "Enter") e.preventDefault();
                     }}
-                    disabled={storageLocked || busy}
+                    disabled={moveLocked || busy}
                     autoComplete="off"
                     placeholder="mosaicWave"
                   />
@@ -431,13 +479,13 @@ export function ServerView({ me, platform }: Props) {
                   onKeyDown={(e) => {
                     if (e.key === "Enter") e.preventDefault();
                   }}
-                  disabled={storageLocked || busy}
+                  disabled={moveLocked || busy}
                   autoComplete="off"
                   placeholder={host.default_data_dir}
                 />
                 <button
                   type="button"
-                  disabled={storageLocked || busy}
+                  disabled={moveLocked || busy}
                   onClick={() => setPickerKind("library")}
                 >
                   {t("common:browse")}
@@ -464,7 +512,7 @@ export function ServerView({ me, platform }: Props) {
                       onKeyDown={(e) => {
                         if (e.key === "Enter") e.preventDefault();
                       }}
-                      disabled={storageLocked || busy}
+                      disabled={moveLocked || busy}
                       autoComplete="off"
                       placeholder="mosaicWave-fileserver-Public"
                     />
@@ -479,7 +527,7 @@ export function ServerView({ me, platform }: Props) {
                       onKeyDown={(e) => {
                         if (e.key === "Enter") e.preventDefault();
                       }}
-                      disabled={storageLocked || busy}
+                      disabled={moveLocked || busy}
                       autoComplete="off"
                       placeholder="mosaicWave"
                     />
@@ -487,7 +535,7 @@ export function ServerView({ me, platform }: Props) {
                 </div>
                 <button
                   type="button"
-                  disabled={storageLocked || busy}
+                  disabled={moveLocked || busy}
                   onClick={() => setPickerKind("mount")}
                 >
                   {t("common:browse")}
@@ -501,7 +549,7 @@ export function ServerView({ me, platform }: Props) {
                   name="smb_user"
                   value={smbUserDraft}
                   onChange={(e) => setSmbUserDraft(e.target.value)}
-                  disabled={storageLocked || busy}
+                  disabled={moveLocked || busy}
                   autoComplete="off"
                   placeholder={t("settings:nas.userPlaceholder")}
                 />
@@ -514,7 +562,7 @@ export function ServerView({ me, platform }: Props) {
                   type="password"
                   value={smbPasswordDraft}
                   onChange={(e) => setSmbPasswordDraft(e.target.value)}
-                  disabled={storageLocked || busy}
+                  disabled={moveLocked || busy}
                   autoComplete="new-password"
                   placeholder={t("settings:nas.passwordPlaceholder")}
                 />
@@ -524,14 +572,14 @@ export function ServerView({ me, platform }: Props) {
           <div className="button-row">
             <button
               type="button"
-              disabled={storageLocked || busy}
+              disabled={moveLocked || busy}
               onClick={() => void saveDataDir()}
             >
               {t("settings:move.save")}
             </button>
             <button
               type="button"
-              disabled={storageLocked || busy}
+              disabled={moveLocked || busy}
               onClick={() => {
                 setDestKind("folder");
                 setDataDirDraft(host.default_data_dir);

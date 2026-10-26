@@ -12,6 +12,7 @@ import subprocess
 import sys
 import tempfile
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, replace
 from pathlib import Path
 
@@ -269,11 +270,59 @@ def _rm_path(path: Path) -> None:
         shutil.rmtree(path)
 
 
-def _copy_path_bytes(src: Path, dest: Path) -> None:
+class CopyProgress:
+    """Counts what a copy has written and lets the caller report it and stop the copy.
+
+    ``check`` runs after every chunk (it raises to cancel); ``on_progress(done_bytes, total_bytes,
+    done_files, total_files)`` is throttled to twice a second. No file names are ever passed on.
+    """
+
+    def __init__(
+        self,
+        total_bytes: int,
+        total_files: int,
+        on_progress: Callable[[int, int, int, int], None] | None = None,
+        check: Callable[[], None] | None = None,
+    ) -> None:
+        self.total_bytes = total_bytes
+        self.total_files = total_files
+        self.done_bytes = 0
+        self.done_files = 0
+        self._on_progress = on_progress
+        self._check = check
+        self._last = 0.0
+
+    def _report(self, force: bool = False) -> None:
+        if self._on_progress is None:
+            return
+        now = time.monotonic()
+        if force or now - self._last >= 0.5:
+            self._last = now
+            self._on_progress(self.done_bytes, self.total_bytes, self.done_files, self.total_files)
+
+    def chunk(self, nbytes: int) -> None:
+        self.done_bytes += nbytes
+        if self._check is not None:
+            self._check()
+        self._report()
+
+    def file_done(self) -> None:
+        self.done_files += 1
+        if self._check is not None:
+            self._check()
+        self._report()
+
+    def finish(self) -> None:
+        self._report(force=True)
+
+
+def _copy_path_bytes(src: Path, dest: Path, progress: CopyProgress | None = None) -> None:
     """Copy content only. shutil.copy2/copystat chmod+xattr fails on many NAS mounts."""
     if src.is_symlink():
         try:
             dest.symlink_to(os.readlink(src))
+            if progress is not None:
+                progress.file_done()
             return
         except OSError:
             if not src.exists():
@@ -283,11 +332,19 @@ def _copy_path_bytes(src: Path, dest: Path) -> None:
         for child in src.iterdir():
             if _skip_copy_name(child.name):
                 continue
-            _copy_path_bytes(child, dest / child.name)
+            _copy_path_bytes(child, dest / child.name, progress)
         return
     dest.parent.mkdir(parents=True, exist_ok=True)
     with src.open("rb") as inf, dest.open("wb") as outf:
-        shutil.copyfileobj(inf, outf, length=1024 * 1024)
+        while True:
+            chunk = inf.read(1024 * 1024)
+            if not chunk:
+                break
+            outf.write(chunk)
+            if progress is not None:
+                progress.chunk(len(chunk))
+    if progress is not None:
+        progress.file_done()
 
 
 def _delete_named(root: Path, names: list[str]) -> None:
@@ -367,24 +424,25 @@ def adopt_legacy_data_folders(settings: Settings) -> list[str]:
     return adopted
 
 
-def _tree_bytes(path: Path) -> int:
+def _tree_stats(path: Path) -> tuple[int, int]:
+    """(files, bytes) a copy of ``path`` produces: the same entries ``_copy_path_bytes`` copies."""
     if path.is_symlink():
-        return 0
+        return 1, 0
     if path.is_file():
-        return path.stat().st_size
-    total = 0
-    for root, _dirs, files in os.walk(path):
-        for name in files:
-            try:
-                total += (Path(root) / name).stat().st_size
-            except OSError:
-                pass
-    return total
+        return 1, path.stat().st_size
+    files = size = 0
+    if path.is_dir():
+        for child in path.iterdir():
+            if _skip_copy_name(child.name):
+                continue
+            f, b = _tree_stats(child)
+            files += f
+            size += b
+    return files, size
 
 
-def _require_free_space(dest: Path, items: list[Path]) -> None:
+def _require_free_space(dest: Path, need: int) -> None:
     """Refuse a move that cannot fit, before anything is copied."""
-    need = sum(_tree_bytes(item) for item in items)
     try:
         free = shutil.disk_usage(dest).free
     except OSError:
@@ -397,6 +455,33 @@ def _require_free_space(dest: Path, items: list[Path]) -> None:
         )
 
 
+def preflight_move(src: Path, dest: Path) -> None:
+    """The refusals that need no copying, so the request can answer 400 before a job starts."""
+    src = src.resolve()
+    dest = dest.resolve()
+    if src == dest:
+        return
+    if _is_under(dest, src) or _is_under(src, dest):
+        raise ValueError("new folder cannot be inside the current data folder (or the reverse)")
+    if src.is_dir():
+        need = sum(
+            _tree_stats(p)[1] for p in src.iterdir() if p.name in _DATA_DIR_NAMES and not _skip_copy_name(p.name)
+        )
+        _require_free_space(dest if dest.exists() else dest.parent, need)
+
+
+def _verify_copy(src: Path, dest: Path, names: list[str]) -> None:
+    """Every copied folder must hold the same number of files and bytes as its source."""
+    for name in names:
+        want = _tree_stats(src / name)
+        got = _tree_stats(dest / name)
+        if want != got:
+            raise ValueError(
+                f"the copy of {name} does not match the original "
+                f"({got[0]} of {want[0]} files, {got[1]} of {want[1]} bytes)"
+            )
+
+
 def copy_data_dir(
     src: Path,
     dest: Path,
@@ -404,11 +489,20 @@ def copy_data_dir(
     replace_payload: bool = False,
     library_db: Path | None = None,
     move_sqlite: bool = False,
+    on_progress: Callable[[int, int, int, int], None] | None = None,
+    check: Callable[[], None] | None = None,
+    on_stage: Callable[[str, list[str]], None] | None = None,
+    before_rewrite: Callable[[], None] | None = None,
 ) -> list[str]:
     """Copy library files to dest. Leaves src in place. Rolls dest back on failure.
 
     Save folder keeps library.db at the app folder (rewrite URIs there). Legacy
     bootstrap relocate passes move_sqlite=True so the DB file moves with the folder.
+
+    Milestone 13 hooks: ``on_progress`` and ``check`` (raises to cancel) follow the copy;
+    ``on_stage("copying" | "rewriting", names)`` lets the caller journal what is about to change;
+    ``before_rewrite`` runs once the copy is verified and before any database is touched.
+    A cancel (any ``BaseException``) rolls dest back like a failure and is re-raised as it was.
     """
     src = src.resolve()
     dest = dest.resolve()
@@ -426,6 +520,15 @@ def copy_data_dir(
         _checkpoint_library_db(rewrite_target)
         for lib in _library_dbs_beside(rewrite_target):
             _checkpoint_library_db(lib)
+    items = [p for p in src.iterdir() if not _skip_copy_name(p.name)]
+    if not move_sqlite:
+        # The databases stay in the app folder. The photo payload, backups and
+        # exports move with the data folder.
+        items = [p for p in items if p.name in _DATA_DIR_NAMES]
+    # Nothing is deleted or written to dest before these checks have passed.
+    totals = [_tree_stats(item) for item in items]
+    need = sum(b for _f, b in totals)
+    _require_free_space(dest, need)
     if replace_payload:
         names = set(_FILE_PAYLOAD_NAMES)
         if move_sqlite:
@@ -434,11 +537,6 @@ def copy_data_dir(
             leftover = dest / name
             if leftover.exists() or leftover.is_symlink():
                 _rm_path(leftover)
-    items = [p for p in src.iterdir() if not _skip_copy_name(p.name)]
-    if not move_sqlite:
-        # The databases stay in the app folder. The photo payload, backups and
-        # exports move with the data folder.
-        items = [p for p in items if p.name in _DATA_DIR_NAMES]
     for item in items:
         target = dest / item.name
         if not target.exists():
@@ -457,28 +555,37 @@ def copy_data_dir(
                         _rm_path(extra)
             continue
         raise ValueError(f"destination already contains {item.name}")
-    _require_free_space(dest, items)
+    progress = CopyProgress(need, sum(f for f, _b in totals), on_progress, check)
+    wanted = [item.name for item in items]
+    if on_stage is not None:
+        on_stage("copying", wanted)
     copied: list[str] = []
     rewritten = False
     try:
         for item in items:
             target = dest / item.name
             try:
-                _copy_path_bytes(item, target)
-            except OSError:
-                if target.exists():
+                _copy_path_bytes(item, target, progress)
+            except BaseException:
+                if target.exists() or target.is_symlink():
                     try:
                         _rm_path(target)
                     except OSError:
                         pass
                 raise
             copied.append(item.name)
+        progress.finish()
+        _verify_copy(src, dest, copied)
+        if before_rewrite is not None:
+            before_rewrite()
+        if on_stage is not None:
+            on_stage("rewriting", copied)
         if move_sqlite:
             _rewrite_library_root_uris(dest / "library.db", src, dest)
         elif rewrite_target.is_file():
+            rewritten = True  # set first: undoing a half-done rewrite is safe, it only moves paths under dest
             _rewrite_library_root_uris(rewrite_target, src, dest)
-            rewritten = True
-    except Exception as exc:
+    except BaseException as exc:
         if rewritten and rewrite_target.is_file():
             try:
                 _rewrite_library_root_uris(rewrite_target, dest, src)
@@ -489,7 +596,6 @@ def copy_data_dir(
             raise ValueError(f"could not copy the data folder: {exc}") from exc
         raise
     return copied
-
 
 def relocate_data_dir(src: Path, dest: Path) -> None:
     names = copy_data_dir(src, dest, move_sqlite=True)
