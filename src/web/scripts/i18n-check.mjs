@@ -1,8 +1,10 @@
 // Fails when zh-Hant / zh-Hans drift from the English source (doc/i18n.md).
-// Also fails when a server error or Takeout warning code has no errors:{code} entry.
+// Also fails when a server error or Takeout warning code has no errors:{code} entry, and when the
+// server's generated catalog copy (src/server/mosaicwave/locales) is stale.
 import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { stale as serverCopyStale } from "./sync-server-locales.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const localesDir = join(here, "..", "app", "locales");
@@ -138,6 +140,12 @@ try {
   }
 } catch (err) {
   if (err.code !== "ENOENT") throw err;
+}
+
+for (const locale of serverCopyStale()) {
+  problems.push(
+    `server/mosaicwave/locales/errors.${locale}.json is stale or missing (run npm run sync-locales)`,
+  );
 }
 
 if (problems.length) {

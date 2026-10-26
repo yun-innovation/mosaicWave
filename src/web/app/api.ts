@@ -13,6 +13,8 @@ export type AuthStatus = {
   platform: string;
   needs_setup: boolean;
   me: Me | null;
+  /** Languages the server can answer and save in; absent on an older server. */
+  locales?: string[];
 };
 
 export type Source = {
@@ -51,8 +53,34 @@ export type HostSettings = {
 /** Fired when any API call answers `503 maintenance`, so the page can look at the status at once. */
 export const MAINTENANCE_EVENT = "mosaicwave:maintenance";
 
+/** Header that names the language an API answer is written in (never `Accept-Language`). */
+export const LANGUAGE_HEADER = "X-MosaicWave-Language";
+
+/** The page's current language, to send with every request. Nothing is sent before i18n is ready. */
+export function languageHeaders(): Record<string, string> {
+  const language = i18n.language;
+  return language ? { [LANGUAGE_HEADER]: language } : {};
+}
+
+let serverLocales: string[] | null = null;
+
+/** The languages the server can answer and save in (`auth/status.locales`); null = not known yet. */
+export function setServerLocales(locales: string[] | undefined) {
+  serverLocales = Array.isArray(locales) ? locales : null;
+}
+
+/** `codes` limited to what the server supports; all of them while that is unknown (older server). */
+export function supportedByServer<T extends string>(codes: readonly T[]): T[] {
+  const known = serverLocales;
+  return known ? codes.filter((code) => known.includes(code)) : [...codes];
+}
+
 export async function apiFetch(input: string, init: RequestInit = {}) {
-  const res = await fetch(apiUrl(input, init.body), { ...init, credentials: "include" });
+  const headers = new Headers(init.headers);
+  for (const [name, value] of Object.entries(languageHeaders())) {
+    if (!headers.has(name)) headers.set(name, value);
+  }
+  const res = await fetch(apiUrl(input, init.body), { ...init, headers, credentials: "include" });
   if (res.status === 503 && typeof window !== "undefined") {
     void res
       .clone()

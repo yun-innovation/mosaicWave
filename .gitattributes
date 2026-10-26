@@ -12,3 +12,4 @@ src/posix/*.service text eol=lf
 src/posix/*.plist text eol=lf
 src/posix/*.icns binary
 src/posix/*.png binary
+src/server/mosaicwave/locales/*.json text eol=lf

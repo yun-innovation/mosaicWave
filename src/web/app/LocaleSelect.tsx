@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { Me, saveLocale } from "./api";
+import { Me, saveLocale, supportedByServer } from "./api";
 import { applyLocale, isLocale, LOCALE_NAMES, LOCALES, rememberLocale, resolveLocale, storedLocale } from "./i18n";
 
 type Props = {
@@ -39,7 +39,7 @@ export function LocaleSelect({ id, me, onMe }: Props) {
         onChange={(e) => void change(e.target.value)}
       >
         <option value="auto">{t("settings:language.auto")}</option>
-        {LOCALES.map((code) => (
+        {supportedByServer(LOCALES).map((code) => (
           <option key={code} value={code} lang={code}>
             {LOCALE_NAMES[code]}
           </option>

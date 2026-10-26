@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import { ActivityView } from "./ActivityView";
 import { BackupView } from "./BackupView";
 import { AlbumsView } from "./AlbumsView";
-import { apiFetch, apiMediaUrl, AuthStatus, Me } from "./api";
+import { apiFetch, apiMediaUrl, AuthStatus, Me, setServerLocales } from "./api";
 import { AppShell, MAINTENANCE_VIEWS } from "./AppShell";
 import { AuthScreen } from "./AuthScreen";
 import { BrandLockup } from "./BrandLockup";
@@ -87,6 +87,7 @@ export default function Home() {
           return;
         }
         const body = (await res.json()) as AuthStatus;
+        setServerLocales(body.locales);
         setPlatform(body.platform);
         setNeedsSetup(body.needs_setup);
         if (body.platform === "qnap" && !body.me) {

@@ -29,6 +29,7 @@ def optional_user(
     user = session.get(User, user_id)
     if user is None or user.deleted_at is not None:
         return None
+    request.state.user_locale = user.locale  # the answer language when the request names none
     return user
 
 
@@ -50,6 +51,7 @@ def require_user_brief(request: Request) -> User:
         if user is None or user.deleted_at is not None:
             raise ApiError(401, "not_authenticated", "not authenticated")
         session.expunge(user)
+        request.state.user_locale = user.locale
         return user
     finally:
         session.close()

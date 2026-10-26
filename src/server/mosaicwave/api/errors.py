@@ -5,6 +5,7 @@ from typing import Any
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 
+from mosaicwave.i18n import detail_for
 from mosaicwave.library.dbs import LibraryLocked
 
 
@@ -34,22 +35,27 @@ def wrapped(status_code: int, code: str, exc: BaseException) -> ApiError:
     return ApiError(status_code, code, message, {"message": message})
 
 
-async def _api_error_handler(_request: Request, exc: Exception) -> JSONResponse:
+async def _api_error_handler(request: Request, exc: Exception) -> JSONResponse:
     assert isinstance(exc, ApiError)
+    # ``detail`` is written in the response language (English keeps the server's sentence);
+    # ``code`` and ``params`` never change, so a client can still translate on its own.
+    detail = detail_for(request, exc.code, exc.params, str(exc.detail))
     return JSONResponse(
         status_code=exc.status_code,
-        content={"detail": exc.detail, "code": exc.code, "params": exc.params},
+        content={"detail": detail, "code": exc.code, "params": exc.params},
         headers=exc.headers,
     )
 
 
-async def _library_locked_handler(_request: Request, _exc: Exception) -> JSONResponse:
+async def _library_locked_handler(request: Request, _exc: Exception) -> JSONResponse:
     # The user's library is being swapped by a restore; the web UI retries shortly.
+    code = "library_restoring"
+    english = "your library is being restored; try again in a moment"
     return JSONResponse(
         status_code=503,
         content={
-            "detail": "your library is being restored; try again in a moment",
-            "code": "library_restoring",
+            "detail": detail_for(request, code, {}, english),
+            "code": code,
             "params": {},
         },
         headers={"Retry-After": "2"},
