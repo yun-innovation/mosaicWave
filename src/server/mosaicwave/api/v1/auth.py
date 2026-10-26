@@ -28,13 +28,13 @@ from mosaicwave.auth.providers import (
 from mosaicwave.auth.session import COOKIE_NAME, DEFAULT_TTL_SEC, sign_session
 from mosaicwave.config import Settings
 from mosaicwave.db import get_session
+from mosaicwave.i18n import LOCALES, normalize_locale
 from mosaicwave.library.ownership import ensure_user_library
 from mosaicwave.models import LocalCredential, User, utcnow
 
 router = APIRouter()
 
 _USERNAME = re.compile(r"^[A-Za-z0-9._-]{1,64}$")
-LOCALES = ("en", "zh-Hant", "zh-Hans")
 MIN_PASSWORD = 8
 
 
@@ -55,6 +55,7 @@ class AuthStatusOut(BaseModel):
     platform: str
     needs_setup: bool
     me: MeOut | None = None
+    locales: list[str] = list(LOCALES)  # the languages this server can answer and save in
 
 
 class LoginIn(BaseModel):
@@ -238,6 +239,7 @@ def auth_login(
             subject=subject,
             display_name=subject,
         )
+    request.state.user_locale = user.locale
     refuse_non_admin(settings, user)
     _set_session_cookie(request, response, user)
     return _me_out(request, user)
@@ -266,16 +268,25 @@ def patch_me(
     user: User = Depends(require_user),
 ) -> MeOut:
     if "locale" in body.model_fields_set:
-        if body.locale is not None and body.locale not in LOCALES:
-            raise ApiError(
-                400,
-                "invalid_locale",
-                f"locale must be one of {', '.join(LOCALES)} or null",
-                {"locale": body.locale},
-            )
-        user.locale = body.locale
+        # A wide tag (zh-TW, en-GB) is saved as the supported code it maps to; only the
+        # canonical code is stored or returned. An unsupported target is refused, and nothing
+        # is saved. The language the request names for its answer is never saved.
+        target = None
+        if body.locale is not None:
+            target = normalize_locale(body.locale)
+            if target is None:
+                raise ApiError(
+                    400,
+                    "invalid_locale",
+                    f"locale must be one of {', '.join(LOCALES)} or null",
+                    {"locale": body.locale},
+                )
+        user.locale = target
         user.updated_at = utcnow()
         session.flush()
+        request.state.user_locale = target
+        if target is not None:
+            request.state.language = target  # this answer already comes in the new language
     return _me_out(request, user)
 
 

@@ -42,11 +42,11 @@ def test_patch_me_sets_and_clears_locale(tmp_path: Path) -> None:
 
 def test_patch_me_rejects_unknown_locale(tmp_path: Path) -> None:
     client = authed_client(_settings(tmp_path))
-    res = client.patch("/api/v1/me", json={"locale": "zh-TW"})
+    res = client.patch("/api/v1/me", json={"locale": "fr"})
     assert res.status_code == 400
     body = res.json()
     assert body["code"] == "invalid_locale"
-    assert body["params"] == {"locale": "zh-TW"}
+    assert body["params"] == {"locale": "fr"}
     assert "zh-Hant" in body["detail"]
 
 

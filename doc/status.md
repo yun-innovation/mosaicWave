@@ -13,7 +13,7 @@ Short onboarding snapshot for agents. **Session start:** always read [index.md](
 
 ## Next
 
-Next is **milestone 8**: multilingual API (translated messages and locale date/time in responses, shown in a time zone the user chooses; all stored times are UTC), 9 gallery tools (select many, scrubber, search, light theme). 10 ARM64 QPKG is **frozen** (no ARM hardware) and 11 share links (SaaS) is **deferred**; both are skipped.
+Next is **milestone 8**: multilingual API in three PRs (1 response language for error text: done; 2 job text and warnings; 3 display time zone and formatted dates) (translated messages and locale date/time in responses, shown in a time zone the user chooses; all stored times are UTC), 9 gallery tools (select many, scrubber, search, light theme). 10 ARM64 QPKG is **frozen** (no ARM hardware) and 11 share links (SaaS) is **deferred**; both are skipped.
 
 ## Constraints
 

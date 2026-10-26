@@ -292,7 +292,7 @@ OpenAPI at `{{baseUrl}}/docs` stays the living spec; this collection is a snapsh
                     "Auth status",
                     "GET",
                     "/api/v1/auth/status",
-                    description="platform, needs_setup, me if cookied.",
+                    description="platform, needs_setup, me if cookied, locales (languages the server answers and saves in).",
                 ),
                 req(
                     "First-run setup",
@@ -312,10 +312,25 @@ OpenAPI at `{{baseUrl}}/docs` stays the living spec; this collection is a snapsh
                 ),
                 req("Me", "GET", "/api/v1/me", description="Current user, role, private library ids, locale."),
                 req(
+                    "Me, answered in another language",
+                    "GET",
+                    "/api/v1/me",
+                    description=(
+                        "A request names the language of its answer with the X-MosaicWave-Language header or ?lang= "
+                        "(en, zh-Hant, zh-Hans; zh-TW, zh-CN, en-GB also work). Unsupported: the saved locale, then en. "
+                        "Never saved; Accept-Language is ignored. Try it on a failing call to see detail translated."
+                    ),
+                    headers=[{"key": "X-MosaicWave-Language", "value": "zh-Hant"}],
+                ),
+                req(
                     "Set language",
                     "PATCH",
                     "/api/v1/me",
-                    description="locale: en, zh-Hant, zh-Hans, or null for automatic (follow the browser).",
+                    description=(
+                        "locale: en, zh-Hant, zh-Hans (or a tag such as zh-TW, saved as zh-Hant), or null for "
+                        "automatic. An unsupported tag is 400 invalid_locale and nothing is saved. The answer is in "
+                        "the new language."
+                    ),
                     body="{\n  \"locale\": \"zh-Hant\"\n}",
                 ),
                 req(

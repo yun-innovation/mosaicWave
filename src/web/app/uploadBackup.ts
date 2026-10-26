@@ -1,4 +1,4 @@
-import { apiMediaUrl, errorText } from "./api";
+import { apiMediaUrl, errorText, languageHeaders } from "./api";
 import i18n from "./i18n";
 import { BackupItem } from "./types";
 
@@ -24,6 +24,7 @@ export function uploadBackup<T = BackupItem>(
     xhr.open("PUT", apiMediaUrl(`${url}?name=${encodeURIComponent(file.name)}`));
     xhr.withCredentials = true;
     xhr.setRequestHeader("Content-Type", "application/octet-stream");
+    for (const [name, value] of Object.entries(languageHeaders())) xhr.setRequestHeader(name, value);
     xhr.upload.onprogress = (event) => {
       if (event.lengthComputable) onProgress(event.loaded, event.total);
     };
