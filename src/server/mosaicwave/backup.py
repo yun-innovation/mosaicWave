@@ -28,6 +28,7 @@ from mosaicwave.archive import (
     ArchiveError,
     account_entry,
     iter_files,
+    deflated_size,
     plan_parts,
     safe_member,
     write_archive,
@@ -176,7 +177,10 @@ def backup_site(
             except OSError:
                 sized.append((path, arcname, 0))
         everything = [(f, arcname, f.stat().st_size) for f, arcname in db_files] + sized
-        plan = plan_parts(everything, split_bytes if split_bytes and split_bytes > 0 else None)
+        limit = split_bytes if split_bytes and split_bytes > 0 else None
+        # What a database takes in a zip is its deflated size; that is what counts against the part size.
+        stored = {arcname: deflated_size(f) for f, arcname in db_files} if limit else None
+        plan = plan_parts(everything, limit, stored)
         common = {
             "kind": KIND_SITE,
             "created_at": started.isoformat(timespec="seconds"),

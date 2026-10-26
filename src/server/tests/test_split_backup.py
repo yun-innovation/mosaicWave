@@ -18,6 +18,7 @@ from mosaicwave.archive import (
     ArchiveError,
     PartsMissing,
     _overhead,
+    deflated_size,
     open_set,
     part_name,
     plan_parts,
@@ -36,15 +37,35 @@ def _manifest(archive: Path) -> dict:
         return json.loads(zf.read("manifest.json"))
 
 
+def _fatten(settings) -> None:  # type: ignore[no-untyped-def]
+    """Put 60 KB of random bytes in every library database: it no longer compresses to nothing."""
+    import sqlite3
+
+    for db in (settings.data_dir / "accounts").rglob("library.db"):
+        con = sqlite3.connect(db)
+        try:
+            if not con.execute("SELECT 1 FROM sqlite_master WHERE name = 'pad'").fetchone():
+                con.execute("CREATE TABLE pad (b BLOB)")
+                con.execute("INSERT INTO pad VALUES (randomblob(60000))")
+                con.commit()
+        finally:
+            con.close()
+
+
 def _limit(settings) -> int:  # type: ignore[no-untyped-def]
-    """A part size a little under the biggest database, so that one is too big for a zip."""
-    biggest = max(p.stat().st_size for p in settings.data_dir.rglob("library.db"))
-    return int(0.85 * biggest / 0.9)
+    """A part size a little under what the biggest library database takes in a zip (it is then left
+    beside the zips); the site database, which compresses to almost nothing, still fits."""
+    _fatten(settings)
+    biggest = max((settings.data_dir / "accounts").rglob("library.db"), key=lambda p: p.stat().st_size)
+    return int(0.85 * (deflated_size(biggest) + _overhead("library.db")) / 0.9)
 
 
 def _pad(settings, client) -> None:  # type: ignore[no-untyped-def]
-    """A 30 KB file in the library: with the databases it needs a second zip."""
-    (library_dir(settings, client) / "pad.bin").write_bytes(bytes(range(256)) * 120)
+    """A file that nearly fills a zip, so the files after it and the databases need other zips."""
+    limit = _limit(settings)
+    cap = limit - limit // 10
+    size = cap - _overhead(f"libraries/{me_id(client)}/pad.bin") - 600
+    (library_dir(settings, client) / "pad.bin").write_bytes(bytes(range(256)) * (size // 256))
 
 
 def _zips(paths: list[Path]) -> list[Path]:
@@ -94,6 +115,29 @@ def test_plan_leaves_a_big_database_beside_the_zips_too() -> None:
     plan = plan_parts([(Path("db"), "library.db", 4000)] + _files(2, 100), 1000)
     assert plan.loose == [(Path("db"), "library.db", 4000)]
     assert sum(len(g) for g in plan.groups) == 2
+
+
+def test_plan_measures_a_database_by_what_it_takes_in_a_zip() -> None:
+    db = (Path("db"), "library.db", 4000)
+    fits = plan_parts([db] + _files(1, 100), 1000, {"library.db": 300})  # 4000 bytes deflate to 300
+    assert fits.loose == [] and [p.arcname for p in fits.groups[0]] == ["library.db", "libraries/u/f0"]
+    still_big = plan_parts([db] + _files(1, 100), 1000, {"library.db": 2000})
+    assert still_big.loose == [db]  # too big even compressed: left as it is, at its real size
+
+
+def test_a_file_that_does_not_fit_the_open_zip_starts_the_next_one() -> None:
+    # 600 + headers fits a zip of 1000 (900 usable) but not beside another file of the same size
+    plan = plan_parts(_files(3, 400), 1000)
+    assert plan.loose == [] and [len(g) for g in plan.groups] == [1, 1, 1]
+
+
+def test_deflated_size_is_what_a_zip_writes(tmp_path: Path) -> None:
+    path = tmp_path / "data.bin"
+    path.write_bytes(b"abc" * 50_000)
+    with zipfile.ZipFile(tmp_path / "z.zip", "w", zipfile.ZIP_DEFLATED) as zf:
+        zf.write(path, "data.bin")
+        packed = zf.getinfo("data.bin").compress_size
+    assert deflated_size(path) == packed
 
 
 def test_plan_compresses_a_database_that_fits_whole() -> None:
@@ -149,7 +193,7 @@ def test_site_backup_in_parts_restores_everything(tmp_path: Path) -> None:
     assert len(restored.get("/api/v1/assets").json()["items"]) == 2
     assert [(a["name"], a["asset_count"]) for a in restored.get("/api/v1/albums").json()] == [("Holiday", 1)]
     assert (dst.data_dir / "libraries" / uid / "sub" / "blue.jpg").is_file()
-    assert (dst.data_dir / "libraries" / uid / "pad.bin").read_bytes() == bytes(range(256)) * 120
+    assert (dst.data_dir / "libraries" / uid / "pad.bin").read_bytes() == (src.data_dir / "libraries" / uid / "pad.bin").read_bytes()
     client.close()
 
 
@@ -171,6 +215,7 @@ def test_a_missing_part_is_named_and_nothing_is_staged(tmp_path: Path) -> None:
     _pad(src, client)
     result = backup_site(src, tmp_path / "out", split_bytes=_limit(src))
     big = _bigs(result.paths)[0]
+    zips = _zips(result.paths)
     result.paths[1].unlink()
 
     with pytest.raises(PartsMissing) as caught:
@@ -179,7 +224,7 @@ def test_a_missing_part_is_named_and_nothing_is_staged(tmp_path: Path) -> None:
     big.unlink()  # a big file is a part like the others
     with pytest.raises(PartsMissing) as caught:
         check_archive(result.path)
-    assert caught.value.missing == [2, 3]
+    assert caught.value.missing == [2, len(zips) + 1]
 
     dst = _settings(tmp_path / "b")
     with pytest.raises(PartsMissing):
@@ -425,7 +470,7 @@ def test_uploading_the_parts_one_by_one_rebuilds_the_set(tmp_path: Path) -> None
     names = list(originals)
     zips = [n for n in names if n.endswith(".zip")]
     bigs = [n for n in names if n.endswith(".big")]
-    assert len(zips) >= 2 and bigs
+    assert zips and bigs
     # a big file has nothing to belong to until a zip of its backup is there
     early = client.put("/api/v1/backups/upload", params={"name": bigs[0]}, content=originals[bigs[0]])
     assert early.status_code == 400 and early.json()["code"] == "backup_invalid"
@@ -435,7 +480,7 @@ def test_uploading_the_parts_one_by_one_rebuilds_the_set(tmp_path: Path) -> None
         body = up.json()
         assert name in [p["name"] for p in body["part_files"]]
         assert len(body["missing"]) == len(names) - number
-    again = client.put("/api/v1/backups/upload", params={"name": zips[1]}, content=originals[zips[1]])
+    again = client.put("/api/v1/backups/upload", params={"name": zips[0]}, content=originals[zips[0]])
     assert again.status_code == 200  # the same part again
     final = client.get("/api/v1/backups").json()
     assert len(final) == 1 and final[0]["missing"] == [] and final[0]["name"] == entry["name"]

@@ -39,6 +39,7 @@ from mosaicwave.archive import (
     hash_loose,
     iter_files,
     open_set,
+    deflated_size,
     plan_parts,
     read_manifest_file,
     safe_member,
@@ -141,10 +142,9 @@ def backup_library(
         if skipped:
             warnings.append(f"{skipped} file(s) with unsupported names were left out")
 
-        plan = plan_parts(
-            [(db_file, DB_ENTRY, db_file.stat().st_size)] + sized,
-            split_bytes if split_bytes and split_bytes > 0 else None,
-        )
+        limit = split_bytes if split_bytes and split_bytes > 0 else None
+        stored = {DB_ENTRY: deflated_size(db_file)} if limit else None  # what it takes in a zip
+        plan = plan_parts([(db_file, DB_ENTRY, db_file.stat().st_size)] + sized, limit, stored)
         common = {
             "kind": KIND_LIBRARY,
             "created_at": started.isoformat(timespec="seconds"),

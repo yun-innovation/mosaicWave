@@ -13,6 +13,7 @@ import json
 import os
 import re
 import zipfile
+import zlib
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
@@ -443,14 +444,30 @@ def _overhead(name: str) -> int:
     return 2 * len(name.encode("utf-8")) + 200
 
 
-def plan_parts(files: list[tuple[Path, str, int]], limit: int | None) -> Plan:
+def deflated_size(path: Path) -> int:
+    """How many bytes ``path`` takes in a zip when deflated (what ``ZipFile`` does by default)."""
+    packer = zlib.compressobj(zlib.Z_DEFAULT_COMPRESSION, zlib.DEFLATED, -15)
+    packed = 0
+    with open(path, "rb") as src:
+        while block := src.read(_COPY):
+            packed += len(packer.compress(block))
+    return packed + len(packer.flush())
+
+
+def plan_parts(
+    files: list[tuple[Path, str, int]], limit: int | None, stored: dict[str, int] | None = None
+) -> Plan:
     """Share ``files`` out over zips that stay within ``limit`` bytes (None: one zip).
 
     A file that fits is stored whole in a zip. A file bigger than a zip is left out of the zips and
     copied beside them (``Plan.loose``), a database as much as a photo. Zip headers and a reserve for
     the manifest are counted, so a zip is not bigger than ``limit`` unless a file grew meanwhile.
-    Databases are compressed; counting them at their full size is the most they can take.
+    What counts against a zip is the size a file takes in it: a photo or video is stored as it is, a
+    database is deflated, so ``stored`` gives its deflated size by name (see ``deflated_size``). A file
+    that fits no more room in the current zip but is smaller than a zip starts the next zip; one whose
+    stored size is bigger than a zip is left out of the zips and copied as it is (its real size).
     """
+    stored = stored or {}
     if not limit:
         return Plan([[Piece(path, arcname, not is_media_name(arcname)) for path, arcname, _ in files]], [])
     reserve = min(_COPY, limit // 10)
@@ -459,7 +476,7 @@ def plan_parts(files: list[tuple[Path, str, int]], limit: int | None) -> Plan:
     loose: list[tuple[Path, str, int]] = []
     used = 0
     for path, arcname, size in files:
-        cost = size + _overhead(arcname)
+        cost = stored.get(arcname, size) + _overhead(arcname)
         if cost > cap:
             loose.append((path, arcname, size))
             continue
