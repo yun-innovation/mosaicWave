@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -107,7 +107,9 @@ def get_my_backups(request: Request, user: User = Depends(require_user)) -> list
 
 # Declared before ``/me/backups/{name}`` so "upload" is not read as a backup name.
 @router.put("/me/backups/upload", response_model=LibraryBackupOut, openapi_extra=UPLOAD_BODY)
-async def upload_my_backup(request: Request, user: User = Depends(require_user_brief)) -> LibraryBackupOut:
+async def upload_my_backup(
+    request: Request, name: str = Query(default="", max_length=255), user: User = Depends(require_user_brief)
+) -> LibraryBackupOut:
     """Receive one of your library backups from the browser (raw body, streamed to disk)."""
     settings = request.app.state.settings
     if restore.pending_exists(settings):
@@ -124,6 +126,7 @@ async def upload_my_backup(request: Request, user: User = Depends(require_user_b
         folder,
         prefix="mosaicwave-library",
         check=lambda path: check_library_archive(path, part_only=True),
+        file_name=name,
     )
     listed = set_containing(folder, LIBRARY_NAME, final)
     info = _describe(listed) if listed is not None else None

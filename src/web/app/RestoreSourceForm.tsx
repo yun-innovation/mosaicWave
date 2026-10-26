@@ -73,7 +73,9 @@ export function RestoreSourceForm({
   }
 
   /** Upload the chosen file, or every part of a split backup one after the other, then restore it. */
-  async function fromDevice(chosen: File[]) {
+  async function fromDevice(picked: File[]) {
+    // The zips first: a big file (.big) is kept only once a zip of its backup is there.
+    const chosen = [...picked].sort((a, b) => Number(a.name.endsWith(".big")) - Number(b.name.endsWith(".big")));
     const total = chosen.reduce((sum, f) => sum + f.size, 0);
     let before = 0;
     let name = "";
@@ -183,7 +185,7 @@ export function RestoreSourceForm({
             <input
               id="restore-device"
               type="file"
-              accept=".zip,application/zip"
+              accept=".zip,.big,application/zip"
               multiple
               onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
               disabled={!idle}

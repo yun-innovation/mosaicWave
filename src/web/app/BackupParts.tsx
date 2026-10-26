@@ -12,7 +12,7 @@ type PartedItem = {
   missing: number[];
 };
 
-const PART_NUMBER = /-(\d{3})\.zip$/;
+const PART_NUMBER = /-(\d{3})\.(?:zip|big)$/;
 
 /**
  * The files of a split backup in the list: one download link per part, and a note when parts are not

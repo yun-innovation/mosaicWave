@@ -32,15 +32,16 @@ from mosaicwave.archive import (
     MANIFEST,
     ArchiveError,
     ArchiveSet,
-    ChunkTracker,
+    LooseFile,
+    big_media,
     check_library_manifest,
-    chunk_info,
+    copy_loose,
+    hash_loose,
     iter_files,
     open_set,
     plan_parts,
     read_manifest_file,
     safe_member,
-    starts_a_file,
     write_archive,
 )
 from mosaicwave.backup import _snapshot_library
@@ -140,7 +141,7 @@ def backup_library(
         if skipped:
             warnings.append(f"{skipped} file(s) with unsupported names were left out")
 
-        groups = plan_parts(
+        plan = plan_parts(
             [(db_file, DB_ENTRY, db_file.stat().st_size)] + sized,
             split_bytes if split_bytes and split_bytes > 0 else None,
         )
@@ -154,19 +155,13 @@ def backup_library(
             "assets": facts["assets"],
             "albums": facts["albums"],
         }
-        paths, manifest = write_archive(out_dir, base, groups, common, warnings, on_progress)
+        paths, manifest = write_archive(out_dir, base, plan, common, warnings, on_progress)
         return LibraryBackupResult(paths[0], manifest, paths)
     finally:
         shutil.rmtree(work, ignore_errors=True)
 
 
 # --- check and stage ---------------------------------------------------------------------------
-
-
-def _whole(name: str) -> str:
-    """The name of the file an entry belongs to (a piece of a big file is named like the file)."""
-    info = chunk_info(name)
-    return info[0] if info else name
 
 
 def _members(zf: zipfile.ZipFile, manifest: dict) -> list[zipfile.ZipInfo]:
@@ -181,16 +176,20 @@ def _members(zf: zipfile.ZipFile, manifest: dict) -> list[zipfile.ZipInfo]:
         if name in seen:
             raise ArchiveError(f"duplicate name in archive: {name!r}")
         seen.add(name)
-        if _whole(name) in (MANIFEST, DB_ENTRY):
+        if name in (MANIFEST, DB_ENTRY):
             continue
-        parts = name.split("/")
-        if parts[0] != LIBRARIES or len(parts) < 3 or parts[1] != source:
-            raise ArchiveError(f"unexpected name in a library archive: {name!r}")
+        _check_source(name, source)
     return infos
 
 
+def _check_source(name: str, source: str) -> None:
+    parts = name.split("/")
+    if parts[0] != LIBRARIES or len(parts) < 3 or parts[1] != source:
+        raise ArchiveError(f"unexpected name in a library archive: {name!r}")
+
+
 def _check_database(names: set[str]) -> None:
-    if DB_ENTRY not in {_whole(n) for n in names}:
+    if DB_ENTRY not in names:
         raise ArchiveError("archive has no library.db")
 
 
@@ -205,26 +204,23 @@ def check_library_archive(archive: Path, *, full: bool = False, part_only: bool 
     this file (an upload, before the other parts have arrived) and returns its own manifest.
     """
     try:
+        loose: list[LooseFile] = []
         if part_only:
             own = read_manifest_file(archive)
             _check_manifest(own)
             paths, manifests, manifest = [archive], [own], own
         else:
             found = open_set(archive, _check_manifest)
-            paths, manifests, manifest = found.paths, found.manifests, found.manifest
+            paths, manifests, manifest, loose = found.paths, found.manifests, found.manifest, found.loose
         names: set[str] = set()
-        pieces = ChunkTracker()
         for path, part_manifest in zip(paths, manifests):
             with zipfile.ZipFile(path) as zf:
                 infos = _members(zf, part_manifest)
-                media = 0
+                media = big_media(part_manifest)
                 for info in infos:
                     if info.filename == MANIFEST:
                         continue
-                    if not part_only:
-                        pieces.see(info.filename)
-                    if _whole(info.filename) != DB_ENTRY:
-                        media += starts_a_file(info.filename)
+                    media += info.filename != DB_ENTRY
                     if info.filename in names:
                         raise ArchiveError(f"{info.filename!r} is in two parts of the backup")
                     names.add(info.filename)
@@ -236,8 +232,16 @@ def check_library_archive(archive: Path, *, full: bool = False, part_only: bool 
                     bad = zf.testzip()
                     if bad is not None:
                         raise ArchiveError(f"archive is damaged: {bad!r} fails its checksum")
+        for big in loose:
+            name = big.entry.name
+            if name in names:
+                raise ArchiveError(f"{name!r} is in two parts of the backup")
+            if name != DB_ENTRY:
+                _check_source(name, manifest["user_id"])
+            names.add(name)
+            if full and hash_loose(big) != big.entry.sha256:
+                raise ArchiveError(f"{big.path.name} is damaged: it does not match the backup")
         if not part_only:
-            pieces.check_done()
             _check_database(names)
     except zipfile.BadZipFile as exc:
         raise ArchiveError(f"not a zip file or damaged: {exc}") from exc
@@ -268,17 +272,26 @@ def stage_library(
         # First look: names, and how much room the unpacked library needs.
         db_size = 0
         media_size = 0
-        total = 0
+        total = len(found.loose)
         seen: set[str] = set()
         for path, part_manifest in parts:
             with zipfile.ZipFile(path) as zf:
                 infos = _members(zf, part_manifest)
             total += len(infos)
             seen.update(i.filename for i in infos if i.filename != MANIFEST)
-            db_size += sum(i.file_size for i in infos if _whole(i.filename) == DB_ENTRY)
-            media_size += sum(
-                i.file_size for i in infos if i.filename != MANIFEST and _whole(i.filename) != DB_ENTRY
-            )
+            db_size += sum(i.file_size for i in infos if i.filename == DB_ENTRY)
+            media_size += sum(i.file_size for i in infos if i.filename not in (MANIFEST, DB_ENTRY))
+        for big in found.loose:
+            name = big.entry.name
+            if name in seen:
+                raise ArchiveError(f"{name!r} is in two parts of the backup")
+            if name != DB_ENTRY:
+                _check_source(name, source)
+            seen.add(name)
+            if name == DB_ENTRY:
+                db_size += big.entry.size
+            else:
+                media_size += big.entry.size
         _check_database(seen)
         _require_space(settings.database_path.parent, db_size * 2)
         _require_space(settings.data_dir, media_size)
@@ -287,7 +300,6 @@ def stage_library(
         target_root.mkdir(parents=True)
         index = 0
         media = 0
-        pieces = ChunkTracker()
         for path, part_manifest in parts:
             with zipfile.ZipFile(path) as zf:
                 for info in _members(zf, part_manifest):
@@ -295,19 +307,18 @@ def stage_library(
                     name = info.filename
                     if name == MANIFEST:
                         continue
-                    whole, append, complete = pieces.see(name)
-                    if whole == DB_ENTRY:
+                    if name == DB_ENTRY:
                         dest = db_stage / DB_ENTRY
                     else:
-                        dest = target_root / whole.split("/", 2)[2]
-                        media += starts_a_file(name)
+                        dest = target_root / name.split("/", 2)[2]
+                        media += 1
                     dest.parent.mkdir(parents=True, exist_ok=True)
                     try:
-                        with zf.open(info) as src, open(dest, "ab" if append else "wb") as out:
+                        with zf.open(info) as src, open(dest, "wb") as out:
                             shutil.copyfileobj(src, out, 1024 * 1024)
                     except zipfile.BadZipFile as exc:
                         raise ArchiveError(f"archive is damaged at {name!r}: {exc}") from exc
-                    if whole != DB_ENTRY and complete:
+                    if name != DB_ENTRY:
                         try:
                             stamp_time = datetime(*info.date_time, tzinfo=timezone.utc).timestamp()
                             os.utime(dest, (stamp_time, stamp_time))
@@ -315,7 +326,16 @@ def stage_library(
                             pass
                     if on_progress is not None:
                         on_progress(index, total, name)
-        pieces.check_done()
+        for big in found.loose:
+            index += 1
+            name = big.entry.name
+            if name == DB_ENTRY:
+                copy_loose(big, db_stage / DB_ENTRY)
+            else:
+                copy_loose(big, target_root / name.split("/", 2)[2])
+                media += 1
+            if on_progress is not None:
+                on_progress(index, total, name)
         if media != manifest["file_count"]:
             raise ArchiveError(f"archive lists {manifest['file_count']} files but holds {media}")
         upgrade_from = _prepare_library(

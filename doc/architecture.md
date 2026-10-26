@@ -178,7 +178,7 @@ Illustrative v1 surface (names can change; behavior should not):
 | DELETE | `/api/v1/backups/{name}` | **Admin.** Delete one archive (every part of a split backup) |
 | POST | `/api/v1/backups/{name}/restore` | **Admin.** Stage an online restore as a cancellable `site_restore` job; needs maintenance mode (`maintenance_required`) |
 | POST | `/api/v1/backups/restore` | **Admin.** `{path}`: stage a restore from a zip anywhere on the server (maintenance mode required) |
-| PUT | `/api/v1/backups/upload` | **Admin.** Raw zip body from the browser into `backups/`; checked and stored under the standard name (a part of a split backup is stored as `-NNN.zip`; send every part) |
+| PUT | `/api/v1/backups/upload` | **Admin.** Raw zip body from the browser into `backups/`; checked and stored under the standard name (a part of a split backup is stored as `-NNN.zip`; send every part; a `…-NNN.big` file is sent with `?name=` after a zip of its backup) |
 | GET | `/api/v1/backups/restore` | **Admin.** `{pending, result}`: the staged restore and the last start-up swap |
 | POST | `/api/v1/backups/restore/apply` | **Admin.** Restart the API; the staged restore is swapped in at start-up |
 | DELETE | `/api/v1/backups/restore` | **Admin.** Discard the staged restore and clear the result |

@@ -8,12 +8,13 @@ consistent SQLite snapshots. Media are stored uncompressed; databases and manife
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
 import zipfile
 from collections.abc import Callable, Iterator
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
 
 from mosaicwave.library.dbs import USER_ID
@@ -37,9 +38,9 @@ BLOBS = "blobs"
 # a restore on another host or OS rebuilds the real path.
 DATA_PREFIX = "mw-data:"
 
-SITE_NAME = re.compile(r"^mosaicwave-site-\d{8}-\d{6}(?:-\d{3})?\.zip$")
-LIBRARY_NAME = re.compile(r"^mosaicwave-library-\d{8}-\d{6}(?:-\d{3})?\.zip$")
-PART_NAME = re.compile(r"^(mosaicwave-(?:site|library)-\d{8}-\d{6})-(\d{3})\.zip$")
+SITE_NAME = re.compile(r"^mosaicwave-site-\d{8}-\d{6}(?:\.zip|-\d{3}\.(?:zip|big))$")
+LIBRARY_NAME = re.compile(r"^mosaicwave-library-\d{8}-\d{6}(?:\.zip|-\d{3}\.(?:zip|big))$")
+PART_NAME = re.compile(r"^(mosaicwave-(?:site|library)-\d{8}-\d{6})-(\d{3})\.(zip|big)$")
 
 _SKIP_NAMES = {".DS_Store", ".localized", "Thumbs.db", "desktop.ini"}
 _DRIVE = re.compile(r"^[A-Za-z]:")
@@ -94,13 +95,11 @@ def iter_files(root: Path, prefix: str) -> Iterator[tuple[Path, str]]:
 
 def safe_member(name: str) -> str:
     """Return ``name`` if it may be extracted, else raise."""
-    pieces = chunk_info(name)
-    whole = pieces[0] if pieces else name  # a piece of a big file is named like the file
-    if whole in (MANIFEST, DB_ENTRY):
+    if name in (MANIFEST, DB_ENTRY):
         return name
     if "\\" in name or name.startswith("/"):
         raise ArchiveError(f"unsafe name in archive: {name!r}")
-    parts = PurePosixPath(whole).parts
+    parts = PurePosixPath(name).parts
     if len(parts) == 3 and parts[0] == ACCOUNTS and parts[2] == DB_ENTRY and USER_ID.match(parts[1]):
         return name
     if len(parts) < 2 or parts[0] not in (LIBRARIES, BLOBS) or any(p in ("", ".", "..") for p in parts):
@@ -129,6 +128,7 @@ def check_manifest(manifest: dict, site_supported: int, library_supported: int) 
     if fmt not in (FORMAT, FORMAT_SET):
         raise ArchiveError(f"archive format {fmt!r} is not supported (this app reads format {FORMAT_SET})")
     part_info(manifest)
+    loose_entries(manifest)
     if manifest.get("kind") != KIND_SITE:
         raise WrongKind(f"archive kind {manifest.get('kind')!r} is not a site backup")
     site = manifest.get("schema_version")
@@ -154,6 +154,7 @@ def check_library_manifest(manifest: dict, library_supported: int) -> None:
     if fmt not in (FORMAT, FORMAT_SET):
         raise ArchiveError(f"archive format {fmt!r} is not supported (this app reads format {FORMAT_SET})")
     part_info(manifest)
+    loose_entries(manifest)
     if manifest.get("kind") != KIND_LIBRARY:
         raise WrongKind(f"archive kind {manifest.get('kind')!r} is not a library backup")
     library = manifest.get("library_schema_version")
@@ -176,8 +177,8 @@ def check_library_manifest(manifest: dict, library_supported: int) -> None:
 # --- split backups: a set of parts ---------------------------------------------------------------
 
 
-def part_name(base: str, number: int) -> str:
-    return f"{base}-{number:03d}.zip"
+def part_name(base: str, number: int, *, loose: bool = False) -> str:
+    return f"{base}-{number:03d}.{'big' if loose else 'zip'}"
 
 
 def part_info(manifest: dict) -> tuple[int, int] | None:
@@ -226,6 +227,7 @@ _SAME_IN_EVERY_PART = (
     "library_schema_version",
     "assets",
     "albums",
+    "loose",
 )
 
 
@@ -247,9 +249,10 @@ def merge_manifests(manifests: list[dict]) -> dict:
 class ArchiveSet:
     """An archive as restore sees it: one zip, or every part of a split backup."""
 
-    paths: list[Path]
+    paths: list[Path]  # the zips, in part order
     manifest: dict  # for the whole set: counts and warnings are the sums
-    manifests: list[dict]  # one per file, in part order
+    manifests: list[dict]  # one per zip, in part order
+    loose: list["LooseFile"] = field(default_factory=list)  # the big files beside the zips
 
 
 def read_manifest_file(path: Path) -> dict:
@@ -264,8 +267,15 @@ def open_set(path: Path, check: Callable[[dict], None]) -> ArchiveSet:
     """The archive ``path`` belongs to. For a part, every sibling must be there and match.
 
     ``check`` validates a manifest (kind, format, schema). Raises ``PartsMissing`` listing the part
-    numbers that are not next to ``path``.
+    numbers that are not next to ``path``. ``path`` may be a big file (``-NNN.big``): the set is then
+    opened through a zip of the same backup beside it.
     """
+    named = PART_NAME.match(path.name)
+    if named and named.group(3) == "big":
+        zips = sorted(path.parent.glob(f"{named.group(1)}-???.zip"))
+        if not zips:
+            raise ArchiveError("none of the zips of this backup is next to that file")
+        path = zips[0]
     first = read_manifest_file(path)
     check(first)
     info = part_info(first)
@@ -273,94 +283,139 @@ def open_set(path: Path, check: Callable[[dict], None]) -> ArchiveSet:
         return ArchiveSet([path], first, [first])
     part, parts = info
     base = part_base(path, part)
-    paths = [path.with_name(part_name(base, n)) for n in range(1, parts + 1)]
-    missing = [n for n, p in enumerate(paths, start=1) if not p.is_file()]
+    listed = loose_entries(first)
+    big = {e.part: e for e in listed}
+    missing = []
+    for n in range(1, parts + 1):
+        here = path.with_name(part_name(base, n, loose=n in big))
+        if not here.is_file():
+            missing.append(n)
     if missing:
         raise PartsMissing(missing, parts)
+    loose: list[LooseFile] = []
+    for entry in listed:
+        file = path.with_name(part_name(base, entry.part, loose=True))
+        if file.stat().st_size != entry.size:
+            raise ArchiveError(f"part {entry.part} ({file.name}) is not the size the backup says")
+        loose.append(LooseFile(entry, file))
+    numbers = [n for n in range(1, parts + 1) if n not in big]
+    paths = [path.with_name(part_name(base, n)) for n in numbers]
     manifests: list[dict] = []
-    for n, p in enumerate(paths, start=1):
+    for n, p in zip(numbers, paths):
         m = first if n == part else read_manifest_file(p)
         if n != part:
             check(m)
         if part_info(m) != (n, parts) or any(m.get(k) != first.get(k) for k in _SAME_IN_EVERY_PART):
             raise ArchiveError(f"part {n} belongs to a different backup")
         manifests.append(m)
-    return ArchiveSet(paths, merge_manifests(manifests), manifests)
+    return ArchiveSet(paths, merge_manifests(manifests), manifests, loose)
 
 
-# A file bigger than a part is stored in pieces, one per part, as ``<name>.mwchunk-001-of-003``.
-# Restore joins them again, so no part is ever bigger than the size that was asked for.
-CHUNK = re.compile(r"^(?P<base>.+)\.mwchunk-(?P<n>\d{3})-of-(?P<total>\d{3})$")
+# --- big files: copied beside the zips, not cut and not zipped -------------------------------------
+#
+# A file bigger than a part (a long video, a large database) is not put in a zip. As with an export it
+# is copied as a plain file beside the zips, named ``<base>-NNN.big`` after the part number it takes
+# (the zips are 001 to Z, the big files follow). The manifests of the zips say which number is which
+# file: name inside the backup, size and SHA-256, so restore finds and checks it.
+
 _COPY = 1024 * 1024
-
-
-def chunk_name(arcname: str, number: int, total: int) -> str:
-    return f"{arcname}.mwchunk-{number:03d}-of-{total:03d}"
-
-
-def chunk_info(name: str) -> tuple[str, int, int] | None:
-    """``(file name, piece, pieces)`` for a piece of a big file, None for an ordinary entry."""
-    found = CHUNK.match(name)
-    if not found:
-        return None
-    number, total = int(found.group("n")), int(found.group("total"))
-    if not 1 <= number <= total:
-        return None
-    return found.group("base"), number, total
-
-
-def starts_a_file(name: str) -> bool:
-    """True for an entry that is a whole file or the first piece of one (what ``file_count`` counts)."""
-    info = chunk_info(name)
-    return info is None or info[1] == 1
-
-
-class ChunkTracker:
-    """Follows the pieces of big files while an archive is unpacked, and notices a missing one."""
-
-    def __init__(self) -> None:
-        self._open: dict[str, tuple[int, int]] = {}
-
-    def see(self, name: str) -> tuple[str, bool, bool]:
-        """``(name to write, append to it, it is complete after this)`` for the next entry."""
-        info = chunk_info(name)
-        if info is None:
-            return name, False, True
-        base, number, total = info
-        if number == 1:
-            if base in self._open:
-                raise ArchiveError("a large file starts twice in the backup")
-        else:
-            state = self._open.get(base)
-            if state is None or state != (number - 1, total):
-                raise ArchiveError("a piece of a large file is missing or out of order")
-        last = number == total
-        if last:
-            self._open.pop(base, None)
-        else:
-            self._open[base] = (number, total)
-        return base, number > 1, last
-
-    def check_done(self) -> None:
-        if self._open:
-            raise ArchiveError("a large file in the backup is cut short: its last piece is missing")
+_SHA256 = re.compile(r"^[0-9a-f]{64}$")
 
 
 @dataclass(frozen=True)
-class Piece:
-    """One entry to write: a whole file, or ``length`` bytes of a big one from ``offset``."""
+class LooseEntry:
+    """One big file as the manifests list it."""
 
+    part: int
+    name: str
+    size: int
+    sha256: str
+    mtime: int
+
+
+@dataclass
+class LooseFile:
+    """A big file of a set that is on disk."""
+
+    entry: LooseEntry
     path: Path
-    arcname: str
-    offset: int = 0
-    length: int | None = None  # None: the whole file (the last piece of a big file reads to the end)
-    number: int = 0  # 1-based piece of a big file; 0 for a whole file
-    total: int = 0
-    deflate: bool = False  # a database that is stored whole is compressed; pieces are stored as they are
 
-    @property
-    def entry_name(self) -> str:
-        return chunk_name(self.arcname, self.number, self.total) if self.number else self.arcname
+
+def loose_entries(manifest: dict) -> list[LooseEntry]:
+    """The big files a manifest lists (validated). None for an ordinary archive."""
+    raw = manifest.get("loose")
+    if raw is None:
+        return []
+    info = part_info(manifest)
+    if info is None or not isinstance(raw, list):
+        raise ArchiveError("manifest has a list of big files it cannot have")
+    found: list[LooseEntry] = []
+    numbers: set[int] = set()
+    names: set[str] = set()
+    for item in raw:
+        try:
+            part, name, size = item["part"], item["name"], item["size"]
+            sha, mtime = item["sha256"], item["mtime"]
+        except (KeyError, TypeError) as exc:
+            raise ArchiveError("manifest lists a big file without all its facts") from exc
+        if (
+            not isinstance(part, int)
+            or isinstance(part, bool)
+            or not 2 <= part <= info[1]
+            or part in numbers
+            or not isinstance(name, str)
+            or name == MANIFEST
+            or name in names
+            or not isinstance(size, int)
+            or isinstance(size, bool)
+            or size < 0
+            or not isinstance(sha, str)
+            or not _SHA256.match(sha)
+            or not isinstance(mtime, int)
+            or isinstance(mtime, bool)
+        ):
+            raise ArchiveError("manifest lists an invalid big file")
+        safe_member(name)
+        numbers.add(part)
+        names.add(name)
+        found.append(LooseEntry(part, name, size, sha, mtime))
+    return sorted(found, key=lambda e: e.part)
+
+
+def big_media(manifest: dict) -> int:
+    """How many photos and videos sit beside the zips; the first zip counts them in its ``file_count``."""
+    info = part_info(manifest)
+    if info is None or info[0] != 1:
+        return 0
+    return sum(is_media_name(e.name) for e in loose_entries(manifest))
+
+
+def hash_loose(loose: LooseFile) -> str:
+    digest = hashlib.sha256()
+    with open(loose.path, "rb") as src:
+        while block := src.read(_COPY):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def copy_loose(loose: LooseFile, dest: Path) -> None:
+    """Copy a big file to ``dest`` and check it against the manifest (its size and SHA-256)."""
+    digest = hashlib.sha256()
+    written = 0
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    with open(loose.path, "rb") as src, open(dest, "wb") as out:
+        while block := src.read(_COPY):
+            digest.update(block)
+            out.write(block)
+            written += len(block)
+    if written != loose.entry.size or digest.hexdigest() != loose.entry.sha256:
+        dest.unlink(missing_ok=True)
+        raise ArchiveError(f"{loose.path.name} is damaged: it does not match the backup")
+    if is_media_name(loose.entry.name):
+        try:
+            os.utime(dest, (loose.entry.mtime, loose.entry.mtime))
+        except OSError:
+            pass
 
 
 def is_media_name(name: str) -> bool:
@@ -368,142 +423,144 @@ def is_media_name(name: str) -> bool:
     return name.startswith((f"{LIBRARIES}/", f"{BLOBS}/"))
 
 
+@dataclass(frozen=True)
+class Piece:
+    """One file to put in a zip."""
+
+    path: Path
+    arcname: str
+    deflate: bool = False  # databases are compressed, photos and videos are stored as they are
+
+
+@dataclass
+class Plan:
+    groups: list[list[Piece]]  # what goes in each zip
+    loose: list[tuple[Path, str, int]]  # big files: path, name inside the backup, size
+
+
 def _overhead(name: str) -> int:
     """What an entry costs in a zip beyond its data: local and central headers, zip64 fields."""
     return 2 * len(name.encode("utf-8")) + 200
 
 
-def plan_parts(files: list[tuple[Path, str, int]], limit: int | None) -> list[list[Piece]]:
-    """Share ``files`` out over parts that stay within ``limit`` bytes (None: one part).
+def plan_parts(files: list[tuple[Path, str, int]], limit: int | None) -> Plan:
+    """Share ``files`` out over zips that stay within ``limit`` bytes (None: one zip).
 
-    A file that fits is never cut. A file bigger than a part is cut into pieces that each fill a part,
-    a database as much as a photo. Zip headers and a reserve for the manifest are counted, so a part
-    is not bigger than ``limit`` unless a file grew meanwhile. Put the databases first: they are
-    compressed when they fit whole (counted at their full size, which is the most they can take).
+    A file that fits is stored whole in a zip. A file bigger than a zip is left out of the zips and
+    copied beside them (``Plan.loose``), a database as much as a photo. Zip headers and a reserve for
+    the manifest are counted, so a zip is not bigger than ``limit`` unless a file grew meanwhile.
+    Databases are compressed; counting them at their full size is the most they can take.
     """
     if not limit:
-        return [[Piece(path, arcname, deflate=not is_media_name(arcname)) for path, arcname, _ in files]]
+        return Plan([[Piece(path, arcname, not is_media_name(arcname)) for path, arcname, _ in files]], [])
     reserve = min(_COPY, limit // 10)
     cap = max(limit - reserve, 1)
     groups: list[list[Piece]] = [[]]
+    loose: list[tuple[Path, str, int]] = []
     used = 0
-
-    def new_part() -> None:
-        nonlocal used
-        groups.append([])
-        used = 0
-
     for path, arcname, size in files:
         cost = size + _overhead(arcname)
-        deflate = not is_media_name(arcname)
-        if used + cost <= cap:
-            groups[-1].append(Piece(path, arcname, deflate=deflate))
-            used += cost
+        if cost > cap:
+            loose.append((path, arcname, size))
             continue
-        if cost <= cap:
-            new_part()
-            groups[-1].append(Piece(path, arcname, deflate=deflate))
-            used = cost
-            continue
-        # Bigger than a part: cut it. The first piece fills what is left if that is worth using.
-        room = cap - used - _overhead(arcname) - 20
-        if room < cap // 8:
-            new_part()
-            room = cap - _overhead(arcname) - 20
-        lengths: list[int] = []
-        left = size
-        while left > 0:
-            take = min(room, left)
-            lengths.append(take)
-            left -= take
-            room = cap - _overhead(arcname) - 20
-        total = len(lengths)
-        offset = 0
-        for number, length in enumerate(lengths, start=1):
-            if number > 1:
-                new_part()
-            last = number == total
-            groups[-1].append(Piece(path, arcname, offset, None if last else length, number, total))
-            used += length + _overhead(arcname) + 20
-            offset += length
-    if len(groups) > MAX_PARTS:
-        raise ArchiveError(f"a part size this small would need {len(groups)} parts (at most {MAX_PARTS})")
-    return groups
+        if used + cost > cap:
+            groups.append([])
+            used = 0
+        groups[-1].append(Piece(path, arcname, not is_media_name(arcname)))
+        used += cost
+    if len(groups) + len(loose) > MAX_PARTS:
+        raise ArchiveError(
+            f"a part size this small would need {len(groups) + len(loose)} files (at most {MAX_PARTS})"
+        )
+    return Plan(groups, loose)
 
 
-def _write_piece(zf: zipfile.ZipFile, piece: Piece) -> int:
-    """Add one entry; returns the bytes written. Raises FileNotFoundError when the file is gone."""
-    if not piece.number:
-        kind = zipfile.ZIP_DEFLATED if piece.deflate else zipfile.ZIP_STORED
-        zf.write(piece.path, piece.arcname, compress_type=kind)
-        return zf.getinfo(piece.arcname).file_size
-    info = zipfile.ZipInfo.from_file(piece.path, piece.entry_name, strict_timestamps=False)
-    info.compress_type = zipfile.ZIP_STORED
-    wanted = piece.length
+def _copy_big(src: Path, dest: Path, size: int) -> str:
+    """Copy a big file; returns its SHA-256. A file that changed size meanwhile fails the backup."""
+    digest = hashlib.sha256()
     written = 0
-    with open(piece.path, "rb") as src, zf.open(info, "w", force_zip64=True) as out:
-        src.seek(piece.offset)
-        while wanted is None or written < wanted:
-            block = src.read(_COPY if wanted is None else min(_COPY, wanted - written))
-            if not block:
-                break
+    with open(src, "rb") as source, open(dest, "wb") as out:
+        while block := source.read(_COPY):
+            digest.update(block)
             out.write(block)
             written += len(block)
-    if wanted is not None and written != wanted:
+    if written != size:
         raise ArchiveError("a large file changed while it was being backed up; try again")
-    return written
+    return digest.hexdigest()
 
 
 def write_archive(
     out_dir: Path,
     base: str,
-    groups: list[list[Piece]],
+    plan: Plan,
     common: dict,
     set_warnings: list[str],
     on_progress: Callable[[int, int, str], None] | None = None,
 ) -> tuple[list[Path], dict]:
-    """Write the zip, or the zips of a split backup, named after ``base``. Returns (paths, manifest).
+    """Write the zip, or the zips and big files of a split backup, named after ``base``.
 
-    Parts are written as ``*.part`` and renamed at the end, the last part first, so a first part that
-    exists means every part exists and a crash never leaves something that looks finished. The
-    returned manifest is for the whole set.
+    Returns (every file in part order, the manifest of the whole set). Files are written as ``*.part``
+    and renamed at the end, the big files first and the last zip before the first, so a first zip that
+    exists means everything exists and a crash never leaves something that looks finished.
     """
-    count = len(groups)
-    total = sum(len(g) for g in groups)
-    done = 0
+    groups = plan.groups
     temps: list[Path] = []
-    finals: list[Path] = []
     published: list[Path] = []
     manifests: list[dict] = []
-    gone: set[str] = set()  # big files that vanished before their first piece: skip the rest silently
+    done = 0
+    total = sum(len(g) for g in groups) + len(plan.loose)
     try:
+        # The big files first: their size and checksum go into every zip's manifest.
+        copied: list[tuple[LooseEntry, Path, Path]] = []  # entry, temp file, final file
+        vanished_big = 0
+        for path, arcname, size in plan.loose:
+            number = len(groups) + len(copied) + 1
+            final = out_dir / part_name(base, number, loose=True)
+            tmp = final.with_name(final.name + ".part")
+            tmp.unlink(missing_ok=True)
+            temps.append(tmp)
+            try:
+                sha = _copy_big(path, tmp, size)
+                mtime = int(path.stat().st_mtime)
+            except FileNotFoundError:
+                tmp.unlink(missing_ok=True)
+                temps.remove(tmp)
+                vanished_big += is_media_name(arcname)
+            else:
+                copied.append((LooseEntry(number, arcname, size, sha, mtime), tmp, final))
+            done += 1
+            if on_progress is not None:
+                on_progress(done, total, arcname)
+        count = len(groups) + len(copied)
+        big_media = [e for e, _, _ in copied if is_media_name(e.name)]
+        if copied:
+            common = {
+                **common,
+                "loose": [
+                    {"part": e.part, "name": e.name, "size": e.size, "sha256": e.sha256, "mtime": e.mtime}
+                    for e, _, _ in copied
+                ],
+            }
+        finals: list[Path] = []
         for index, group in enumerate(groups):
             final = out_dir / (f"{base}.zip" if count == 1 else part_name(base, index + 1))
             tmp = final.with_name(final.name + ".part")
             tmp.unlink(missing_ok=True)
             temps.append(tmp)
             finals.append(final)
-            written = 0
-            total_bytes = 0
-            vanished = 0
+            written = len(big_media) if index == 0 else 0  # the big files are counted in the first zip
+            total_bytes = sum(e.size for e in big_media) if index == 0 else 0
+            vanished = vanished_big if index == 0 else 0
             with zipfile.ZipFile(tmp, "w", allowZip64=True, strict_timestamps=False) as zf:
                 for piece in group:
-                    if piece.arcname in gone:
-                        pass
-                    else:
-                        try:
-                            size = _write_piece(zf, piece)
-                            if is_media_name(piece.arcname):  # the databases are not counted
-                                total_bytes += size
-                                written += piece.number <= 1
-                        except FileNotFoundError:
-                            if piece.number > 1:
-                                raise ArchiveError(
-                                    "a large file changed while it was being backed up; try again"
-                                ) from None
-                            vanished += is_media_name(piece.arcname)
-                            if piece.number == 1:
-                                gone.add(piece.arcname)
+                    try:
+                        kind = zipfile.ZIP_DEFLATED if piece.deflate else zipfile.ZIP_STORED
+                        zf.write(piece.path, piece.arcname, compress_type=kind)
+                        if is_media_name(piece.arcname):  # the databases are not counted
+                            total_bytes += zf.getinfo(piece.arcname).file_size
+                            written += 1
+                    except FileNotFoundError:
+                        vanished += is_media_name(piece.arcname)
                     done += 1
                     if on_progress is not None:
                         on_progress(done, total, piece.arcname)
@@ -522,7 +579,10 @@ def write_archive(
                     manifest["parts"] = count
                 zf.writestr(MANIFEST, json.dumps(manifest, indent=2, sort_keys=True), zipfile.ZIP_DEFLATED)
             manifests.append(manifest)
-        for tmp, final in reversed(list(zip(temps, finals))):
+        for _entry, tmp, final in copied:
+            os.replace(tmp, final)
+            published.append(final)
+        for tmp, final in reversed(list(zip(temps[len(copied) :], finals))):
             os.replace(tmp, final)
             published.append(final)
     except BaseException:
@@ -531,4 +591,5 @@ def write_archive(
         for final in published:
             final.unlink(missing_ok=True)
         raise
-    return finals, (merge_manifests(manifests) if count > 1 else manifests[0])
+    paths = finals + [final for _, _, final in copied]
+    return paths, (merge_manifests(manifests) if len(paths) > 1 else manifests[0])

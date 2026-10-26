@@ -29,7 +29,7 @@ class SetFields(BaseModel):
 
 @dataclass
 class ListedSet:
-    name: str  # the first file that is here; restore, delete and the listing use it
+    name: str  # the first zip that is here; restore, delete and the listing use it
     base: str
     paths: list[Path]  # the files that are here, in part order
     manifest: dict  # the first file's, with counts and warnings added up over the files that are here
@@ -50,15 +50,19 @@ class ListedSet:
 
 
 def _describe(base: str, found: dict[int, Path]) -> ListedSet | None:
+    """One backup from the files that are here: zips (read for the manifest) and big files (counted)."""
     ordered = [found[n] for n in sorted(found)]
+    zips = [p for p in ordered if p.suffix == ".zip"]
+    if not zips:
+        return None  # only big files so far: nothing says what they belong to
     try:
-        manifests = [read_manifest_file(p) for p in ordered]
+        manifests = [read_manifest_file(p) for p in zips]
         info = part_info(manifests[0])
     except (ArchiveError, OSError):
         return None
     parts = info[1] if info else 1
     missing = [n for n in range(1, parts + 1) if n not in found] if info else []
-    return ListedSet(ordered[0].name, base, ordered, merge_manifests(manifests), parts, missing)
+    return ListedSet(zips[0].name, base, ordered, merge_manifests(manifests), parts, missing)
 
 
 def list_sets(folder: Path, name_re: re.Pattern[str]) -> list[ListedSet]:

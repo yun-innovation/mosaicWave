@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -242,7 +242,9 @@ def post_restore_from_path(
 
 
 @router.put("/backups/upload", response_model=BackupOut, openapi_extra=UPLOAD_BODY)
-async def upload_backup(request: Request, user: User = Depends(require_user_brief)) -> BackupOut:
+async def upload_backup(
+    request: Request, name: str = Query(default="", max_length=255), user: User = Depends(require_user_brief)
+) -> BackupOut:
     """Receive a site backup zip from the browser into ``backups/`` (raw body, streamed to disk)."""
     if user.role != "admin":
         raise ApiError(403, "admin_only", "admin only")
@@ -260,6 +262,7 @@ async def upload_backup(request: Request, user: User = Depends(require_user_brie
         settings.backup_dir,
         prefix="mosaicwave-site",
         check=lambda path: restore.check_archive(path, part_only=True),
+        file_name=name,
     )
     listed = set_containing(settings.backup_dir, SITE_NAME, final)
     info = _describe(listed) if listed is not None else None

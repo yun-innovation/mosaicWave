@@ -8,7 +8,7 @@
     "label": "Zip size",
     "one": "One zip file",
     "gb": "{{count}} GB parts",
-    "help": "A backup bigger than this is written as several zips that belong together. No zip is bigger than this size: a very large file is cut into pieces and joined again when restored. Keep all the zips in one place: restoring needs every part."
+    "help": "A backup bigger than this is written as several zips that belong together. No zip is bigger than this size: a file bigger than it (a long video, a very large database) is not zipped but saved beside the zips as a …-NNN.big file. Keep every zip and .big file in one place: restoring needs every part."
   },
   "parts_one": "{{count, number}} part",
   "parts_other": "{{count, number}} parts",
@@ -79,7 +79,7 @@
       "pickerTitle": "Choose the backup zip",
       "pickerIntro": "Open folders on the server, then choose a zip file. It is restored from where it is; nothing is copied.",
       "deviceLabel": "Backup zip on this device",
-      "deviceHint": "Choose a mosaicwave-site-….zip. A split backup has several files (…-001.zip, …-002.zip, …): choose all of them together. They are uploaded to the server first (they stay in the list above), so large backups take a while and need free space for the upload and for unpacking.",
+      "deviceHint": "Choose a mosaicwave-site-….zip. A split backup has several files (…-001.zip, …-002.zip, and perhaps …-003.big): choose all of them together. They are uploaded to the server first (they stay in the list above), so large backups take a while and need free space for the upload and for unpacking.",
       "deviceSelected": "{{name}} ({{size}})",
       "restore": "Restore",
       "upload": "Upload and restore",
@@ -107,7 +107,7 @@
     "source": {
       "title": "Restore from a file",
       "pathPlaceholder": "Path to a mosaicwave-library-….zip on the server",
-      "deviceHint": "Choose a mosaicwave-library-….zip made by this or another mosaicWave. A split backup has several files (…-001.zip, …-002.zip, …): choose all of them together. They are uploaded first (they stay in the list above), so large backups take a while."
+      "deviceHint": "Choose a mosaicwave-library-….zip made by this or another mosaicWave. A split backup has several files (…-001.zip, …-002.zip, and perhaps …-003.big): choose all of them together. They are uploaded first (they stay in the list above), so large backups take a while."
     }
   },
   "export": {

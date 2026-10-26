@@ -38,15 +38,16 @@ from mosaicwave.archive import (
     MANIFEST,
     ArchiveError,
     ArchiveSet,
-    ChunkTracker,
+    LooseFile,
     account_entry,
+    big_media,
     check_manifest,
-    chunk_info,
+    copy_loose,
+    hash_loose,
     is_media_name,
     open_set,
     read_manifest_file,
     safe_member,
-    starts_a_file,
 )
 from mosaicwave.config import Settings, _checkpoint_library_db, ensure_data_dir_exists
 from mosaicwave.schema.library import LIBRARY_CURRENT_VERSION
@@ -99,11 +100,10 @@ def _members(zf: zipfile.ZipFile) -> list[zipfile.ZipInfo]:
 
 
 def _check_databases(names: set[str], manifest: dict) -> None:
-    """The site database and one per user, each whole (a database may span parts as pieces)."""
-    whole = {(chunk_info(n) or (n,))[0] for n in names if n != MANIFEST}
-    if DB_ENTRY not in whole:
+    """The site database and one per user, whichever zip or big file they are in."""
+    if DB_ENTRY not in names:
         raise ArchiveError("archive has no library.db")
-    found = {n for n in whole if n.startswith(f"{ACCOUNTS}/")}
+    found = {n for n in names if n.startswith(f"{ACCOUNTS}/")}
     if {account_entry(user_id) for user_id in manifest["user_ids"]} != found:
         raise ArchiveError("the library databases in the archive do not match its manifest")
 
@@ -113,32 +113,29 @@ def _check_manifest(manifest: dict) -> None:
 
 
 def check_archive(archive: Path, *, full: bool = False, part_only: bool = False) -> dict:
-    """Validate ``archive`` and return its manifest. ``full`` also reads every byte (CRC).
+    """Validate ``archive`` and return its manifest. ``full`` also reads every byte (CRC, checksums).
 
     A split backup is checked whole: every part must sit beside ``archive``. ``part_only`` checks just
     this file (an upload, before the other parts have arrived) and returns its own manifest.
     """
     try:
+        loose: list[LooseFile] = []
         if part_only:
             own = read_manifest_file(archive)
             _check_manifest(own)
             paths, manifests, manifest = [archive], [own], own
         else:
             found = open_set(archive, _check_manifest)
-            paths, manifests, manifest = found.paths, found.manifests, found.manifest
+            paths, manifests, manifest, loose = found.paths, found.manifests, found.manifest, found.loose
         names: set[str] = set()
-        pieces = ChunkTracker()
         for path, part_manifest in zip(paths, manifests):
             with zipfile.ZipFile(path) as zf:
                 infos = _members(zf)
-                media = 0
+                media = big_media(part_manifest)
                 for info in infos:
                     if info.filename == MANIFEST:
                         continue
-                    if not part_only:
-                        pieces.see(info.filename)
-                    if _is_media(info.filename):
-                        media += starts_a_file(info.filename)
+                    media += _is_media(info.filename)
                     if info.filename in names:
                         raise ArchiveError(f"{info.filename!r} is in two parts of the backup")
                     names.add(info.filename)
@@ -150,8 +147,13 @@ def check_archive(archive: Path, *, full: bool = False, part_only: bool = False)
                     bad = zf.testzip()
                     if bad is not None:
                         raise ArchiveError(f"archive is damaged: {bad!r} fails its checksum")
+        for big in loose:
+            if big.entry.name in names:
+                raise ArchiveError(f"{big.entry.name!r} is in two parts of the backup")
+            names.add(big.entry.name)
+            if full and hash_loose(big) != big.entry.sha256:
+                raise ArchiveError(f"{big.path.name} is damaged: it does not match the backup")
         if not part_only:
-            pieces.check_done()
             _check_databases(names, manifest)
     except zipfile.BadZipFile as exc:
         raise ArchiveError(f"not a zip file or damaged: {exc}") from exc
@@ -185,34 +187,26 @@ def _extract(
     *,
     before: int = 0,
     total: int | None = None,
-    pieces: ChunkTracker | None = None,
 ) -> int:
     """Copy members into the stages (CRC is checked as each file is read). Returns media count.
 
     ``before`` members of earlier parts are done and ``total`` counts every part, for the progress.
-    ``pieces`` joins the pieces of big files, which may continue in the next call.
     """
-    pieces = pieces if pieces is not None else ChunkTracker()
     total = len(infos) if total is None else total
     media = 0
     for index, info in enumerate(infos, start=before + 1):
         name = info.filename
         if name == MANIFEST:
             continue
-        whole, append, complete = pieces.see(name)
-        target = (data_stage if _is_media(whole) else app_stage) / whole
+        target = (data_stage if _is_media(name) else app_stage) / name
         target.parent.mkdir(parents=True, exist_ok=True)
         try:
-            with zf.open(info) as src, open(target, "ab" if append else "wb") as dst:
+            with zf.open(info) as src, open(target, "wb") as dst:
                 shutil.copyfileobj(src, dst, _COPY_CHUNK)
         except zipfile.BadZipFile as exc:
             raise ArchiveError(f"archive is damaged at {name!r}: {exc}") from exc
-        if _is_media(whole):
-            media += starts_a_file(name)
-            if not complete:
-                if on_progress is not None:
-                    on_progress(index, total, name)
-                continue
+        if _is_media(name):
+            media += 1
             try:
                 stamp = datetime(*info.date_time, tzinfo=timezone.utc).timestamp()
                 os.utime(target, (stamp, stamp))
@@ -347,7 +341,7 @@ def stage_site(
         manifest = found.manifest
         parts = list(zip(found.paths, found.manifests))
         sizes = {"app": 0, "data": 0}
-        total = 0
+        total = len(found.loose)
         names: set[str] = set()
         for path, part_manifest in parts:
             with zipfile.ZipFile(path) as zf:
@@ -359,6 +353,11 @@ def stage_site(
             total += len(infos)
             for info in infos:
                 sizes["data" if _is_media(info.filename) else "app"] += info.file_size
+        for big in found.loose:
+            if big.entry.name in names:
+                raise ArchiveError(f"{big.entry.name!r} is in two parts of the backup")
+            names.add(big.entry.name)
+            sizes["data" if _is_media(big.entry.name) else "app"] += big.entry.size
         _check_databases(names, manifest)
         _require_space(settings.database_path.parent, sizes["app"])
         _require_space(data_dir, sizes["data"])
@@ -366,15 +365,18 @@ def stage_site(
         data_stage.mkdir(parents=True)
         media = 0
         done = 0
-        pieces = ChunkTracker()
         for path, part_manifest in parts:
             with zipfile.ZipFile(path) as zf:
                 infos = _members(zf)
-                media += _extract(
-                    zf, infos, app_stage, data_stage, on_progress, before=done, total=total, pieces=pieces
-                )
+                media += _extract(zf, infos, app_stage, data_stage, on_progress, before=done, total=total)
                 done += len(infos)
-        pieces.check_done()
+        for big in found.loose:
+            name = big.entry.name
+            copy_loose(big, (data_stage if _is_media(name) else app_stage) / name)
+            media += _is_media(name)
+            done += 1
+            if on_progress is not None:
+                on_progress(done, total, name)
         if media != manifest.get("file_count"):
             raise ArchiveError(f"archive lists {manifest.get('file_count')} files but holds {media}")
         site_upgrade_from = _prepare_site(app_stage / DB_ENTRY, manifest)
