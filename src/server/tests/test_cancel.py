@@ -100,12 +100,12 @@ def test_cancel_a_backup_leaves_no_archive(tmp_path: Path, monkeypatch: pytest.M
     gate = Gate()
     real = importjob.backup_site
 
-    def slow(settings_, out, *, include_thumbs, on_progress):  # type: ignore[no-untyped-def]
+    def slow(settings_, out, *, include_thumbs, on_progress, **kwargs):  # type: ignore[no-untyped-def]
         def gated(done: int, total: int, rel: str) -> None:
             gate.step()
             on_progress(done, total, rel)
 
-        return real(settings_, out, include_thumbs=include_thumbs, on_progress=gated)
+        return real(settings_, out, include_thumbs=include_thumbs, on_progress=gated, **kwargs)
 
     monkeypatch.setattr(importjob, "backup_site", slow)
     job = client.post("/api/v1/backups", json={}).json()

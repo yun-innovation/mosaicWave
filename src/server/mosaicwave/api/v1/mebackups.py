@@ -6,7 +6,6 @@ that user's library while the server runs; nobody else is affected (doc/backup.m
 
 from __future__ import annotations
 
-import zipfile
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, Request
@@ -16,10 +15,11 @@ from sqlalchemy.orm import Session
 
 from mosaicwave import restore
 from mosaicwave.api.errors import ApiError, wrapped
+from mosaicwave.api.v1.archiveset import ListedSet, SetFields, delete_set, list_sets, set_containing
 from mosaicwave.api.v1.archiveupload import UPLOAD_BODY, check_error, receive_archive
 from mosaicwave.api.v1.library import ImportOut, _busy_error, _job_out
 from mosaicwave.api.v1.maintenance import job_running
-from mosaicwave.archive import LIBRARIES, LIBRARY_NAME, ArchiveError, read_manifest
+from mosaicwave.archive import LIBRARIES, LIBRARY_NAME, ArchiveError
 from mosaicwave.auth.deps import require_user, require_user_brief
 from mosaicwave.export import export_user_dir
 from mosaicwave.libbackup import check_library_archive, user_backup_dir
@@ -29,7 +29,7 @@ from mosaicwave.models import User
 router = APIRouter()
 
 
-class LibraryBackupOut(BaseModel):
+class LibraryBackupOut(SetFields):
     name: str
     size: int
     created_at: str
@@ -46,13 +46,13 @@ def _folder(request: Request, user: User) -> Path:
     return user_backup_dir(request.app.state.settings, user.id)
 
 
-def _describe(path: Path) -> LibraryBackupOut | None:
+def _describe(listed: ListedSet) -> LibraryBackupOut | None:
+    m = listed.manifest
     try:
-        with zipfile.ZipFile(path) as zf:
-            m = read_manifest(zf)
         return LibraryBackupOut(
-            name=path.name,
-            size=path.stat().st_size,
+            name=listed.name,
+            size=listed.size,
+            **listed.set_fields(),
             created_at=str(m["created_at"]),
             app_version=str(m.get("app_version", "")),
             library_schema_version=int(m["library_schema_version"]),
@@ -62,7 +62,7 @@ def _describe(path: Path) -> LibraryBackupOut | None:
             total_bytes=int(m.get("total_bytes", 0)),
             warnings=[str(w) for w in m.get("warnings", [])],
         )
-    except (zipfile.BadZipFile, ArchiveError, KeyError, ValueError, OSError):
+    except (ArchiveError, KeyError, ValueError, OSError):
         return None
 
 
@@ -73,11 +73,24 @@ def _existing(request: Request, user: User, name: str) -> Path:
     return path
 
 
+class LibraryBackupIn(BaseModel):
+    split_gb: float | None = Field(
+        default=None,
+        ge=0.0001,
+        le=1024,
+        description="Part size in GB; a bigger backup is written as several zips. Empty: one zip",
+    )
+
+
 @router.post("/me/backups", response_model=ImportOut)
-def post_my_backup(request: Request, user: User = Depends(require_user)) -> ImportOut:
+def post_my_backup(
+    request: Request, body: LibraryBackupIn | None = None, user: User = Depends(require_user)
+) -> ImportOut:
     runner: ImportJobRunner = request.app.state.import_jobs
     try:
-        job = runner.start_library_backup(user_id=user.id)
+        job = runner.start_library_backup(
+            user_id=user.id, split_bytes=int(body.split_gb * 2**30) if body and body.split_gb else None
+        )
     except ImportBusy as exc:
         raise _busy_error(exc) from exc
     return _job_out(job)
@@ -85,13 +98,10 @@ def post_my_backup(request: Request, user: User = Depends(require_user)) -> Impo
 
 @router.get("/me/backups", response_model=list[LibraryBackupOut])
 def get_my_backups(request: Request, user: User = Depends(require_user)) -> list[LibraryBackupOut]:
-    folder = _folder(request, user)
-    if not folder.is_dir():
-        return []
     return [
         info
-        for path in sorted(folder.iterdir(), key=lambda p: p.name, reverse=True)
-        if LIBRARY_NAME.match(path.name) and (info := _describe(path)) is not None
+        for listed in list_sets(_folder(request, user), LIBRARY_NAME)
+        if (info := _describe(listed)) is not None
     ]
 
 
@@ -108,10 +118,15 @@ async def upload_my_backup(request: Request, user: User = Depends(require_user_b
             raise ApiError(409, "job_running", "Another job is already running")
     finally:
         session.close()
+    folder = _folder(request, user)
     final = await receive_archive(
-        request, _folder(request, user), prefix="mosaicwave-library", check=check_library_archive
+        request,
+        folder,
+        prefix="mosaicwave-library",
+        check=lambda path: check_library_archive(path, part_only=True),
     )
-    info = _describe(final)
+    listed = set_containing(folder, LIBRARY_NAME, final)
+    info = _describe(listed) if listed is not None else None
     if info is None:
         raise ApiError(400, "backup_invalid", "The archive could not be read", {"message": "unreadable"})
     return info
@@ -199,5 +214,5 @@ def download_my_backup(name: str, request: Request, user: User = Depends(require
 
 @router.delete("/me/backups/{name}")
 def delete_my_backup(name: str, request: Request, user: User = Depends(require_user)) -> dict[str, bool]:
-    _existing(request, user, name).unlink()
+    delete_set(_existing(request, user, name))
     return {"ok": True}

@@ -89,6 +89,7 @@
   "backup_no_space": "Not enough free space for that file: it needs about {{need_mb}} MB and {{free_mb}} MB is free.",
   "library_restoring": "Your library is being restored. Try again in a moment.",
   "backup_wrong_kind": "That is the wrong kind of backup: use a site backup on the admin Backup page and a library backup in Settings.",
+  "backup_parts_missing": "This backup is in {{parts}} parts and part {{missing}} is not here yet. Add the missing part next to the others (or upload it) and try again.",
   "export_nothing_selected": "Choose what to export.",
   "export_scope": "Choose all photos, or albums and photos, not both.",
   "export_not_found": "Export not found.",

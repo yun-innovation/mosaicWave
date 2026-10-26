@@ -1,6 +1,6 @@
 # Backup and restore
 
-Milestone 7, five PRs: **site backup + offline restore**, **online site restore from the Backup page**, **per-user backup + online restore of one library**, **export** (ordinary files, [below](#export-any-signed-in-user-settings-and-the-album-page)) and, still to do, **split backups** for libraries too big for one zip. Sync JSON is never a backup ([schema.md](schema.md)). The data it backs up is laid out by milestone 6 ([per-library-db.md](per-library-db.md)).
+Milestone 7, five PRs, all built: **site backup + offline restore**, **online site restore from the Backup page**, **per-user backup + online restore of one library**, **export** (ordinary files, [below](#export-any-signed-in-user-settings-and-the-album-page)) and **split backups** ([below](#split-backups-milestone-7-pr-5)) for libraries too big for one zip. Sync JSON is never a backup ([schema.md](schema.md)). The data it backs up is laid out by milestone 6 ([per-library-db.md](per-library-db.md)).
 
 > **An archive of the whole site contains password hashes** (`local_credential`) and every user's originals. Site backup and restore are **admin only**. Store archives like the data folder itself.
 
@@ -115,8 +115,22 @@ Folder and file names are cleaned for every file system (`<>:"/\|?*` and control
 
 **Privacy.** A user only sees their own exports. The folder picker (`GET /fs/list`) and *Restore from the server* refuse another user's `exports/<id>/` (`403 folder_not_allowed`) as they do for `libraries/<id>/` and `backups/users/<id>/`, and the parent folder lists only your own.
 
-Not covered here: choosing photos on screen (milestone 9), converting HEIC or other formats, a layout that keeps the original folder tree, and splitting **backups** (PR 5, below).
+Not covered here: choosing photos on screen (milestone 9), converting HEIC or other formats, a layout that keeps the original folder tree, and splitting **backups** (below).
 
-## Split backups (planned, milestone 7 PR 5)
+## Split backups (milestone 7 PR 5)
 
-A backup is still one zip (ZIP64, so far past 4 GB), restored whole from the Backup page or Settings; the upload cap is 256 GB. A library or site too big for one file needs a **set of parts**: a set manifest, an "all parts present" check, multi-file upload and restore, and the server-folder path. That is its own PR after export; nothing of it is built.
+A library or site too big for one file is backed up as a **set of zips** (parts). Choose the size where you start the backup: **Zip size** on the Backup page and under My library backup (One zip file, or 2, 4, 10 or 50 GB), `split_gb` in `POST /backups` and `POST /me/backups` (0.0001 to 1024; empty is one zip), `--split-gb` on `python -m mosaicwave.backup`. The default is one zip, and a backup that fits in one part is an ordinary single zip whatever the size asked for.
+
+**Format.** The parts are `mosaicwave-site-<stamp>-001.zip`, `-002.zip` and so on (`mosaicwave-library-…` for a library; three digits, at most 999 parts). Each is a complete zip with its own `manifest.json`, which has the facts of the whole backup (`created_at`, user ids, schema versions, photo and album counts) plus `format: 2`, `part`, `parts`, and its own `file_count`, `total_bytes` and `warnings`. A single zip stays `format: 1`, so an older mosaicWave refuses a part ("format 2 is not supported") rather than restoring a fraction of a library. The databases (`library.db`, `accounts/…`) are in part 1; the other parts hold only `libraries/…` (and `blobs/…`) files.
+
+**How the files are shared out.** The files are listed with their sizes before anything is written and handed out in order: a part is closed when the next file would pass the size, and a file is never cut across parts. A file bigger than the size gets a part of its own, because a backup must hold everything (unlike an export, where such a file is left outside the zips). The size is a target: zip headers and a file that grows meanwhile are not counted. Parts are written as `*.part` and renamed at the end with part 1 last, so a part 1 that exists means the others do, and a failure or cancel removes everything written. A progress bar counts files across all parts; the job result says how many parts.
+
+**The all-parts check** (`archive.open_set`, used by restore, `--check`, and the API before it starts a job). Given any one part, the others are found beside it by name, so **the parts must keep their names and stay in one folder**. The check needs every part up to `parts` (`400 backup_parts_missing` with the part numbers: `missing`, `parts`), the same backup in each (creation time, kind, user ids, schema versions, counts) and its own number in each (`part_info`), no database anywhere but part 1, no file name in two parts, and the file counts of the manifests against what the parts hold. `--full` / the CLI `--check` also reads every byte of every part.
+
+**Listing and files.** A set is **one entry** in the Backup page and Settings lists (`GET /backups`, `GET /me/backups`): `name` is the first part, `size` the sum, `parts` the total, `part_files` the parts that are here, `missing` the part numbers that are not. Each part downloads on its own (`GET /backups/{part name}`); the page shows one link per part. **Delete** (any part's name) removes every part of that backup. An incomplete set is listed with what is missing, cannot be restored, and can be completed by uploading the rest.
+
+**Upload from a device.** The file picker takes several files. The page uploads them one after the other (`PUT /backups/upload`, `PUT /me/backups/upload`; each is checked alone as a part, `check_archive(part_only=True)`, and stored under `<prefix>-<stamp>-NNN.zip` from the numbers inside, so renamed files work and order does not matter; sending a part again replaces it), then asks for the restore of the set by its first part's name. If parts are missing the restore is refused with `backup_parts_missing` and what was uploaded stays in the list. Free space is checked per file. **From the server**, give the path of any part; the others are found beside it.
+
+**Restore.** `stage_site` and `stage_library` unpack the parts one after the other into the same staging folders, so everything after (checks, staged restore, swap, rollback) is exactly the single-zip path. Space is checked for the whole set first, and progress counts files across parts. The pending restore and the offline command name the first part. The offline restore (`python -m mosaicwave.restore …-001.zip`) works the same.
+
+**Not covered:** splitting by a different rule than size, parts in different folders, a backup that adds a part to an earlier one (every backup is whole), and a repair that rebuilds a lost part.

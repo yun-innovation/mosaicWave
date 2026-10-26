@@ -7,7 +7,9 @@ import { apiFetch, apiMediaUrl, errorText, HostSettings, readDetail } from "./ap
 import { formatBytes, formatDateTime } from "./format";
 import { routeHash } from "./hashRoute";
 import i18n from "./i18n";
+import { BackupParts } from "./BackupParts";
 import { RestoreSourceForm } from "./RestoreSourceForm";
+import { SplitSelect } from "./SplitSelect";
 import { BackupItem, isAbortError, MaintenanceStatus, Notice, RestoreState, RestoreSummary } from "./types";
 import type { TakeoutImport } from "./useTakeoutImport";
 
@@ -44,6 +46,7 @@ export function BackupView({ importer, maintenance }: { importer: TakeoutImport;
   const [items, setItems] = useState<BackupItem[] | null>(null);
   const [folder, setFolder] = useState<string | null>(null);
   const [withThumbs, setWithThumbs] = useState(false);
+  const [split, setSplit] = useState("");
   const [working, setWorking] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
   const [restoreNotice, setRestoreNotice] = useState<Notice | null>(null);
@@ -128,7 +131,7 @@ export function BackupView({ importer, maintenance }: { importer: TakeoutImport;
       const res = await apiFetch("/api/v1/backups", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ include_thumbs: withThumbs }),
+        body: JSON.stringify({ include_thumbs: withThumbs, split_gb: split ? Number(split) : null }),
       });
       const body: unknown = await res.json().catch(() => null);
       if (!res.ok) {
@@ -231,6 +234,7 @@ export function BackupView({ importer, maintenance }: { importer: TakeoutImport;
           />
           {t("backup:withThumbs")}
         </label>
+        <SplitSelect value={split} onChange={setSplit} disabled={disabled} />
         <div className="button-row">
           <button type="button" disabled={disabled} onClick={() => void start()}>
             {disabled ? t("common:working") : t("backup:start")}
@@ -255,12 +259,14 @@ export function BackupView({ importer, maintenance }: { importer: TakeoutImport;
                     t("backup:users", { count: item.users }),
                     t("backup:assets", { count: item.assets }),
                     t("backup:albums", { count: item.albums }),
+                    item.parts > 1 ? t("backup:parts", { count: item.parts }) : null,
                     item.include_thumbs ? t("backup:thumbsIncluded") : null,
                     item.warnings.length > 0 ? t("backup:warnings", { count: item.warnings.length }) : null,
                   ]
                     .filter(Boolean)
                     .join(" · ")}
                 </p>
+                <BackupParts item={item} url="/api/v1/backups" />
               </div>
               <div className="import backup-actions">
                 {confirming?.name === item.name ? (
@@ -281,12 +287,14 @@ export function BackupView({ importer, maintenance }: { importer: TakeoutImport;
                   </>
                 ) : (
                   <>
-                    <a className="button-link" href={apiMediaUrl(`/api/v1/backups/${encodeURIComponent(item.name)}`)} download>
-                      {t("backup:download")}
-                    </a>
+                    {item.parts <= 1 && (
+                      <a className="button-link" href={apiMediaUrl(`/api/v1/backups/${encodeURIComponent(item.name)}`)} download>
+                        {t("backup:download")}
+                      </a>
+                    )}
                     <button
                       type="button"
-                      disabled={disabled || !maintenanceOn || !!restore?.pending}
+                      disabled={disabled || !maintenanceOn || !!restore?.pending || item.missing.length > 0}
                       title={maintenanceOn ? undefined : t("backup:restore.needsMaintenance")}
                       onClick={() => setConfirming({ name: item.name, kind: "restore" })}
                     >

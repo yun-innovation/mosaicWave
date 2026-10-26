@@ -4,6 +4,16 @@
   "folder": "備份存放於 {{folder}}",
   "start": "立即備份",
   "withThumbs": "包含縮圖（備份較大；縮圖可重新產生）",
+  "split": {
+    "label": "Zip 大小",
+    "one": "單一 zip 檔",
+    "gb": "每份 {{count}} GB",
+    "help": "比這個大的備份會分成幾個屬於同一組的 zip。請把它們全部放在同一處：還原時需要每一份。"
+  },
+  "parts_one": "{{count, number}} 份",
+  "parts_other": "{{count, number}} 份",
+  "partsLabel": "分份",
+  "incomplete": "不完整：缺少第 {{missing}} 份（共 {{count}} 份）。請上傳以完成這份備份。",
   "list": {
     "title": "備份檔",
     "loading": "正在載入備份…",
@@ -69,14 +79,16 @@
       "pickerTitle": "選擇備份 zip",
       "pickerIntro": "開啟伺服器上的資料夾，再選擇 zip 檔案。會直接從原位置還原，不會複製。",
       "deviceLabel": "這部裝置上的備份 zip",
-      "deviceHint": "選擇 mosaicwave-site-….zip。它會先上傳到伺服器（並保留在上方清單中），因此大型備份需要一些時間，且需要足夠的可用空間來上傳與解開。",
+      "deviceHint": "選擇 mosaicwave-site-….zip。分份備份有多個檔案（…-001.zip、…-002.zip …）：請一併全選。它們會先上傳到伺服器（並保留在上方清單中），因此大型備份需要一些時間，且需要足夠的可用空間來上傳與解開。",
       "deviceSelected": "{{name}}（{{size}}）",
       "restore": "還原",
       "upload": "上傳並還原",
       "uploading": "上傳中… {{percent}}%",
       "cancelUpload": "取消上傳",
       "uploadCancelled": "已取消上傳。",
-      "uploadedKept": "備份已上傳並列在上方清單中，但還原沒有開始：{{message}}"
+      "uploadedKept": "備份已上傳並列在上方清單中，但還原沒有開始：{{message}}",
+      "deviceSelectedMany": "{{count}} 個檔案（{{size}}）",
+      "uploadingFile": "上傳第 {{index}} / {{count}} 個檔案… {{percent}}%"
     }
   },
   "library": {
@@ -95,7 +107,7 @@
     "source": {
       "title": "從檔案還原",
       "pathPlaceholder": "伺服器上 mosaicwave-library-….zip 的路徑",
-      "deviceHint": "選擇由這個或其他 mosaicWave 產生的 mosaicwave-library-….zip。它會先上傳（保留在上方清單中），所以大型備份需要一些時間。"
+      "deviceHint": "選擇由這個或其他 mosaicWave 產生的 mosaicwave-library-….zip。分份備份有多個檔案（…-001.zip、…-002.zip …）：請一併全選。它們會先上傳（保留在上方清單中），所以大型備份需要一些時間。"
     }
   },
   "export": {

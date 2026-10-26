@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import zipfile
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, Request
@@ -12,10 +11,11 @@ from sqlalchemy.orm import Session
 
 from mosaicwave import maintenance, restore
 from mosaicwave.api.errors import ApiError, wrapped
+from mosaicwave.api.v1.archiveset import ListedSet, SetFields, delete_set, list_sets, set_containing
 from mosaicwave.api.v1.archiveupload import UPLOAD_BODY, check_error, receive_archive
 from mosaicwave.api.v1.library import ImportOut, _busy_error, _job_out
 from mosaicwave.api.v1.maintenance import job_running
-from mosaicwave.archive import SITE_NAME, ArchiveError, read_manifest
+from mosaicwave.archive import SITE_NAME, ArchiveError
 from mosaicwave.auth.deps import require_admin, require_user_brief
 from mosaicwave.config import schedule_api_restart
 from mosaicwave.db import get_session
@@ -27,9 +27,15 @@ router = APIRouter()
 
 class BackupIn(BaseModel):
     include_thumbs: bool = False
+    split_gb: float | None = Field(
+        default=None,
+        ge=0.0001,
+        le=1024,
+        description="Part size in GB; a bigger backup is written as several zips. Empty: one zip",
+    )
 
 
-class BackupOut(BaseModel):
+class BackupOut(SetFields):
     name: str
     size: int
     created_at: str
@@ -48,13 +54,13 @@ def _folder(request: Request) -> Path:
     return request.app.state.settings.backup_dir
 
 
-def _describe(path: Path) -> BackupOut | None:
+def _describe(listed: ListedSet) -> BackupOut | None:
+    m = listed.manifest
     try:
-        with zipfile.ZipFile(path) as zf:
-            m = read_manifest(zf)
         return BackupOut(
-            name=path.name,
-            size=path.stat().st_size,
+            name=listed.name,
+            size=listed.size,
+            **listed.set_fields(),
             created_at=str(m["created_at"]),
             app_version=str(m.get("app_version", "")),
             schema_version=int(m["schema_version"]),
@@ -66,7 +72,7 @@ def _describe(path: Path) -> BackupOut | None:
             total_bytes=int(m.get("total_bytes", 0)),
             warnings=[str(w) for w in m.get("warnings", [])],
         )
-    except (zipfile.BadZipFile, ArchiveError, KeyError, ValueError, OSError):
+    except (ArchiveError, KeyError, ValueError, OSError):
         return None
 
 
@@ -83,7 +89,11 @@ def post_backup(
 ) -> ImportOut:
     runner: ImportJobRunner = request.app.state.import_jobs
     try:
-        job = runner.start_backup(user_id=admin.id, include_thumbs=bool(body and body.include_thumbs))
+        job = runner.start_backup(
+            user_id=admin.id,
+            include_thumbs=bool(body and body.include_thumbs),
+            split_bytes=int(body.split_gb * 2**30) if body and body.split_gb else None,
+        )
     except ImportBusy as exc:
         raise _busy_error(exc) from exc
     return _job_out(job)
@@ -91,15 +101,7 @@ def post_backup(
 
 @router.get("/backups", response_model=list[BackupOut])
 def get_backups(request: Request, _admin: User = Depends(require_admin)) -> list[BackupOut]:
-    folder = _folder(request)
-    if not folder.is_dir():
-        return []
-    out = [
-        info
-        for path in sorted(folder.iterdir(), key=lambda p: p.name, reverse=True)
-        if SITE_NAME.match(path.name) and (info := _describe(path)) is not None
-    ]
-    return out
+    return [info for listed in list_sets(_folder(request), SITE_NAME) if (info := _describe(listed)) is not None]
 
 
 class RestoreSummary(BaseModel):
@@ -254,9 +256,13 @@ async def upload_backup(request: Request, user: User = Depends(require_user_brie
     finally:
         session.close()
     final = await receive_archive(
-        request, settings.backup_dir, prefix="mosaicwave-site", check=restore.check_archive
+        request,
+        settings.backup_dir,
+        prefix="mosaicwave-site",
+        check=lambda path: restore.check_archive(path, part_only=True),
     )
-    info = _describe(final)
+    listed = set_containing(settings.backup_dir, SITE_NAME, final)
+    info = _describe(listed) if listed is not None else None
     if info is None:
         raise ApiError(400, "backup_invalid", "The archive could not be read", {"message": "unreadable"})
     return info
@@ -267,6 +273,10 @@ def post_restore(name: str, request: Request, admin: User = Depends(require_admi
     """Stage a restore of this backup. Needs maintenance mode; nothing live changes until Apply."""
     path = _existing(request, name)
     _require_maintenance(request)
+    try:
+        restore.check_archive(path)
+    except (ArchiveError, OSError) as exc:
+        raise check_error(exc) from exc
     runner: ImportJobRunner = request.app.state.import_jobs
     try:
         job = runner.start_restore(user_id=admin.id, archive=path)
@@ -283,5 +293,5 @@ def download_backup(name: str, request: Request, _admin: User = Depends(require_
 
 @router.delete("/backups/{name}")
 def delete_backup(name: str, request: Request, _admin: User = Depends(require_admin)) -> dict[str, bool]:
-    _existing(request, name).unlink()
+    delete_set(_existing(request, name))
     return {"ok": True}

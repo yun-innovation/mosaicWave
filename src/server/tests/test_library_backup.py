@@ -276,12 +276,12 @@ def test_cancel_during_backup_writes_no_archive(tmp_path: Path, monkeypatch: pyt
     gate = Gate()
     real = importjob.backup_library
 
-    def gated(settings, user_id, out_dir, *, on_progress=None):  # type: ignore[no-untyped-def]
+    def gated(settings, user_id, out_dir, *, on_progress=None, **kwargs):  # type: ignore[no-untyped-def]
         def step(done: int, total: int, rel: str) -> None:
             gate.step()
             on_progress(done, total, rel)
 
-        return real(settings, user_id, out_dir, on_progress=step)
+        return real(settings, user_id, out_dir, on_progress=step, **kwargs)
 
     monkeypatch.setattr(importjob, "backup_library", gated)
     job = client.post("/api/v1/me/backups").json()
@@ -445,12 +445,12 @@ def test_an_empty_library_backs_up_and_restore_needs_a_free_server(tmp_path: Pat
     gate = Gate()
     real = importjob.backup_library
 
-    def hold(settings, user_id, out_dir, *, on_progress=None):  # type: ignore[no-untyped-def]
+    def hold(settings, user_id, out_dir, *, on_progress=None, **kwargs):  # type: ignore[no-untyped-def]
         def step(done: int, total: int, rel: str) -> None:
             gate.step()
             on_progress(done, total, rel)
 
-        return real(settings, user_id, out_dir, on_progress=step)
+        return real(settings, user_id, out_dir, on_progress=step, **kwargs)
 
     monkeypatch.setattr(importjob, "backup_library", hold)
     running = admin.post("/api/v1/me/backups").json()

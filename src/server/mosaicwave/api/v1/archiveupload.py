@@ -13,7 +13,7 @@ from fastapi import Request
 from starlette.requests import ClientDisconnect
 
 from mosaicwave.api.errors import ApiError, wrapped
-from mosaicwave.archive import ArchiveError, WrongKind
+from mosaicwave.archive import ArchiveError, PartsMissing, WrongKind, part_info
 from mosaicwave.library.takeoutpush import MAX_PUSH_BYTES, write_upload_async
 from mosaicwave.models import new_id
 
@@ -36,13 +36,22 @@ def archive_name(prefix: str, manifest: dict) -> str:
         stamp = stamp.astimezone(timezone.utc)
     except (KeyError, ValueError):
         stamp = datetime.now(timezone.utc)
-    return f"{prefix}-{stamp:%Y%m%d-%H%M%S}.zip"
+    info = part_info(manifest)
+    suffix = f"-{info[0]:03d}" if info else ""
+    return f"{prefix}-{stamp:%Y%m%d-%H%M%S}{suffix}.zip"
 
 
 def check_error(exc: BaseException) -> ApiError:
     """``400`` for an archive that cannot be used; the wrong kind of archive has its own code."""
     if isinstance(exc, WrongKind):
         return wrapped(400, "backup_wrong_kind", exc)
+    if isinstance(exc, PartsMissing):
+        return ApiError(
+            400,
+            "backup_parts_missing",
+            str(exc),
+            {"missing": ", ".join(str(n) for n in exc.missing), "parts": exc.parts},
+        )
     return wrapped(400, "backup_invalid", exc)
 
 
@@ -88,13 +97,14 @@ async def receive_archive(
             raise check_error(exc) from exc
         final = folder / archive_name(prefix, manifest)
         size = received.stat().st_size
-        while final.exists():
+        # A part belongs to its set by name: sending it again replaces it (a repaired or re-sent file).
+        while final.exists() and part_info(manifest) is None:
             if final.stat().st_size == size:  # the same file again
                 break
             found = _STAMP.search(final.name)
             stamp = datetime.strptime(found.group(1), "%Y%m%d-%H%M%S") if found else datetime.now(timezone.utc)
             final = folder / f"{prefix}-{stamp + timedelta(seconds=1):%Y%m%d-%H%M%S}.zip"
-        if not final.exists():
+        if not final.exists() or part_info(manifest) is not None:
             os.replace(received, final)
         return final
     finally:

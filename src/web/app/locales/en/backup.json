@@ -4,6 +4,16 @@
   "folder": "Archives are stored in {{folder}}",
   "start": "Back up now",
   "withThumbs": "Include thumbnails (bigger archive; they can be regenerated)",
+  "split": {
+    "label": "Zip size",
+    "one": "One zip file",
+    "gb": "{{count}} GB parts",
+    "help": "A backup bigger than this is written as several zips that belong together. Keep them all in one place: restoring needs every part."
+  },
+  "parts_one": "{{count, number}} part",
+  "parts_other": "{{count, number}} parts",
+  "partsLabel": "Parts",
+  "incomplete": "Incomplete: part {{missing}} of {{count}} is missing. Upload it to finish this backup.",
   "list": {
     "title": "Archives",
     "loading": "Loading backups…",
@@ -69,14 +79,16 @@
       "pickerTitle": "Choose the backup zip",
       "pickerIntro": "Open folders on the server, then choose a zip file. It is restored from where it is; nothing is copied.",
       "deviceLabel": "Backup zip on this device",
-      "deviceHint": "Choose a mosaicwave-site-….zip. It is uploaded to the server first (it stays in the list above), so large backups take a while and need free space for the upload and for unpacking.",
+      "deviceHint": "Choose a mosaicwave-site-….zip. A split backup has several files (…-001.zip, …-002.zip, …): choose all of them together. They are uploaded to the server first (they stay in the list above), so large backups take a while and need free space for the upload and for unpacking.",
       "deviceSelected": "{{name}} ({{size}})",
       "restore": "Restore",
       "upload": "Upload and restore",
       "uploading": "Uploading… {{percent}}%",
       "cancelUpload": "Cancel upload",
       "uploadCancelled": "Upload cancelled.",
-      "uploadedKept": "The backup was uploaded and is in the list above, but the restore did not start: {{message}}"
+      "uploadedKept": "The backup was uploaded and is in the list above, but the restore did not start: {{message}}",
+      "deviceSelectedMany": "{{count}} files ({{size}})",
+      "uploadingFile": "Uploading file {{index}} of {{count}}… {{percent}}%"
     }
   },
   "library": {
@@ -95,7 +107,7 @@
     "source": {
       "title": "Restore from a file",
       "pathPlaceholder": "Path to a mosaicwave-library-….zip on the server",
-      "deviceHint": "Choose a mosaicwave-library-….zip made by this or another mosaicWave. It is uploaded first (it stays in the list above), so large backups take a while."
+      "deviceHint": "Choose a mosaicwave-library-….zip made by this or another mosaicWave. A split backup has several files (…-001.zip, …-002.zip, …): choose all of them together. They are uploaded first (they stay in the list above), so large backups take a while."
     }
   },
   "export": {

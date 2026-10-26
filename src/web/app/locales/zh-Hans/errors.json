@@ -87,6 +87,7 @@
   "backup_no_space": "可用空间不足：需要约 {{need_mb}} MB，当前只有 {{free_mb}} MB。",
   "library_restoring": "你的相册正在还原中，请稍后再试。",
   "backup_wrong_kind": "这是不同类型的备份：整站备份请到管理员的“备份”页使用，相册备份请在“设置”中使用。",
+  "backup_parts_missing": "这份备份共有 {{parts}} 份，目前还没有第 {{missing}} 份。请把缺少的部分放到其他文件旁（或上传），再试一次。",
   "export_nothing_selected": "请选择要导出的内容。",
   "export_scope": "请选择全部照片，或选择单个相册与照片，不要两者并用。",
   "export_not_found": "找不到这份导出。",
