@@ -17,6 +17,10 @@ from mosaicwave import libbackup, restore
 from mosaicwave.archive import (
     ArchiveError,
     PartsMissing,
+    ChunkTracker,
+    Piece,
+    _overhead,
+    chunk_name,
     open_set,
     part_name,
     plan_parts,
@@ -35,6 +39,20 @@ def _manifest(archive: Path) -> dict:
         return json.loads(zf.read("manifest.json"))
 
 
+def _limit(settings) -> int:  # type: ignore[no-untyped-def]
+    """A part size that holds one photo but not two (the databases fill part 1 on their own)."""
+    costs = [
+        p.stat().st_size + _overhead(p.relative_to(settings.data_dir).as_posix())
+        for p in (settings.data_dir / "libraries").rglob("*")
+        if p.is_file()
+    ]
+    return int(1.5 * max(costs) / 0.9) + 1
+
+
+def _lengths(pieces: list[Piece], size: int) -> list[int]:
+    return [p.length if p.length is not None else size - p.offset for p in pieces]
+
+
 def _files(count: int, size: int) -> list[tuple[Path, str, int]]:
     return [(Path(f"f{i}"), f"libraries/u/f{i}", size) for i in range(count)]
 
@@ -47,25 +65,57 @@ def test_plan_without_a_limit_is_one_part() -> None:
 
 
 def test_plan_fills_parts_up_to_the_limit() -> None:
-    groups = plan_parts(_files(5, 100), 250)
+    # each file costs 100 bytes of data and about 230 of headers; a part holds 900 minus a reserve
+    groups = plan_parts(_files(5, 100), 1000)
     assert [len(g) for g in groups] == [2, 2, 1]
+    assert all(piece.number == 0 for g in groups for piece in g)  # nothing is cut
 
 
-def test_plan_gives_a_file_bigger_than_the_limit_a_part_of_its_own() -> None:
-    files = _files(2, 10) + [(Path("big"), "libraries/u/big", 1000)] + _files(1, 10)
-    groups = plan_parts(files, 100)
-    assert [len(g) for g in groups] == [2, 1, 1]
-    assert groups[1][0][1].endswith("big")
+def test_plan_cuts_a_file_bigger_than_a_part_into_pieces_that_fit() -> None:
+    files = _files(1, 10) + [(Path("big"), "libraries/u/big", 5000)] + _files(1, 10)
+    groups = plan_parts(files, 1000)
+    big = [p for g in groups for p in g if p.arcname.endswith("big")]
+    assert len(big) >= 6 and [p.number for p in big] == list(range(1, len(big) + 1))
+    assert {p.total for p in big} == {len(big)} and big[0].offset == 0
+    assert sum(_lengths(big, 5000)) == 5000 and big[-1].length is None
+    assert [p.offset for p in big[1:]] == [sum(_lengths(big, 5000)[:i]) for i in range(1, len(big))]
+    for group in groups:
+        spent = sum(
+            (p.length if p.length is not None else 5000 - p.offset if p.number else 10) + _overhead(p.arcname) + 20
+            for p in group
+        )
+        assert spent <= 1000  # no part is bigger than asked for
+    # the small files around it are still whole
+    assert [p.number for g in groups for p in g if not p.arcname.endswith("big")] == [0, 0]
 
 
 def test_plan_counts_what_the_first_part_already_holds() -> None:
-    groups = plan_parts(_files(2, 100), 150, first_extra=100)
-    assert [len(g) for g in groups] == [0, 1, 1]  # the databases fill part 1
+    groups = plan_parts(_files(2, 100), 1000, first_extra=900)
+    assert [len(g) for g in groups] == [0, 2]  # the databases fill part 1
 
 
 def test_plan_refuses_a_size_that_needs_too_many_parts() -> None:
     with pytest.raises(ArchiveError, match="at most"):
-        plan_parts(_files(1000, 10), 1)
+        plan_parts(_files(1000, 10), 400)
+
+
+def test_pieces_are_joined_in_order_and_a_missing_one_is_noticed() -> None:
+    name = "libraries/u/big.mov"
+    tracker = ChunkTracker()
+    assert tracker.see("libraries/u/small.jpg") == ("libraries/u/small.jpg", False, True)
+    assert tracker.see(chunk_name(name, 1, 3)) == (name, False, False)
+    assert tracker.see(chunk_name(name, 2, 3)) == (name, True, False)
+    assert tracker.see(chunk_name(name, 3, 3)) == (name, True, True)
+    tracker.check_done()
+
+    skipped = ChunkTracker()
+    skipped.see(chunk_name(name, 1, 3))
+    with pytest.raises(ArchiveError, match="missing or out of order"):
+        skipped.see(chunk_name(name, 3, 3))
+    short = ChunkTracker()
+    short.see(chunk_name(name, 1, 2))
+    with pytest.raises(ArchiveError, match="cut short"):
+        short.check_done()
 
 
 # --- a site backup in parts ----------------------------------------------------------------------
@@ -75,7 +125,7 @@ def test_site_backup_in_parts_restores_everything(tmp_path: Path) -> None:
     src = _settings(tmp_path / "a")
     client = _seed(src)
     uid = me_id(client)
-    result = backup_site(src, tmp_path / "out", split_bytes=1)
+    result = backup_site(src, tmp_path / "out", split_bytes=_limit(src))
 
     assert len(result.paths) == 3 and result.path == result.paths[0]
     base = result.path.name[: -len("-001.zip")]
@@ -105,7 +155,7 @@ def test_site_backup_in_parts_restores_everything(tmp_path: Path) -> None:
 def test_restoring_from_any_part_finds_the_others(tmp_path: Path) -> None:
     src = _settings(tmp_path / "a")
     client = _seed(src)
-    result = backup_site(src, tmp_path / "out", split_bytes=1)
+    result = backup_site(src, tmp_path / "out", split_bytes=_limit(src))
     found = open_set(result.paths[2], lambda m: None)
     assert found.paths == result.paths
     assert found.manifest["file_count"] == 2 and found.manifest["parts"] == 3
@@ -116,7 +166,7 @@ def test_restoring_from_any_part_finds_the_others(tmp_path: Path) -> None:
 def test_a_missing_part_is_named_and_nothing_is_staged(tmp_path: Path) -> None:
     src = _settings(tmp_path / "a")
     client = _seed(src)
-    result = backup_site(src, tmp_path / "out", split_bytes=1)
+    result = backup_site(src, tmp_path / "out", split_bytes=_limit(src))
     result.paths[1].unlink()
 
     with pytest.raises(PartsMissing) as caught:
@@ -135,8 +185,8 @@ def test_a_missing_part_is_named_and_nothing_is_staged(tmp_path: Path) -> None:
 def test_a_part_from_another_backup_is_refused(tmp_path: Path) -> None:
     src = _settings(tmp_path / "a")
     client = _seed(src)
-    one = backup_site(src, tmp_path / "one", split_bytes=1)
-    two = backup_site(src, tmp_path / "two", split_bytes=1)
+    one = backup_site(src, tmp_path / "one", split_bytes=_limit(src))
+    two = backup_site(src, tmp_path / "two", split_bytes=_limit(src))
     # same names, different backup: pretend the clock was the same second
     manifest = json.loads(zipfile.ZipFile(two.paths[1]).read("manifest.json"))
     manifest["created_at"] = "2020-01-01T00:00:00+00:00"
@@ -154,7 +204,7 @@ def test_a_part_from_another_backup_is_refused(tmp_path: Path) -> None:
 def test_a_part_must_keep_its_name(tmp_path: Path) -> None:
     src = _settings(tmp_path / "a")
     client = _seed(src)
-    result = backup_site(src, tmp_path / "out", split_bytes=1)
+    result = backup_site(src, tmp_path / "out", split_bytes=_limit(src))
     renamed = result.paths[1].with_name("my backup.zip")
     result.paths[1].rename(renamed)
     with pytest.raises(ArchiveError, match="keep its file name"):
@@ -165,7 +215,7 @@ def test_a_part_must_keep_its_name(tmp_path: Path) -> None:
 def test_a_damaged_part_fails_the_full_check(tmp_path: Path) -> None:
     src = _settings(tmp_path / "a")
     client = _seed(src)
-    result = backup_site(src, tmp_path / "out", split_bytes=1)
+    result = backup_site(src, tmp_path / "out", split_bytes=_limit(src))
     data = bytearray(result.paths[2].read_bytes())
     data[len(data) // 4] ^= 0xFF
     result.paths[2].write_bytes(bytes(data))
@@ -177,7 +227,7 @@ def test_a_damaged_part_fails_the_full_check(tmp_path: Path) -> None:
 def test_a_database_in_a_later_part_is_refused(tmp_path: Path) -> None:
     src = _settings(tmp_path / "a")
     client = _seed(src)
-    result = backup_site(src, tmp_path / "out", split_bytes=1)
+    result = backup_site(src, tmp_path / "out", split_bytes=_limit(src))
     with zipfile.ZipFile(result.paths[1], "a") as zf:
         zf.writestr("library.db", b"x")
     with pytest.raises(ArchiveError, match="only the first part"):
@@ -206,7 +256,7 @@ def test_a_cancel_in_the_middle_leaves_no_part_behind(tmp_path: Path) -> None:
             raise KeyboardInterrupt
 
     with pytest.raises(KeyboardInterrupt):
-        backup_site(src, tmp_path / "out", split_bytes=1, on_progress=stop)
+        backup_site(src, tmp_path / "out", split_bytes=_limit(src), on_progress=stop)
     assert list((tmp_path / "out").iterdir()) == []
     client.close()
 
@@ -219,7 +269,7 @@ def test_library_backup_in_parts_restores_into_another_account(tmp_path: Path) -
     admin = _seed(settings)
     uid = me_id(admin)
     out = tmp_path / "lib-out"
-    result = libbackup.backup_library(settings, uid, out, split_bytes=1)
+    result = libbackup.backup_library(settings, uid, out, split_bytes=_limit(settings))
     assert len(result.paths) == 3
     assert _entries(result.paths[0]) == ["library.db"]
     assert result.manifest["file_count"] == 2 and result.manifest["parts"] == 3
@@ -375,3 +425,103 @@ def test_a_library_backup_in_parts_through_the_api(tmp_path: Path) -> None:
     (folder / listed[0]["part_files"][1]["name"]).unlink()
     refused = client.post(f"/api/v1/me/backups/{listed[0]['name']}/restore")
     assert refused.status_code == 400 and refused.json()["code"] == "backup_parts_missing"
+
+# --- a file bigger than a part is cut and joined again ---------------------------------------------
+
+
+def _with_big_file(settings, client, size: int = 300_000) -> bytes:  # type: ignore[no-untyped-def]
+    from authutil import scan_library
+    from test_takeout import _jpeg_bytes
+
+    data = _jpeg_bytes((200, 200, 9)) + bytes(range(256)) * (size // 256)
+    (library_dir(settings, client) / "big.jpg").write_bytes(data)
+    scan_library(client)
+    return data
+
+
+def test_a_file_bigger_than_a_part_is_cut_and_every_part_stays_within_the_size(tmp_path: Path) -> None:
+    src = _settings(tmp_path / "a")
+    client = _seed(src)
+    uid = me_id(client)
+    data = _with_big_file(src, client)
+    limit = 100_000
+    result = backup_site(src, tmp_path / "out", split_bytes=limit)
+
+    sizes = [p.stat().st_size for p in result.paths]
+    assert all(size <= limit for size in sizes[1:]), sizes  # part 1 also holds the databases
+    pieces = [n for part in result.paths for n in _entries(part) if ".mwchunk-" in n]
+    assert len(pieces) >= 3 and all(n.startswith(f"libraries/{uid}/big.jpg.mwchunk-") for n in pieces)
+    assert result.manifest["file_count"] == 3  # the big file counts once
+    assert result.manifest["total_bytes"] == sum(
+        p.stat().st_size for p in (src.data_dir / "libraries").rglob("*") if p.is_file()
+    )
+
+    assert check_archive(result.path, full=True)["file_count"] == 3
+    dst = _settings(tmp_path / "b")
+    restore_site(result.path, dst)
+    restored = dst.data_dir / "libraries" / uid / "big.jpg"
+    assert restored.read_bytes() == data
+    assert not [p for p in dst.data_dir.rglob("*") if ".mwchunk-" in p.name]
+    client.close()
+
+
+def test_a_library_backup_cuts_and_joins_a_big_file_too(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    client = _seed(settings)
+    uid = me_id(client)
+    data = _with_big_file(settings, client)
+    result = libbackup.backup_library(settings, uid, tmp_path / "out", split_bytes=100_000)
+    assert all(p.stat().st_size <= 100_000 for p in result.paths[1:])
+    assert result.manifest["file_count"] == 3 and len(result.paths) >= 5
+
+    staged = libbackup.stage_library(result.paths[-1], settings, uid)
+    try:
+        assert (staged.data_stage / "libraries" / uid / "big.jpg").read_bytes() == data
+    finally:
+        import shutil
+
+        shutil.rmtree(staged.db_stage, ignore_errors=True)
+        shutil.rmtree(staged.data_stage, ignore_errors=True)
+    client.close()
+
+
+def test_a_lost_piece_of_a_big_file_fails_the_check_and_nothing_is_staged(tmp_path: Path) -> None:
+    src = _settings(tmp_path / "a")
+    client = _seed(src)
+    _with_big_file(src, client)
+    result = backup_site(src, tmp_path / "out", split_bytes=100_000)
+
+    victim = next(p for p in result.paths if any(".mwchunk-002-of-" in n for n in _entries(p)))
+    rewritten = victim.with_name(victim.name + ".new")
+    with zipfile.ZipFile(victim) as zin, zipfile.ZipFile(rewritten, "w") as zout:
+        for info in zin.infolist():
+            if ".mwchunk-002-of-" not in info.filename:
+                zout.writestr(info, zin.read(info.filename))
+    rewritten.replace(victim)
+    with pytest.raises(ArchiveError):
+        check_archive(result.path)
+    dst = _settings(tmp_path / "b")
+    with pytest.raises(ArchiveError):
+        stage_site(result.path, dst)
+    assert not list(dst.data_dir.glob(".restore-staging-*"))
+    client.close()
+
+
+def test_a_big_file_that_vanishes_before_its_first_piece_is_skipped(tmp_path: Path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    src = _settings(tmp_path / "a")
+    client = _seed(src)
+    uid = me_id(client)
+    _with_big_file(src, client)
+    big = src.data_dir / "libraries" / uid / "big.jpg"
+    real = backup_site.__globals__["write_archive"]
+
+    def deleting(*args, **kwargs):  # type: ignore[no-untyped-def]
+        big.unlink()
+        return real(*args, **kwargs)
+
+    monkeypatch.setitem(backup_site.__globals__, "write_archive", deleting)
+    result = backup_site(src, tmp_path / "out", split_bytes=100_000)
+    assert result.manifest["file_count"] == 2
+    assert any("disappeared" in w for w in result.manifest["warnings"])
+    assert check_archive(result.path, full=True)["file_count"] == 2
+    client.close()

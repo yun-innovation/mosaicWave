@@ -32,6 +32,7 @@ from mosaicwave.archive import (
     MANIFEST,
     ArchiveError,
     ArchiveSet,
+    ChunkTracker,
     check_library_manifest,
     iter_files,
     open_set,
@@ -39,6 +40,7 @@ from mosaicwave.archive import (
     plan_parts,
     read_manifest_file,
     safe_member,
+    starts_a_file,
     write_archive,
 )
 from mosaicwave.backup import _snapshot_library
@@ -209,6 +211,7 @@ def check_library_archive(archive: Path, *, full: bool = False, part_only: bool 
             found = open_set(archive, _check_manifest)
             paths, manifests, manifest = found.paths, found.manifests, found.manifest
         names: set[str] = set()
+        pieces = ChunkTracker()
         for path, part_manifest in zip(paths, manifests):
             with zipfile.ZipFile(path) as zf:
                 infos = _members(zf, part_manifest, first=_is_first(part_manifest))
@@ -216,7 +219,9 @@ def check_library_archive(archive: Path, *, full: bool = False, part_only: bool 
                 for info in infos:
                     if info.filename in (MANIFEST, DB_ENTRY):
                         continue
-                    media += 1
+                    if not part_only:
+                        pieces.see(info.filename)
+                    media += starts_a_file(info.filename)
                     if info.filename in names:
                         raise ArchiveError(f"{info.filename!r} is in two parts of the backup")
                     names.add(info.filename)
@@ -228,6 +233,8 @@ def check_library_archive(archive: Path, *, full: bool = False, part_only: bool 
                     bad = zf.testzip()
                     if bad is not None:
                         raise ArchiveError(f"archive is damaged: {bad!r} fails its checksum")
+        if not part_only:
+            pieces.check_done()
     except zipfile.BadZipFile as exc:
         raise ArchiveError(f"not a zip file or damaged: {exc}") from exc
     return manifest
@@ -271,6 +278,7 @@ def stage_library(
         target_root.mkdir(parents=True)
         index = 0
         media = 0
+        pieces = ChunkTracker()
         for path, part_manifest in parts:
             with zipfile.ZipFile(path) as zf:
                 for info in _members(zf, part_manifest, first=_is_first(part_manifest)):
@@ -278,19 +286,21 @@ def stage_library(
                     name = info.filename
                     if name == MANIFEST:
                         continue
+                    append, complete = False, True
                     if name == DB_ENTRY:
                         dest = db_stage / DB_ENTRY
                     else:
-                        rel = name.split("/", 2)[2]
+                        whole, append, complete = pieces.see(name)
+                        rel = whole.split("/", 2)[2]
                         dest = target_root / rel
-                        media += 1
+                        media += starts_a_file(name)
                     dest.parent.mkdir(parents=True, exist_ok=True)
                     try:
-                        with zf.open(info) as src, open(dest, "wb") as out:
+                        with zf.open(info) as src, open(dest, "ab" if append else "wb") as out:
                             shutil.copyfileobj(src, out, 1024 * 1024)
                     except zipfile.BadZipFile as exc:
                         raise ArchiveError(f"archive is damaged at {name!r}: {exc}") from exc
-                    if name != DB_ENTRY:
+                    if name != DB_ENTRY and complete:
                         try:
                             stamp_time = datetime(*info.date_time, tzinfo=timezone.utc).timestamp()
                             os.utime(dest, (stamp_time, stamp_time))
@@ -298,6 +308,7 @@ def stage_library(
                             pass
                     if on_progress is not None:
                         on_progress(index, total, name)
+        pieces.check_done()
         if media != manifest["file_count"]:
             raise ArchiveError(f"archive lists {manifest['file_count']} files but holds {media}")
         upgrade_from = _prepare_library(

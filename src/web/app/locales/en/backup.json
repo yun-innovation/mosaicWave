@@ -8,7 +8,7 @@
     "label": "Zip size",
     "one": "One zip file",
     "gb": "{{count}} GB parts",
-    "help": "A backup bigger than this is written as several zips that belong together. Keep them all in one place: restoring needs every part."
+    "help": "A backup bigger than this is written as several zips that belong together. No zip is bigger than this size: a very large file is cut into pieces and joined again when restored. Keep all the zips in one place: restoring needs every part."
   },
   "parts_one": "{{count, number}} part",
   "parts_other": "{{count, number}} parts",

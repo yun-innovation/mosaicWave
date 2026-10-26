@@ -286,32 +286,169 @@ def open_set(path: Path, check: Callable[[dict], None]) -> ArchiveSet:
     return ArchiveSet(paths, merge_manifests(manifests), manifests)
 
 
+# A file bigger than a part is stored in pieces, one per part, as ``<name>.mwchunk-001-of-003``.
+# Restore joins them again, so no part is ever bigger than the size that was asked for.
+CHUNK = re.compile(r"^(?P<base>.+)\.mwchunk-(?P<n>\d{3})-of-(?P<total>\d{3})$")
+_COPY = 1024 * 1024
+
+
+def chunk_name(arcname: str, number: int, total: int) -> str:
+    return f"{arcname}.mwchunk-{number:03d}-of-{total:03d}"
+
+
+def chunk_info(name: str) -> tuple[str, int, int] | None:
+    """``(file name, piece, pieces)`` for a piece of a big file, None for an ordinary entry."""
+    found = CHUNK.match(name)
+    if not found:
+        return None
+    number, total = int(found.group("n")), int(found.group("total"))
+    if not 1 <= number <= total:
+        return None
+    return found.group("base"), number, total
+
+
+def starts_a_file(name: str) -> bool:
+    """True for an entry that is a whole file or the first piece of one (what ``file_count`` counts)."""
+    info = chunk_info(name)
+    return info is None or info[1] == 1
+
+
+class ChunkTracker:
+    """Follows the pieces of big files while an archive is unpacked, and notices a missing one."""
+
+    def __init__(self) -> None:
+        self._open: dict[str, tuple[int, int]] = {}
+
+    def see(self, name: str) -> tuple[str, bool, bool]:
+        """``(name to write, append to it, it is complete after this)`` for the next entry."""
+        info = chunk_info(name)
+        if info is None:
+            return name, False, True
+        base, number, total = info
+        if number == 1:
+            if base in self._open:
+                raise ArchiveError("a large file starts twice in the backup")
+        else:
+            state = self._open.get(base)
+            if state is None or state != (number - 1, total):
+                raise ArchiveError("a piece of a large file is missing or out of order")
+        last = number == total
+        if last:
+            self._open.pop(base, None)
+        else:
+            self._open[base] = (number, total)
+        return base, number > 1, last
+
+    def check_done(self) -> None:
+        if self._open:
+            raise ArchiveError("a large file in the backup is cut short: its last piece is missing")
+
+
+@dataclass(frozen=True)
+class Piece:
+    """One entry to write: a whole file, or ``length`` bytes of a big one from ``offset``."""
+
+    path: Path
+    arcname: str
+    offset: int = 0
+    length: int | None = None  # None: the whole file (the last piece of a big file reads to the end)
+    number: int = 0  # 1-based piece of a big file; 0 for a whole file
+    total: int = 0
+
+    @property
+    def entry_name(self) -> str:
+        return chunk_name(self.arcname, self.number, self.total) if self.number else self.arcname
+
+
+def _overhead(name: str) -> int:
+    """What an entry costs in a zip beyond its data: local and central headers, zip64 fields."""
+    return 2 * len(name.encode("utf-8")) + 200
+
+
 def plan_parts(
     files: list[tuple[Path, str, int]], limit: int | None, first_extra: int = 0
-) -> list[list[tuple[Path, str]]]:
-    """Share ``files`` out over parts of about ``limit`` bytes (None: one part).
+) -> list[list[Piece]]:
+    """Share ``files`` out over parts that stay within ``limit`` bytes (None: one part).
 
-    A file is never cut: one bigger than the limit gets a part to itself. ``first_extra`` is what the
-    first part already holds (the databases). The size is a target, not a promise: zip headers and a
-    file that changed size meanwhile are not counted.
+    A file that fits is never cut. A file bigger than a part is cut into pieces that each fill a part.
+    Zip headers and a reserve for the manifest are counted, so a part is not bigger than ``limit``
+    unless a file grew meanwhile. ``first_extra`` is what the first part already holds (databases).
     """
-    groups: list[list[tuple[Path, str]]] = [[]]
+    if not limit:
+        return [[Piece(path, arcname) for path, arcname, _ in files]]
+    reserve = min(_COPY, limit // 10)
+    cap = max(limit - reserve, 1)
+    groups: list[list[Piece]] = [[]]
     used = first_extra
+
+    def new_part() -> None:
+        nonlocal used
+        groups.append([])
+        used = 0
+
     for path, arcname, size in files:
-        if limit and (groups[-1] or used) and used + size > limit:
-            groups.append([])
-            used = 0
-        groups[-1].append((path, arcname))
-        used += size
+        cost = size + _overhead(arcname)
+        if used + cost <= cap:
+            groups[-1].append(Piece(path, arcname))
+            used += cost
+            continue
+        if cost <= cap:
+            new_part()
+            groups[-1].append(Piece(path, arcname))
+            used = cost
+            continue
+        # Bigger than a part: cut it. The first piece fills what is left if that is worth using.
+        room = cap - used - _overhead(arcname) - 20
+        if room < cap // 8:
+            new_part()
+            room = cap - _overhead(arcname) - 20
+        lengths: list[int] = []
+        left = size
+        while left > 0:
+            take = min(room, left)
+            lengths.append(take)
+            left -= take
+            room = cap - _overhead(arcname) - 20
+        total = len(lengths)
+        offset = 0
+        for number, length in enumerate(lengths, start=1):
+            if number > 1:
+                new_part()
+            last = number == total
+            groups[-1].append(Piece(path, arcname, offset, None if last else length, number, total))
+            used += length + _overhead(arcname) + 20
+            offset += length
     if len(groups) > MAX_PARTS:
         raise ArchiveError(f"a part size this small would need {len(groups)} parts (at most {MAX_PARTS})")
     return groups
 
 
+def _write_piece(zf: zipfile.ZipFile, piece: Piece) -> int:
+    """Add one entry; returns the bytes written. Raises FileNotFoundError when the file is gone."""
+    if not piece.number:
+        zf.write(piece.path, piece.arcname, compress_type=zipfile.ZIP_STORED)
+        return zf.getinfo(piece.arcname).file_size
+    info = zipfile.ZipInfo.from_file(piece.path, piece.entry_name, strict_timestamps=False)
+    info.compress_type = zipfile.ZIP_STORED
+    wanted = piece.length
+    written = 0
+    with open(piece.path, "rb") as src, zf.open(info, "w", force_zip64=True) as out:
+        src.seek(piece.offset)
+        while wanted is None or written < wanted:
+            block = src.read(_COPY if wanted is None else min(_COPY, wanted - written))
+            if not block:
+                break
+            out.write(block)
+            written += len(block)
+    if wanted is not None and written != wanted:
+        raise ArchiveError("a large file changed while it was being backed up; try again")
+    return written
+
+
 def write_archive(
     out_dir: Path,
     base: str,
-    groups: list[list[tuple[Path, str]]],
+    groups: list[list[Piece]],
     db_files: list[tuple[Path, str]],
     common: dict,
     set_warnings: list[str],
@@ -330,6 +467,7 @@ def write_archive(
     finals: list[Path] = []
     published: list[Path] = []
     manifests: list[dict] = []
+    gone: set[str] = set()  # big files that vanished before their first piece: skip the rest silently
     try:
         for index, group in enumerate(groups):
             final = out_dir / (f"{base}.zip" if count == 1 else part_name(base, index + 1))
@@ -344,16 +482,25 @@ def write_archive(
                 if index == 0:
                     for db_file, arcname in db_files:
                         zf.write(db_file, arcname, compress_type=zipfile.ZIP_DEFLATED)
-                for path, arcname in group:
-                    try:
-                        zf.write(path, arcname, compress_type=zipfile.ZIP_STORED)
-                        written += 1
-                        total_bytes += zf.getinfo(arcname).file_size
-                    except FileNotFoundError:
-                        vanished += 1
+                for piece in group:
+                    if piece.arcname in gone:
+                        pass
+                    else:
+                        try:
+                            total_bytes += _write_piece(zf, piece)
+                            if piece.number <= 1:
+                                written += 1
+                        except FileNotFoundError:
+                            if piece.number > 1:
+                                raise ArchiveError(
+                                    "a large file changed while it was being backed up; try again"
+                                ) from None
+                            vanished += 1
+                            if piece.number == 1:
+                                gone.add(piece.arcname)
                     done += 1
                     if on_progress is not None:
-                        on_progress(done, total, arcname)
+                        on_progress(done, total, piece.arcname)
                 warnings = list(set_warnings)
                 if vanished:
                     warnings.append(f"{vanished} file(s) disappeared while the backup ran")

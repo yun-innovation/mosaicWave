@@ -38,12 +38,14 @@ from mosaicwave.archive import (
     MANIFEST,
     ArchiveError,
     ArchiveSet,
+    ChunkTracker,
     account_entry,
     check_manifest,
     open_set,
     part_info,
     read_manifest_file,
     safe_member,
+    starts_a_file,
 )
 from mosaicwave.config import Settings, _checkpoint_library_db, ensure_data_dir_exists
 from mosaicwave.schema.library import LIBRARY_CURRENT_VERSION
@@ -128,6 +130,7 @@ def check_archive(archive: Path, *, full: bool = False, part_only: bool = False)
             found = open_set(archive, _check_manifest)
             paths, manifests, manifest = found.paths, found.manifests, found.manifest
         names: set[str] = set()
+        pieces = ChunkTracker()
         for path, part_manifest in zip(paths, manifests):
             with zipfile.ZipFile(path) as zf:
                 infos = _members(zf, part_manifest, first=_is_first(part_manifest))
@@ -135,7 +138,9 @@ def check_archive(archive: Path, *, full: bool = False, part_only: bool = False)
                 for info in infos:
                     if not _is_media(info.filename):
                         continue
-                    media += 1
+                    if not part_only:
+                        pieces.see(info.filename)
+                    media += starts_a_file(info.filename)
                     if info.filename in names:
                         raise ArchiveError(f"{info.filename!r} is in two parts of the backup")
                     names.add(info.filename)
@@ -147,6 +152,8 @@ def check_archive(archive: Path, *, full: bool = False, part_only: bool = False)
                     bad = zf.testzip()
                     if bad is not None:
                         raise ArchiveError(f"archive is damaged: {bad!r} fails its checksum")
+        if not part_only:
+            pieces.check_done()
     except zipfile.BadZipFile as exc:
         raise ArchiveError(f"not a zip file or damaged: {exc}") from exc
     return manifest
@@ -179,26 +186,34 @@ def _extract(
     *,
     before: int = 0,
     total: int | None = None,
+    pieces: ChunkTracker | None = None,
 ) -> int:
     """Copy members into the stages (CRC is checked as each file is read). Returns media count.
 
     ``before`` members of earlier parts are done and ``total`` counts every part, for the progress.
+    ``pieces`` joins the pieces of big files, which may continue in the next call.
     """
+    pieces = pieces if pieces is not None else ChunkTracker()
     total = len(infos) if total is None else total
     media = 0
     for index, info in enumerate(infos, start=before + 1):
         name = info.filename
         if name == MANIFEST:
             continue
-        target = (data_stage if _is_media(name) else app_stage) / name
+        whole, append, complete = pieces.see(name) if _is_media(name) else (name, False, True)
+        target = (data_stage if _is_media(name) else app_stage) / whole
         target.parent.mkdir(parents=True, exist_ok=True)
         try:
-            with zf.open(info) as src, open(target, "wb") as dst:
+            with zf.open(info) as src, open(target, "ab" if append else "wb") as dst:
                 shutil.copyfileobj(src, dst, _COPY_CHUNK)
         except zipfile.BadZipFile as exc:
             raise ArchiveError(f"archive is damaged at {name!r}: {exc}") from exc
         if _is_media(name):
-            media += 1
+            media += starts_a_file(name)
+            if not complete:
+                if on_progress is not None:
+                    on_progress(index, total, name)
+                continue
             try:
                 stamp = datetime(*info.date_time, tzinfo=timezone.utc).timestamp()
                 os.utime(target, (stamp, stamp))
@@ -351,11 +366,15 @@ def stage_site(
         data_stage.mkdir(parents=True)
         media = 0
         done = 0
+        pieces = ChunkTracker()
         for path, part_manifest in parts:
             with zipfile.ZipFile(path) as zf:
                 infos = _members(zf, part_manifest, first=_is_first(part_manifest))
-                media += _extract(zf, infos, app_stage, data_stage, on_progress, before=done, total=total)
+                media += _extract(
+                    zf, infos, app_stage, data_stage, on_progress, before=done, total=total, pieces=pieces
+                )
                 done += len(infos)
+        pieces.check_done()
         if media != manifest.get("file_count"):
             raise ArchiveError(f"archive lists {manifest.get('file_count')} files but holds {media}")
         site_upgrade_from = _prepare_site(app_stage / DB_ENTRY, manifest)

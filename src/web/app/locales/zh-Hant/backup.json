@@ -8,7 +8,7 @@
     "label": "Zip 大小",
     "one": "單一 zip 檔",
     "gb": "每份 {{count}} GB",
-    "help": "比這個大的備份會分成幾個屬於同一組的 zip。請把它們全部放在同一處：還原時需要每一份。"
+    "help": "比這個大的備份會分成幾個屬於同一組的 zip。每個 zip 都不會超過這個大小：非常大的檔案會被切成幾段，還原時再接回。請把所有 zip 放在同一處：還原時需要每一份。"
   },
   "parts_one": "{{count, number}} 份",
   "parts_other": "{{count, number}} 份",
