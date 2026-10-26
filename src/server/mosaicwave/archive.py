@@ -94,11 +94,13 @@ def iter_files(root: Path, prefix: str) -> Iterator[tuple[Path, str]]:
 
 def safe_member(name: str) -> str:
     """Return ``name`` if it may be extracted, else raise."""
-    if name in (MANIFEST, DB_ENTRY):
+    pieces = chunk_info(name)
+    whole = pieces[0] if pieces else name  # a piece of a big file is named like the file
+    if whole in (MANIFEST, DB_ENTRY):
         return name
     if "\\" in name or name.startswith("/"):
         raise ArchiveError(f"unsafe name in archive: {name!r}")
-    parts = PurePosixPath(name).parts
+    parts = PurePosixPath(whole).parts
     if len(parts) == 3 and parts[0] == ACCOUNTS and parts[2] == DB_ENTRY and USER_ID.match(parts[1]):
         return name
     if len(parts) < 2 or parts[0] not in (LIBRARIES, BLOBS) or any(p in ("", ".", "..") for p in parts):
@@ -354,10 +356,16 @@ class Piece:
     length: int | None = None  # None: the whole file (the last piece of a big file reads to the end)
     number: int = 0  # 1-based piece of a big file; 0 for a whole file
     total: int = 0
+    deflate: bool = False  # a database that is stored whole is compressed; pieces are stored as they are
 
     @property
     def entry_name(self) -> str:
         return chunk_name(self.arcname, self.number, self.total) if self.number else self.arcname
+
+
+def is_media_name(name: str) -> bool:
+    """A photo or thumbnail entry (the rest are the databases)."""
+    return name.startswith((f"{LIBRARIES}/", f"{BLOBS}/"))
 
 
 def _overhead(name: str) -> int:
@@ -365,21 +373,20 @@ def _overhead(name: str) -> int:
     return 2 * len(name.encode("utf-8")) + 200
 
 
-def plan_parts(
-    files: list[tuple[Path, str, int]], limit: int | None, first_extra: int = 0
-) -> list[list[Piece]]:
+def plan_parts(files: list[tuple[Path, str, int]], limit: int | None) -> list[list[Piece]]:
     """Share ``files`` out over parts that stay within ``limit`` bytes (None: one part).
 
-    A file that fits is never cut. A file bigger than a part is cut into pieces that each fill a part.
-    Zip headers and a reserve for the manifest are counted, so a part is not bigger than ``limit``
-    unless a file grew meanwhile. ``first_extra`` is what the first part already holds (databases).
+    A file that fits is never cut. A file bigger than a part is cut into pieces that each fill a part,
+    a database as much as a photo. Zip headers and a reserve for the manifest are counted, so a part
+    is not bigger than ``limit`` unless a file grew meanwhile. Put the databases first: they are
+    compressed when they fit whole (counted at their full size, which is the most they can take).
     """
     if not limit:
-        return [[Piece(path, arcname) for path, arcname, _ in files]]
+        return [[Piece(path, arcname, deflate=not is_media_name(arcname)) for path, arcname, _ in files]]
     reserve = min(_COPY, limit // 10)
     cap = max(limit - reserve, 1)
     groups: list[list[Piece]] = [[]]
-    used = first_extra
+    used = 0
 
     def new_part() -> None:
         nonlocal used
@@ -388,13 +395,14 @@ def plan_parts(
 
     for path, arcname, size in files:
         cost = size + _overhead(arcname)
+        deflate = not is_media_name(arcname)
         if used + cost <= cap:
-            groups[-1].append(Piece(path, arcname))
+            groups[-1].append(Piece(path, arcname, deflate=deflate))
             used += cost
             continue
         if cost <= cap:
             new_part()
-            groups[-1].append(Piece(path, arcname))
+            groups[-1].append(Piece(path, arcname, deflate=deflate))
             used = cost
             continue
         # Bigger than a part: cut it. The first piece fills what is left if that is worth using.
@@ -426,7 +434,8 @@ def plan_parts(
 def _write_piece(zf: zipfile.ZipFile, piece: Piece) -> int:
     """Add one entry; returns the bytes written. Raises FileNotFoundError when the file is gone."""
     if not piece.number:
-        zf.write(piece.path, piece.arcname, compress_type=zipfile.ZIP_STORED)
+        kind = zipfile.ZIP_DEFLATED if piece.deflate else zipfile.ZIP_STORED
+        zf.write(piece.path, piece.arcname, compress_type=kind)
         return zf.getinfo(piece.arcname).file_size
     info = zipfile.ZipInfo.from_file(piece.path, piece.entry_name, strict_timestamps=False)
     info.compress_type = zipfile.ZIP_STORED
@@ -449,7 +458,6 @@ def write_archive(
     out_dir: Path,
     base: str,
     groups: list[list[Piece]],
-    db_files: list[tuple[Path, str]],
     common: dict,
     set_warnings: list[str],
     on_progress: Callable[[int, int, str], None] | None = None,
@@ -458,7 +466,7 @@ def write_archive(
 
     Parts are written as ``*.part`` and renamed at the end, the last part first, so a first part that
     exists means every part exists and a crash never leaves something that looks finished. The
-    databases go into the first part. The returned manifest is for the whole set.
+    returned manifest is for the whole set.
     """
     count = len(groups)
     total = sum(len(g) for g in groups)
@@ -479,23 +487,21 @@ def write_archive(
             total_bytes = 0
             vanished = 0
             with zipfile.ZipFile(tmp, "w", allowZip64=True, strict_timestamps=False) as zf:
-                if index == 0:
-                    for db_file, arcname in db_files:
-                        zf.write(db_file, arcname, compress_type=zipfile.ZIP_DEFLATED)
                 for piece in group:
                     if piece.arcname in gone:
                         pass
                     else:
                         try:
-                            total_bytes += _write_piece(zf, piece)
-                            if piece.number <= 1:
-                                written += 1
+                            size = _write_piece(zf, piece)
+                            if is_media_name(piece.arcname):  # the databases are not counted
+                                total_bytes += size
+                                written += piece.number <= 1
                         except FileNotFoundError:
                             if piece.number > 1:
                                 raise ArchiveError(
                                     "a large file changed while it was being backed up; try again"
                                 ) from None
-                            vanished += 1
+                            vanished += is_media_name(piece.arcname)
                             if piece.number == 1:
                                 gone.add(piece.arcname)
                     done += 1

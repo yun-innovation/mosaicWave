@@ -175,8 +175,8 @@ def backup_site(
                 sized.append((path, arcname, path.stat().st_size))
             except OSError:
                 sized.append((path, arcname, 0))
-        extra = sum(f.stat().st_size for f, _ in db_files)
-        groups = plan_parts(sized, split_bytes if split_bytes and split_bytes > 0 else None, extra)
+        everything = [(f, arcname, f.stat().st_size) for f, arcname in db_files] + sized
+        groups = plan_parts(everything, split_bytes if split_bytes and split_bytes > 0 else None)
         common = {
             "kind": KIND_SITE,
             "created_at": started.isoformat(timespec="seconds"),
@@ -192,7 +192,7 @@ def backup_site(
             "assets": sum(f["assets"] for f in libraries.values()),
             "albums": sum(f["albums"] for f in libraries.values()),
         }
-        paths, manifest = write_archive(out_dir, base, groups, db_files, common, warnings, on_progress)
+        paths, manifest = write_archive(out_dir, base, groups, common, warnings, on_progress)
         return BackupResult(paths[0], manifest, paths)
     finally:
         shutil.rmtree(work, ignore_errors=True)

@@ -40,13 +40,14 @@ def _manifest(archive: Path) -> dict:
 
 
 def _limit(settings) -> int:  # type: ignore[no-untyped-def]
-    """A part size that holds one photo but not two (the databases fill part 1 on their own)."""
-    costs = [
-        p.stat().st_size + _overhead(p.relative_to(settings.data_dir).as_posix())
-        for p in (settings.data_dir / "libraries").rglob("*")
-        if p.is_file()
-    ]
-    return int(1.5 * max(costs) / 0.9) + 1
+    """A part size a little under the biggest database, so that one is cut and the rest is not."""
+    biggest = max(p.stat().st_size for p in settings.data_dir.rglob("library.db"))
+    return int(0.85 * biggest / 0.9)
+
+
+def _names(paths: list[Path]) -> list[str]:
+    """Every entry of every part, a piece of a big file under the name of the file."""
+    return [n.split(".mwchunk-")[0] for p in paths for n in _entries(p)]
 
 
 def _lengths(pieces: list[Piece], size: int) -> list[int]:
@@ -89,9 +90,28 @@ def test_plan_cuts_a_file_bigger_than_a_part_into_pieces_that_fit() -> None:
     assert [p.number for g in groups for p in g if not p.arcname.endswith("big")] == [0, 0]
 
 
-def test_plan_counts_what_the_first_part_already_holds() -> None:
-    groups = plan_parts(_files(2, 100), 1000, first_extra=900)
-    assert [len(g) for g in groups] == [0, 2]  # the databases fill part 1
+def test_plan_cuts_a_database_like_any_other_file() -> None:
+    db = (Path("db"), "library.db", 4000)
+    groups = plan_parts([db] + _files(2, 100), 1000)
+    pieces = [p for g in groups for p in g if p.arcname == "library.db"]
+    assert len(pieces) >= 5 and [p.number for p in pieces] == list(range(1, len(pieces) + 1))
+    assert not any(p.deflate for p in pieces)  # pieces are stored as they are
+    for group in groups:
+        spent = sum(
+            (p.length if p.length is not None else 4000 - p.offset if p.number else 100)
+            + _overhead(p.arcname)
+            + 20
+            for p in group
+        )
+        assert spent <= 1000
+
+
+def test_plan_compresses_a_database_that_fits_whole() -> None:
+    groups = plan_parts([(Path("db"), "library.db", 100)] + _files(1, 100), 1000)
+    assert [(p.arcname, p.number, p.deflate) for p in groups[0]] == [
+        ("library.db", 0, True),
+        ("libraries/u/f0", 0, False),
+    ]
 
 
 def test_plan_refuses_a_size_that_needs_too_many_parts() -> None:
@@ -127,24 +147,27 @@ def test_site_backup_in_parts_restores_everything(tmp_path: Path) -> None:
     uid = me_id(client)
     result = backup_site(src, tmp_path / "out", split_bytes=_limit(src))
 
-    assert len(result.paths) == 3 and result.path == result.paths[0]
+    count = len(result.paths)
+    assert count >= 3 and result.path == result.paths[0]
     base = result.path.name[: -len("-001.zip")]
-    assert [p.name for p in result.paths] == [part_name(base, n) for n in (1, 2, 3)]
+    assert [p.name for p in result.paths] == [part_name(base, n) for n in range(1, count + 1)]
     assert sorted(p.name for p in (tmp_path / "out").iterdir()) == sorted(p.name for p in result.paths)
 
-    first = _entries(result.paths[0])
-    assert {"library.db", f"accounts/{uid}/library.db"} <= set(first)
-    for part in result.paths[1:]:
-        names = _entries(part)
-        assert len(names) == 1 and names[0].startswith(f"libraries/{uid}/")
+    limit = _limit(src)
+    assert all(p.stat().st_size <= limit for p in result.paths)  # databases included
+    names = _names(result.paths)
+    assert {"library.db", f"accounts/{uid}/library.db"} <= set(names)
+    assert sum(n.startswith(f"libraries/{uid}/") for n in names) == 2
+    assert any(".mwchunk-" in n for part in result.paths for n in _entries(part))  # a database was cut
     for number, part in enumerate(result.paths, start=1):
         m = _manifest(part)
-        assert (m["format"], m["part"], m["parts"]) == (2, number, 3)
-    assert result.manifest["parts"] == 3 and result.manifest["file_count"] == 2
+        assert (m["format"], m["part"], m["parts"]) == (2, number, count)
+    assert result.manifest["parts"] == count and result.manifest["file_count"] == 2
     assert result.manifest["assets"] == 2 and "part" not in result.manifest
 
     dst = _settings(tmp_path / "b")
     restore_site(result.path, dst)
+    assert (dst.database_path.parent / "accounts" / uid / "library.db").stat().st_size > 0
     restored = authed_client(dst)
     assert len(restored.get("/api/v1/assets").json()["items"]) == 2
     assert [(a["name"], a["asset_count"]) for a in restored.get("/api/v1/albums").json()] == [("Holiday", 1)]
@@ -158,7 +181,7 @@ def test_restoring_from_any_part_finds_the_others(tmp_path: Path) -> None:
     result = backup_site(src, tmp_path / "out", split_bytes=_limit(src))
     found = open_set(result.paths[2], lambda m: None)
     assert found.paths == result.paths
-    assert found.manifest["file_count"] == 2 and found.manifest["parts"] == 3
+    assert found.manifest["file_count"] == 2 and found.manifest["parts"] == len(result.paths)
     assert check_archive(result.paths[1], full=True)["file_count"] == 2
     client.close()
 
@@ -171,7 +194,7 @@ def test_a_missing_part_is_named_and_nothing_is_staged(tmp_path: Path) -> None:
 
     with pytest.raises(PartsMissing) as caught:
         check_archive(result.path)
-    assert caught.value.missing == [2] and caught.value.parts == 3
+    assert caught.value.missing == [2] and caught.value.parts == len(result.paths)
 
     dst = _settings(tmp_path / "b")
     with pytest.raises(PartsMissing):
@@ -224,13 +247,13 @@ def test_a_damaged_part_fails_the_full_check(tmp_path: Path) -> None:
     client.close()
 
 
-def test_a_database_in_a_later_part_is_refused(tmp_path: Path) -> None:
+def test_a_second_copy_of_a_database_is_refused(tmp_path: Path) -> None:
     src = _settings(tmp_path / "a")
     client = _seed(src)
     result = backup_site(src, tmp_path / "out", split_bytes=_limit(src))
     with zipfile.ZipFile(result.paths[1], "a") as zf:
         zf.writestr("library.db", b"x")
-    with pytest.raises(ArchiveError, match="only the first part"):
+    with pytest.raises(ArchiveError, match="in two parts"):
         check_archive(result.path)
     client.close()
 
@@ -270,9 +293,15 @@ def test_library_backup_in_parts_restores_into_another_account(tmp_path: Path) -
     uid = me_id(admin)
     out = tmp_path / "lib-out"
     result = libbackup.backup_library(settings, uid, out, split_bytes=_limit(settings))
-    assert len(result.paths) == 3
-    assert _entries(result.paths[0]) == ["library.db"]
-    assert result.manifest["file_count"] == 2 and result.manifest["parts"] == 3
+    count = len(result.paths)
+    assert count >= 2
+    assert all(p.stat().st_size <= _limit(settings) for p in result.paths)
+    assert sorted(set(_names(result.paths))) == [
+        f"libraries/{uid}/red.jpg",
+        f"libraries/{uid}/sub/blue.jpg",
+        "library.db",
+    ]
+    assert result.manifest["file_count"] == 2 and result.manifest["parts"] == count
 
     with pytest.raises(PartsMissing):
         # not every part is next to it
@@ -282,11 +311,12 @@ def test_library_backup_in_parts_restores_into_another_account(tmp_path: Path) -
         libbackup.check_library_archive(folder / result.paths[0].name)
 
     assert libbackup.check_library_archive(result.path, full=True)["assets"] == 2
-    staged = libbackup.stage_library(result.paths[2], settings, uid)
+    staged = libbackup.stage_library(result.paths[-1], settings, uid)
     try:
         files = [p for p in (staged.data_stage / "libraries" / uid).rglob("*") if p.is_file()]
         assert sorted(p.name for p in files) == ["blue.jpg", "red.jpg"]
         assert (staged.db_stage / "library.db").is_file()
+        assert not [p for p in staged.db_stage.rglob("*") if ".mwchunk-" in p.name]
     finally:
         import shutil
 
@@ -490,6 +520,27 @@ def test_a_lost_piece_of_a_big_file_fails_the_check_and_nothing_is_staged(tmp_pa
     client = _seed(src)
     _with_big_file(src, client)
     result = backup_site(src, tmp_path / "out", split_bytes=100_000)
+
+    victim = next(p for p in result.paths if any(".mwchunk-002-of-" in n for n in _entries(p)))
+    rewritten = victim.with_name(victim.name + ".new")
+    with zipfile.ZipFile(victim) as zin, zipfile.ZipFile(rewritten, "w") as zout:
+        for info in zin.infolist():
+            if ".mwchunk-002-of-" not in info.filename:
+                zout.writestr(info, zin.read(info.filename))
+    rewritten.replace(victim)
+    with pytest.raises(ArchiveError):
+        check_archive(result.path)
+    dst = _settings(tmp_path / "b")
+    with pytest.raises(ArchiveError):
+        stage_site(result.path, dst)
+    assert not list(dst.data_dir.glob(".restore-staging-*"))
+    client.close()
+
+
+def test_a_lost_piece_of_a_database_fails_the_check_and_nothing_is_staged(tmp_path: Path) -> None:
+    src = _settings(tmp_path / "a")
+    client = _seed(src)
+    result = backup_site(src, tmp_path / "out", split_bytes=_limit(src))
 
     victim = next(p for p in result.paths if any(".mwchunk-002-of-" in n for n in _entries(p)))
     rewritten = victim.with_name(victim.name + ".new")
