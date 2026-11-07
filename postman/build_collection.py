@@ -752,8 +752,30 @@ OpenAPI at `{{baseUrl}}/docs` stays the living spec; this collection is a snapsh
                     ],
                     tests=SAVE_JOB,
                 ),
-                req("Get job", "GET", "/api/v1/jobs/{{jobId}}"),
-                req("Job events", "GET", "/api/v1/jobs/{{jobId}}/events"),
+                req(
+                    "Get job",
+                    "GET",
+                    "/api/v1/jobs/{{jobId}}",
+                    description=(
+                        "current, error and warnings[].message are written in the response language "
+                        "(X-MosaicWave-Language or ?lang=, else the saved locale, else en) when the job is read, "
+                        "so a job started under one language reads in another. Photo paths and OS messages are "
+                        "never translated."
+                    ),
+                ),
+                req(
+                    "Job events",
+                    "GET",
+                    "/api/v1/jobs/{{jobId}}/events",
+                    description="Each event message is rendered in the response language when read (see Get job).",
+                ),
+                req(
+                    "Job events, in another language",
+                    "GET",
+                    "/api/v1/jobs/{{jobId}}/events",
+                    description="Same events as above, asked for in Traditional Chinese with the header. Try zh-Hans or ?lang= too.",
+                    headers=[{"key": "X-MosaicWave-Language", "value": "zh-Hant"}],
+                ),
             ],
         ),
         folder(
