@@ -42,6 +42,7 @@
   "invalid_filename": "Invalid file name.",
   "invalid_locale": "Unsupported language: {{locale}}",
   "invalid_role": "Role must be admin or member.",
+  "invalid_time_zone": "Unknown time zone: {{time_zone}}",
   "invalid_username": "Usernames use letters, digits, dot, dash, or underscore (up to 64).",
   "job_backup_done": "Backup {{name}}: {{assets}} assets, {{files}} files",
   "job_backup_done_parts": "Backup {{name}}: {{assets}} assets, {{files}} files, {{parts}} parts",

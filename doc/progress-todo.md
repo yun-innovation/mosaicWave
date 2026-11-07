@@ -27,9 +27,9 @@ Open items only. Roadmap: ordered milestones in [roadmap.md](roadmap.md). The ea
   - [x] PR 1: Move library needs maintenance mode `on` (`409 maintenance_required`), the Server page disables it with a link to Maintenance; a detached library answers `503 data_dir_moving` on every library request
   - [x] PR 2: the move as a cancellable `data_dir_move` job (progress, free-space check, verify before switching `data_dir`), with a `data-dir-move.json` journal rolled back or finished at start; old files deleted only after the new folder answers
 - [ ] ARM64 QPKG sideload on a QTS 5 ARM64 NAS (**milestone 10, frozen**: no ARM hardware)
-- [ ] Time zone for display: every stored time is UTC (done for backups: zip entries are UTC); the user picks the zone that dates and times are shown in (web and API formatting), saved with the account (**milestone 8**)
+- [x] Time zone for display: every stored time is UTC (backup zip entries too); the user picks the zone that dates and times are shown in (`user.time_zone`, account menu and Settings, web `format.ts`), saved with the account (**milestone 8**, PR 3)
 - [ ] Multilingual API (**milestone 8**): translated messages and locale-formatted date/time in responses; sync and ordering timestamps stay UTC; response language and switch target kept separate, tags normalized to canonical codes
   - [x] PR 1: response language: `X-MosaicWave-Language` header or `?lang=` (never `Accept-Language`), then `user.locale`, then `en`; `detail` translated from the server catalog generated from the web `errors.json` (`npm run sync-locales`, checked by `i18n-check`); `Content-Language` and `Vary`; `auth/status.locales`; `PATCH /me` normalizes tags and answers in the new language; the web sends its language with every request
   - [x] PR 2: all job text (errors and progress lines) stored as code + params and rendered into the response language when read; Takeout, backup and restore warnings the same
-  - [ ] PR 3: display time zone (`user.time_zone`, Settings menu, web `format.ts`) and dates written in the response language and zone inside API text
+  - [x] PR 3: display time zone (`user.time_zone`, Settings menu, web `format.ts`) and dates written in the response language and zone inside API text
 - [ ] Gallery tools: select many, timeline scrubber, search (new API), light theme (**milestone 9**)

@@ -7,6 +7,8 @@ export type Me = {
   role: string;
   provider: string;
   locale: string | null;
+  /** IANA zone times are shown in; null = automatic (this device). */
+  time_zone?: string | null;
 };
 
 export type AuthStatus = {
@@ -159,6 +161,16 @@ export function warningText(w: DumpWarning): string {
       ? translateCode("no_takeout_zips_hint_names", params)
       : null;
   return hint ? `${text} ${hint}` : text;
+}
+
+export async function saveTimeZone(timeZone: string | null): Promise<Me> {
+  const res = await apiFetch("/api/v1/me", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ time_zone: timeZone }),
+  });
+  if (!res.ok) throw new Error(await readDetail(res));
+  return (await res.json()) as Me;
 }
 
 export async function saveLocale(locale: string | null): Promise<Me> {

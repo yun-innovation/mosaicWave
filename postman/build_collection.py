@@ -323,6 +323,17 @@ OpenAPI at `{{baseUrl}}/docs` stays the living spec; this collection is a snapsh
                     headers=[{"key": "X-MosaicWave-Language", "value": "zh-Hant"}],
                 ),
                 req(
+                    "Set time zone",
+                    "PATCH",
+                    "/api/v1/me",
+                    description=(
+                        "time_zone: an IANA name such as Asia/Taipei (any case; saved as the database spells it), or "
+                        "null for automatic (the device's zone). Unknown is 400 invalid_time_zone and nothing is "
+                        "saved. Only the display changes: every timestamp the API sends stays UTC."
+                    ),
+                    body="{\n  \"time_zone\": \"Asia/Taipei\"\n}",
+                ),
+                req(
                     "Set language",
                     "PATCH",
                     "/api/v1/me",

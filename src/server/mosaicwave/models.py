@@ -28,6 +28,9 @@ class User(Base):
     display_name: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     role: Mapped[str] = mapped_column(String(32), nullable=False, default="member")
     locale: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    # IANA zone name the user wants times shown in; NULL = automatic (the device's zone).
+    # Everything stored is UTC; the zone only matters when a time is presented to a person.
+    time_zone: Mapped[str | None] = mapped_column(String(64), nullable=True)
     rev: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

@@ -42,6 +42,7 @@
   "invalid_filename": "檔名無效。",
   "invalid_locale": "不支援的語言：{{locale}}",
   "invalid_role": "角色必須是管理員或成員。",
+  "invalid_time_zone": "不明的時區：{{time_zone}}",
   "invalid_username": "使用者名稱只能使用英文字母、數字、點、連字號或底線（最多 64 個字元）。",
   "job_backup_done": "備份 {{name}}：{{assets}} 個項目，{{files}} 個檔案",
   "job_backup_done_parts": "備份 {{name}}：{{assets}} 個項目，{{files}} 個檔案，共 {{parts}} 個部分",

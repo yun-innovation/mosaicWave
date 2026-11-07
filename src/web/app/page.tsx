@@ -10,6 +10,7 @@ import { apiFetch, apiMediaUrl, AuthStatus, Me, setServerLocales } from "./api";
 import { AppShell, MAINTENANCE_VIEWS } from "./AppShell";
 import { AuthScreen } from "./AuthScreen";
 import { BrandLockup } from "./BrandLockup";
+import { applyTimeZone } from "./format";
 import i18n, { applyLocale, isLocale, rememberLocale, resolveLocale } from "./i18n";
 import { ImportView } from "./ImportView";
 import { MaintenanceScreen } from "./MaintenanceScreen";
@@ -50,6 +51,11 @@ export default function Home() {
     if (isLocale(savedLocale)) rememberLocale(savedLocale);
     void applyLocale(resolveLocale(savedLocale));
   }, [savedLocale]);
+
+  const savedTimeZone = me?.time_zone ?? null;
+  useEffect(() => {
+    applyTimeZone(savedTimeZone);
+  }, [savedTimeZone]);
 
   const onLibraryChanged = useCallback(() => {
     setLibraryRev((n) => n + 1);

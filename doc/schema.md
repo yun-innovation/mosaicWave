@@ -102,6 +102,7 @@ erDiagram
 | `display_name` | TEXT | |
 | `role` | TEXT | `admin` \| `member` (default `member`) |
 | `locale` | VARCHAR(16) NULL | `en` \| `zh-Hant` \| `zh-Hans`; NULL = follow the browser ([i18n.md](i18n.md)) |
+| `time_zone` | VARCHAR(64) NULL | IANA name times are shown in (`Asia/Taipei`); NULL = the device's zone. Stored times stay UTC ([i18n.md](i18n.md#api-language-milestone-8)) |
 | `rev`, `updated_at`, `deleted_at` | | Sync fields |
 
 Auth is enforced from Phase 5. DDL exists since Phase 2.
@@ -235,7 +236,8 @@ Milestone 5. Code: `src/server/mosaicwave/schema/` (runner in `__init__.py`, ste
 | 1 | Shipped in v0.1.0 and v0.1.1 |
 | 2 | Adds `user.locale` (milestone 3) |
 | 3 | Per-library databases: the site database drops the moved tables (milestone 6) |
-| 4 | Adds `job.error_code/error_params/current_code/current_params` and `job_event.code/params` (milestone 8). Current |
+| 4 | Adds `job.error_code/error_params/current_code/current_params` and `job_event.code/params` (milestone 8) |
+| 5 | Adds `user.time_zone` (milestone 8). Current |
 
 The number is SQLite's `PRAGMA user_version`. Each change also adds a row to `schema_history`:
 

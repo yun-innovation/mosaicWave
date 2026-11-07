@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 
 import { Me } from "./api";
 import { LocaleSelect } from "./LocaleSelect";
+import { TimeZoneSelect } from "./TimeZoneSelect";
 import { Route, routeHash, View } from "./hashRoute";
 import { StatusBar } from "./StatusBar";
 import type { FinishedJob } from "./useActiveJob";
@@ -209,6 +210,8 @@ export function AppShell({
                 <p className="detail">{role}</p>
                 <label htmlFor="menu_locale">{t("settings:language.label")}</label>
                 <LocaleSelect id="menu_locale" me={me} onMe={onMe} />
+                <label htmlFor="menu_time_zone">{t("settings:timeZone.label")}</label>
+                <TimeZoneSelect id="menu_time_zone" me={me} onMe={onMe} />
                 {!locked && <a href={routeHash({ view: "settings", albumId: null })}>{t("common:session.settings")}</a>}
                 <button type="button" onClick={onLogout}>
                   {t("common:session.signOut")}

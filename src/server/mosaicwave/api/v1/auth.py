@@ -31,6 +31,7 @@ from mosaicwave.db import get_session
 from mosaicwave.i18n import LOCALES, normalize_locale
 from mosaicwave.library.ownership import ensure_user_library
 from mosaicwave.models import LocalCredential, User, utcnow
+from mosaicwave.timezone import canonical_zone
 
 router = APIRouter()
 
@@ -45,10 +46,12 @@ class MeOut(BaseModel):
     role: str
     provider: str
     locale: str | None = None
+    time_zone: str | None = None  # IANA name; null = automatic (the device's zone)
 
 
 class MePatchIn(BaseModel):
     locale: str | None = None
+    time_zone: str | None = None
 
 
 class AuthStatusOut(BaseModel):
@@ -120,6 +123,7 @@ def _me_out(request: Request, user: User) -> MeOut:
         role=user.role,
         provider=user.provider,
         locale=user.locale,
+        time_zone=user.time_zone,
     )
 
 
@@ -267,6 +271,17 @@ def patch_me(
     session: Session = Depends(get_session),
     user: User = Depends(require_user),
 ) -> MeOut:
+    zone: str | None = None
+    if "time_zone" in body.model_fields_set and body.time_zone is not None:
+        # Checked first, so a bad zone saves nothing, not even the locale sent with it.
+        zone = canonical_zone(body.time_zone)
+        if zone is None:
+            raise ApiError(
+                400,
+                "invalid_time_zone",
+                f"unknown time zone: {body.time_zone}",
+                {"time_zone": body.time_zone},
+            )
     if "locale" in body.model_fields_set:
         # A wide tag (zh-TW, en-GB) is saved as the supported code it maps to; only the
         # canonical code is stored or returned. An unsupported target is refused, and nothing
@@ -287,6 +302,10 @@ def patch_me(
         request.state.user_locale = target
         if target is not None:
             request.state.language = target  # this answer already comes in the new language
+    if "time_zone" in body.model_fields_set:
+        user.time_zone = zone  # None clears it: automatic
+        user.updated_at = utcnow()
+        session.flush()
     return _me_out(request, user)
 
 

@@ -14,6 +14,7 @@
   "user_not_found": "找不到使用者。",
   "username_taken": "這個使用者名稱已存在。",
   "invalid_locale": "不支援的語言：{{locale}}",
+  "invalid_time_zone": "不明的時區：{{time_zone}}",
 
   "data_dir_rejected": "無法使用該資料夾：{{message}}",
   "data_dir_env_locked": "已設定 MOSAICWAVE_DATA_DIR，因此無法在「伺服器」頁變更資料夾。",

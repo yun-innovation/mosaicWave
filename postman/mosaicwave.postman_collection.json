@@ -273,6 +273,29 @@
           }
         },
         {
+          "name": "Set time zone",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/me",
+            "description": "time_zone: an IANA name such as Asia/Taipei (any case; saved as the database spells it), or null for automatic (the device's zone). Unknown is 400 invalid_time_zone and nothing is saved. Only the display changes: every timestamp the API sends stays UTC.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"time_zone\": \"Asia/Taipei\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
           "name": "Set language",
           "request": {
             "method": "PATCH",
