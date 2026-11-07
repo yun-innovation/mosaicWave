@@ -25,7 +25,7 @@ from mosaicwave.schema.steps import STEPS
 
 _log = logging.getLogger(__name__)
 
-SPLIT_VERSION = len(STEPS)  # the step that drops the moved tables
+SPLIT_VERSION = 3  # the step that drops the moved tables (later steps do not concern the split)
 REPORT_NAME = "library.db.split-report.json"
 
 _COPY = ("source", "asset", "album", "album_asset")
@@ -254,8 +254,8 @@ def migrate_site_database(site_db: Path, accounts_dir: Path) -> SplitReport | No
     try:
         found = schema.stored_version(con)
         if found >= SPLIT_VERSION:
-            if found > SPLIT_VERSION:
-                raise schema.SchemaTooNew(site_db, found, SPLIT_VERSION)
+            if found > schema.CURRENT_VERSION:
+                raise schema.SchemaTooNew(site_db, found, schema.CURRENT_VERSION)
             return None
         if found == 0 and not schema.library_tables(con):
             return None

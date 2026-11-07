@@ -17,6 +17,7 @@ from mosaicwave.api.v1.library import ImportOut, _busy_error, _job_out
 from mosaicwave.api.v1.maintenance import job_running
 from mosaicwave.archive import SITE_NAME, ArchiveError
 from mosaicwave.auth.deps import require_admin, require_user_brief
+from mosaicwave.jobtext import localized_warnings
 from mosaicwave.config import schedule_api_restart
 from mosaicwave.db import get_session
 from mosaicwave.library.importjob import ImportBusy, ImportJobRunner
@@ -70,7 +71,7 @@ def _describe(listed: ListedSet) -> BackupOut | None:
             albums=int(m.get("albums", 0)),
             file_count=int(m.get("file_count", 0)),
             total_bytes=int(m.get("total_bytes", 0)),
-            warnings=[str(w) for w in m.get("warnings", [])],
+            warnings=localized_warnings(m.get("warnings", [])),
         )
     except (ArchiveError, KeyError, ValueError, OSError):
         return None

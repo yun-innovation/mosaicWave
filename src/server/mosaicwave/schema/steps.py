@@ -64,6 +64,24 @@ def _user_locale(con: sqlite3.Connection) -> None:
         con.execute('ALTER TABLE "user" ADD COLUMN locale VARCHAR(16)')
 
 
+def _job_text_codes(con: sqlite3.Connection) -> None:
+    """Step 4: a job's error, current line and events as code + params (milestone 8)."""
+    wanted = {
+        "job": [
+            ("error_code", "VARCHAR(64)"),
+            ("error_params", "TEXT"),
+            ("current_code", "VARCHAR(64)"),
+            ("current_params", "TEXT"),
+        ],
+        "job_event": [("code", "VARCHAR(64)"), ("params", "TEXT")],
+    }
+    for table, columns in wanted.items():
+        have = column_names(con, table)
+        for name, kind in columns:
+            if name not in have:
+                con.execute(f'ALTER TABLE "{table}" ADD COLUMN {name} {kind}')
+
+
 def _drop_moved_tables(con: sqlite3.Connection) -> None:
     """Step 3 only runs after schema/split.py has copied every library out (see split.py)."""
     for table in ("album_asset", "album", "asset", "source_grant", "source"):
@@ -80,4 +98,5 @@ STEPS: list[Step] = [
         _drop_moved_tables,
         foreign_keys_off=True,
     ),
+    Step(4, "job.error_code/error_params/current_code/current_params, job_event.code/params (milestone 8)", _job_text_codes),
 ]

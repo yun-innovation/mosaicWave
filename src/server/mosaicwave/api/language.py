@@ -12,7 +12,7 @@ from starlette.datastructures import MutableHeaders
 from starlette.requests import Request
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
-from mosaicwave.i18n import LANGUAGE_HEADER, requested_language, response_language
+from mosaicwave.i18n import LANGUAGE_HEADER, request_state, requested_language, response_language
 
 
 class LanguageMiddleware:
@@ -23,7 +23,9 @@ class LanguageMiddleware:
         if scope["type"] != "http" or not scope["path"].startswith("/api/"):
             await self.app(scope, receive, send)
             return
-        scope.setdefault("state", {})["language"] = requested_language(Request(scope))
+        state = scope.setdefault("state", {})
+        state["language"] = requested_language(Request(scope))
+        token = request_state.set(state)
 
         async def send_with_language(message: Message) -> None:
             if message["type"] == "http.response.start":
@@ -34,4 +36,7 @@ class LanguageMiddleware:
                     headers["Content-Language"] = response_language(Request(scope))
             await send(message)
 
-        await self.app(scope, receive, send_with_language)
+        try:
+            await self.app(scope, receive, send_with_language)
+        finally:
+            request_state.reset(token)

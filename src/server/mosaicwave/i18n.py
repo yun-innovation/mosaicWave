@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import re
+from contextvars import ContextVar
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -61,13 +62,31 @@ def requested_language(request: Request) -> str | None:
     return None
 
 
-def response_language(request: Request) -> str:
-    """Request language → the caller's saved ``user.locale`` → English."""
-    state = request.state
-    for value in (getattr(state, "language", None), getattr(state, "user_locale", None)):
+def _language_of(state: Any) -> str:
+    get = state.get if isinstance(state, dict) else (lambda key: getattr(state, key, None))
+    for key in ("language", "user_locale"):
+        value = get(key)
         if value in LOCALES:
             return str(value)
     return DEFAULT_LOCALE
+
+
+def response_language(request: Request) -> str:
+    """Request language → the caller's saved ``user.locale`` → English."""
+    return _language_of(request.state)
+
+
+# The state dict of the request being answered, so code far from the endpoint (a job's text
+# rendered when it is read) can ask for the response language without a ``request`` argument.
+# Endpoints run in a thread that copies this context; the dict itself is shared, so a language
+# set later (the caller's saved locale, found by the auth dependency) is seen too.
+request_state: ContextVar[dict[str, Any] | None] = ContextVar("mosaicwave_request_state", default=None)
+
+
+def current_language() -> str:
+    """The response language of the request being answered; English outside a request."""
+    state = request_state.get()
+    return DEFAULT_LOCALE if state is None else _language_of(state)
 
 
 @lru_cache(maxsize=None)
@@ -107,6 +126,27 @@ def translate(code: str, params: dict[str, Any] | None, locale: str, fallback: s
         if template is not None:
             return _fill(template, params)
     return fallback
+
+
+def warning_text(code: str, params: dict[str, Any] | None, locale: str, fallback: str) -> str:
+    """A Takeout warning's ``message`` in ``locale`` (English keeps ``fallback``, the sentence it was written with).
+
+    ``no_takeout_zips`` gets a second sentence, as in the web, when the scan found nested zips
+    or other zip names.
+    """
+    if locale == DEFAULT_LOCALE or not code:
+        return fallback
+    params = params or {}
+    text = translate(code, params, locale, "")
+    if not text:
+        return fallback
+    if code != "no_takeout_zips":
+        return text
+    hint = "no_takeout_zips_hint_nested" if params.get("nested") else (
+        "no_takeout_zips_hint_names" if params.get("other_names") else None
+    )
+    extra = translate(hint, params, locale, "") if hint else ""
+    return f"{text} {extra}" if extra else text
 
 
 def detail_for(request: Request, code: str, params: dict[str, Any] | None, detail: str) -> str:

@@ -12,7 +12,7 @@ from typing import Literal
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import FileResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -20,6 +20,7 @@ from mosaicwave import export
 from mosaicwave.api.errors import ApiError
 from mosaicwave.api.v1.library import ImportOut, _busy_error, _job_out
 from mosaicwave.auth.deps import get_library_session, require_user
+from mosaicwave.jobtext import localized_warnings
 from mosaicwave.library.importjob import ImportBusy, ImportJobRunner
 from mosaicwave.models import Asset, User
 
@@ -56,6 +57,11 @@ class ExportOut(BaseModel):
     size: int
     warnings: list[str] = Field(default_factory=list)
     files: list[ExportFileOut] = Field(default_factory=list)
+
+    @field_validator("warnings")
+    @classmethod
+    def _in_response_language(cls, value: list[str]) -> list[str]:
+        return localized_warnings(value)
 
 
 def _folder(request: Request, user: User, name: str):  # type: ignore[no-untyped-def]

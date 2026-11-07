@@ -17,6 +17,8 @@ from mosaicwave.export import export_library
 from mosaicwave.libbackup import backup_library, stage_library, swap_library, user_backup_dir
 from mosaicwave.library.dbs import LibraryDbs, LibraryLocked
 from mosaicwave.restore import pending_exists, stage_site, write_pending
+from mosaicwave.i18n import current_language
+from mosaicwave.jobtext import JobText, add_event, failure, jt, render, set_current, set_error
 from mosaicwave.library.dump import DumpWarning, TakeoutInspect, inspect_takeout_path
 from mosaicwave.library.takeout import import_takeout
 from mosaicwave.library.takeoutpush import safe_staging_file, staging_dir, write_upload
@@ -59,11 +61,18 @@ class NoPhotosFound(ValueError):
         )
 
 
-def _job_failure_message(current: str | None, exc: BaseException) -> str:
-    text = str(exc)
-    if current and current not in text:
-        return f"{current}: {text}"
-    return text
+def _backup_done(name: str, manifest: dict, parts: int) -> JobText:
+    base = {"name": name, "assets": manifest["assets"], "files": manifest["file_count"]}
+    if parts > 1:
+        return jt("job_backup_done_parts", parts=parts, **base)
+    return jt("job_backup_done", **base)
+
+
+def _warning_text(warning: object) -> JobText | str:
+    """A manifest warning sentence as a code + params when it is one the server knows."""
+    from mosaicwave.jobtext import warning_item
+
+    return warning_item(str(warning)) or str(warning)
 
 
 def _busy(row: Job) -> ImportBusy:
@@ -153,6 +162,7 @@ def _warnings_from_result(data: dict) -> list[DumpWarning]:
 def job_view(row: Job) -> dict:
     inp = _parse_json(row.input_json)
     result = _parse_json(row.result_json)
+    locale = current_language()
     return {
         "id": row.id,
         "kind": row.kind,
@@ -163,7 +173,7 @@ def job_view(row: Job) -> dict:
         "path": inp.get("path"),
         "processed": row.processed,
         "total": row.total,
-        "current": row.current,
+        "current": render(row.current_code, row.current_params, locale, row.current),
         "source_id": result.get("source_id"),
         "assets": int(result.get("assets") or 0),
         "albums": int(result.get("albums") or 0),
@@ -171,7 +181,7 @@ def job_view(row: Job) -> dict:
         "import_root": result.get("import_root") or inp.get("import_root"),
         "mode": inp.get("mode") or "host",
         "phase": inp.get("phase"),
-        "error": row.error,
+        "error": render(row.error_code, row.error_params, locale, row.error),
         "warnings": _warnings_from_result(result),
         "restarting": bool(result.get("restarting")),
         "notice": result.get("notice"),
@@ -216,17 +226,10 @@ def recover_interrupted_jobs(factory: sessionmaker[Session]) -> None:
             if isinstance(staging, str) and staging:
                 shutil.rmtree(staging, ignore_errors=True)
             row.status = "error"
-            row.error = INTERRUPTED
             row.finished_at = now
             row.current = None
-            session.add(
-                JobEvent(
-                    id=new_id(),
-                    job_id=row.id,
-                    level="error",
-                    message=INTERRUPTED,
-                )
-            )
+            set_error(row, jt("job_interrupted"))
+            add_event(session, row.id, "error", jt("job_interrupted"))
         session.commit()
     finally:
         session.close()
@@ -300,25 +303,21 @@ class ImportJobRunner:
                     event = self._cancels.setdefault(job_id, threading.Event())
                     if not event.is_set():
                         event.set()
-                        session.add(
-                            JobEvent(
-                                id=new_id(), job_id=row.id, level="info", message=f"Cancel requested by {by}"
-                            )
-                        )
+                        add_event(session, row.id, "info", jt(f"job_cancel_requested_{by}"))
                         session.commit()
                     return job_view(row)
             finally:
                 session.close()
             return self.cancel_push(job_id, user_id=owner)
 
-    def _mark_cancelled(self, session: Session, job_id: str, note: str) -> None:
+    def _mark_cancelled(self, session: Session, job_id: str, note: JobText) -> None:
         row = session.get(Job, job_id)
         if row is not None:
             row.status = "cancelled"
             row.error = None
             row.finished_at = utcnow()
             row.current = None
-            session.add(JobEvent(id=new_id(), job_id=row.id, level="info", message=f"Cancelled: {note}"))
+            add_event(session, row.id, "info", note)
         session.commit()
 
     def _fail_if_busy(self, session: Session) -> None:
@@ -389,14 +388,7 @@ class ImportJobRunner:
                     ),
                 )
                 session.add(row)
-                session.add(
-                    JobEvent(
-                        id=new_id(),
-                        job_id=row.id,
-                        level="info",
-                        message=f"Takeout import started: {path} → {dest_root}",
-                    )
-                )
+                add_event(session, row.id, "info", jt("job_takeout_started", path=path, dest=str(dest_root)))
                 session.commit()
                 job_id = row.id
                 view = job_view(row)
@@ -427,7 +419,6 @@ class ImportJobRunner:
                     user_id=user_id,
                     processed=0,
                     total=int(file_count or 0),
-                    current="waiting for files",
                     input_json=json.dumps(
                         {
                             "mode": "push",
@@ -438,15 +429,9 @@ class ImportJobRunner:
                     ),
                     result_json=json.dumps({"import_root": None, "warnings": []}, sort_keys=True),
                 )
+                set_current(row, jt("job_current_waiting"))
                 session.add(row)
-                session.add(
-                    JobEvent(
-                        id=new_id(),
-                        job_id=row.id,
-                        level="info",
-                        message="Takeout push started (client upload)",
-                    )
-                )
+                add_event(session, row.id, "info", jt("job_push_started"))
                 session.commit()
                 job_id = row.id
                 view = job_view(row)
@@ -548,15 +533,8 @@ class ImportJobRunner:
                 result["import_root"] = report.import_root
                 result["warnings"] = _warnings_from_report(report)
                 row.result_json = json.dumps(result, sort_keys=True)
-                row.current = "importing"
-                session.add(
-                    JobEvent(
-                        id=new_id(),
-                        job_id=row.id,
-                        level="info",
-                        message=f"Takeout push received; importing {staging}",
-                    )
-                )
+                set_current(row, jt("job_current_importing"))
+                add_event(session, row.id, "info", jt("job_push_received", path=str(staging)))
                 session.commit()
                 view = job_view(row)
             finally:
@@ -577,17 +555,10 @@ class ImportJobRunner:
                 raw_staging = inp.get("staging")
                 staging = raw_staging if isinstance(raw_staging, str) else None
                 row.status = "error"
-                row.error = "cancelled"
                 row.finished_at = utcnow()
                 row.current = None
-                session.add(
-                    JobEvent(
-                        id=new_id(),
-                        job_id=row.id,
-                        level="info",
-                        message="Takeout push cancelled",
-                    )
-                )
+                set_error(row, jt("job_cancelled"))
+                add_event(session, row.id, "info", jt("job_push_cancelled"))
                 session.commit()
                 view = job_view(row)
             finally:
@@ -628,14 +599,7 @@ class ImportJobRunner:
                     total=total,
                 )
                 session.add(row)
-                session.add(
-                    JobEvent(
-                        id=new_id(),
-                        job_id=row.id,
-                        level="info",
-                        message=f"Thumb batch started ({total} assets)",
-                    )
-                )
+                add_event(session, row.id, "info", jt("job_thumbs_started", count=total))
                 session.commit()
                 job_id = row.id
                 view = job_view(row)
@@ -665,9 +629,7 @@ class ImportJobRunner:
                     result_json="{}",
                 )
                 session.add(row)
-                session.add(
-                    JobEvent(id=new_id(), job_id=row.id, level="info", message="Site backup started")
-                )
+                add_event(session, row.id, "info", jt("job_backup_started"))
                 session.commit()
                 job_id = row.id
                 view = job_view(row)
@@ -716,23 +678,18 @@ class ImportJobRunner:
                 },
                 sort_keys=True,
             )
-            session.add(
-                JobEvent(
-                    id=new_id(),
-                    job_id=row.id,
-                    level="info",
-                    message=(
-                        f"Backup {result.path.name}: {manifest['assets']} assets, {manifest['file_count']} files"
-                        + (f", {len(result.paths)} parts" if len(result.paths) > 1 else "")
-                    ),
-                )
+            add_event(
+                session,
+                row.id,
+                "info",
+                _backup_done(result.path.name, manifest, len(result.paths)),
             )
             for warning in manifest["warnings"]:
-                session.add(JobEvent(id=new_id(), job_id=row.id, level="info", message=warning))
+                add_event(session, row.id, "info", _warning_text(warning))
             session.commit()
         except JobCancelled:
             try:
-                self._mark_cancelled(session, job_id, "no archive was written")
+                self._mark_cancelled(session, job_id, jt("job_cancelled_backup"))
             except Exception:
                 session.rollback()
         except Exception as exc:  # ArchiveError, OSError, sqlite errors: all end the job the same way
@@ -741,10 +698,10 @@ class ImportJobRunner:
                 row = session.get(Job, job_id)
                 if row is not None:
                     row.status = "error"
-                    row.error = str(exc)
                     row.finished_at = utcnow()
                     row.current = None
-                    session.add(JobEvent(id=new_id(), job_id=row.id, level="error", message=str(exc)))
+                    set_error(row, failure(exc))
+                    add_event(session, row.id, "error", failure(exc))
                 session.commit()
             except Exception:
                 session.rollback()
@@ -778,11 +735,7 @@ class ImportJobRunner:
                     result_json="{}",
                 )
                 session.add(row)
-                session.add(
-                    JobEvent(
-                        id=new_id(), job_id=row.id, level="info", message=f"Restore of {archive.name} started"
-                    )
-                )
+                add_event(session, row.id, "info", jt("job_restore_started", name=archive.name))
                 session.commit()
                 job_id = row.id
                 view = job_view(row)
@@ -826,21 +779,16 @@ class ImportJobRunner:
                 {"archive": archive.name, "assets": manifest["assets"], "albums": manifest["albums"]},
                 sort_keys=True,
             )
-            session.add(
-                JobEvent(
-                    id=new_id(),
-                    job_id=row.id,
-                    level="info",
-                    message=(
-                        f"Restore of {archive.name} is staged: {manifest['assets']} assets, "
-                        f"{manifest['users']} users. Apply it to swap it in."
-                    ),
-                )
+            add_event(
+                session,
+                row.id,
+                "info",
+                jt("job_restore_staged", name=archive.name, assets=manifest["assets"], users=manifest["users"]),
             )
             session.commit()
         except JobCancelled:
             try:
-                self._mark_cancelled(session, job_id, "nothing was staged; the library is unchanged")
+                self._mark_cancelled(session, job_id, jt("job_cancelled_site_restore"))
             except Exception:
                 session.rollback()
         except Exception as exc:  # ArchiveError, OSError, sqlite errors: all end the job the same way
@@ -849,10 +797,10 @@ class ImportJobRunner:
                 row = session.get(Job, job_id)
                 if row is not None:
                     row.status = "error"
-                    row.error = str(exc)
                     row.finished_at = utcnow()
                     row.current = None
-                    session.add(JobEvent(id=new_id(), job_id=row.id, level="error", message=str(exc)))
+                    set_error(row, failure(exc))
+                    add_event(session, row.id, "error", failure(exc))
                 session.commit()
             except Exception:
                 session.rollback()
@@ -865,7 +813,7 @@ class ImportJobRunner:
 
     # --- one user's library: backup and restore (doc/backup.md) ---
 
-    def _begin(self, kind: str, user_id: str, inp: dict, message: str) -> tuple[str, dict]:
+    def _begin(self, kind: str, user_id: str, inp: dict, message: JobText) -> tuple[str, dict]:
         """Create the running job row for a one-user job. Caller holds no lock."""
         with self._lock:
             session = self._factory()
@@ -883,7 +831,7 @@ class ImportJobRunner:
                     result_json="{}",
                 )
                 session.add(row)
-                session.add(JobEvent(id=new_id(), job_id=row.id, level="info", message=message))
+                add_event(session, row.id, "info", message)
                 session.commit()
                 job_id = row.id
                 view = job_view(row)
@@ -892,7 +840,7 @@ class ImportJobRunner:
             self._running_id = job_id
         return job_id, view
 
-    def _finish(self, session: Session, job_id: str, result: dict, message: str) -> None:
+    def _finish(self, session: Session, job_id: str, result: dict, message: JobText) -> None:
         row = session.get(Job, job_id)
         if row is None:
             return
@@ -902,19 +850,20 @@ class ImportJobRunner:
         row.processed = row.total
         row.error = None
         row.result_json = json.dumps(result, sort_keys=True)
-        session.add(JobEvent(id=new_id(), job_id=row.id, level="info", message=message))
+        add_event(session, row.id, "info", message)
         session.commit()
 
-    def _fail(self, session: Session, job_id: str, exc: BaseException) -> None:
+    def _fail(self, session: Session, job_id: str, exc: BaseException | JobText) -> None:
+        text = exc if isinstance(exc, JobText) else failure(exc)
         try:
             session.rollback()
             row = session.get(Job, job_id)
             if row is not None:
                 row.status = "error"
-                row.error = str(exc)
                 row.finished_at = utcnow()
                 row.current = None
-                session.add(JobEvent(id=new_id(), job_id=row.id, level="error", message=str(exc)))
+                set_error(row, text)
+                add_event(session, row.id, "error", text)
             session.commit()
         except Exception:
             session.rollback()
@@ -943,7 +892,7 @@ class ImportJobRunner:
         if self._settings is None:
             raise RuntimeError("backup needs the app settings")
         job_id, view = self._begin(
-            KIND_LIBRARY_BACKUP, user_id, {"split_bytes": split_bytes}, "Library backup started"
+            KIND_LIBRARY_BACKUP, user_id, {"split_bytes": split_bytes}, jt("job_library_backup_started")
         )
         threading.Thread(
             target=self._run_library_backup, args=(job_id, user_id, split_bytes), daemon=True
@@ -971,15 +920,14 @@ class ImportJobRunner:
                     "assets": manifest["assets"],
                     "albums": manifest["albums"],
                 },
-                f"Backup {result.path.name}: {manifest['assets']} assets, {manifest['file_count']} files"
-                + (f", {len(result.paths)} parts" if len(result.paths) > 1 else ""),
+                _backup_done(result.path.name, manifest, len(result.paths)),
             )
             for warning in manifest["warnings"]:
-                session.add(JobEvent(id=new_id(), job_id=job_id, level="info", message=warning))
+                add_event(session, job_id, "info", _warning_text(warning))
             session.commit()
         except JobCancelled:
             try:
-                self._mark_cancelled(session, job_id, "no archive was written")
+                self._mark_cancelled(session, job_id, jt("job_cancelled_backup"))
             except Exception:
                 session.rollback()
         except Exception as exc:  # ArchiveError, OSError, sqlite errors: all end the job the same way
@@ -993,7 +941,7 @@ class ImportJobRunner:
         if self._settings is None:
             raise RuntimeError("restore needs the app settings")
         job_id, view = self._begin(
-            KIND_LIBRARY_RESTORE, user_id, {"archive": archive.name}, f"Restore of {archive.name} started"
+            KIND_LIBRARY_RESTORE, user_id, {"archive": archive.name}, jt("job_restore_started", name=archive.name)
         )
         threading.Thread(target=self._run_library_restore, args=(job_id, user_id, archive), daemon=True).start()
         return view
@@ -1022,15 +970,15 @@ class ImportJobRunner:
                     "upgrade": staged.upgrade_from is not None,
                     "thumbs_missing": True,
                 },
-                f"Library restored from {archive.name}: {manifest['assets']} assets, {manifest['albums']} albums",
+                jt("job_library_restored", name=archive.name, assets=manifest["assets"], albums=manifest["albums"]),
             )
         except JobCancelled:
             try:
-                self._mark_cancelled(session, job_id, "nothing was changed; the library is as it was")
+                self._mark_cancelled(session, job_id, jt("job_cancelled_library_restore"))
             except Exception:
                 session.rollback()
         except LibraryLocked:
-            self._fail(session, job_id, RuntimeError("the library is busy; try again"))
+            self._fail(session, job_id, jt("job_library_busy"))
         except Exception as exc:  # ArchiveError, OSError, sqlite errors: all end the job the same way
             self._fail(session, job_id, exc)
         finally:
@@ -1043,7 +991,7 @@ class ImportJobRunner:
         ``mover`` copies the data folder and returns the result for the job row; ``check`` raises to
         cancel while it is still copying. Progress is in MiB and never names a file.
         """
-        job_id, view = self._begin(KIND_MOVE, user_id, {}, "Move library started")
+        job_id, view = self._begin(KIND_MOVE, user_id, {}, jt("job_move_started"))
         threading.Thread(target=self._run_move, args=(job_id, mover), daemon=True).start()
         return view
 
@@ -1060,10 +1008,10 @@ class ImportJobRunner:
                     session.commit()  # no lock held between updates: the Activity page reads this row
 
             result = mover(on_progress, lambda: self._check_cancel(job_id))
-            self._finish(session, job_id, result, "Library moved to the new folder")
+            self._finish(session, job_id, result, jt("job_moved"))
         except JobCancelled:
             try:
-                self._mark_cancelled(session, job_id, "the library stays in its folder")
+                self._mark_cancelled(session, job_id, jt("job_cancelled_move"))
             except Exception:
                 session.rollback()
         except Exception as exc:  # ValueError (refused, mismatch), OSError, sqlite errors
@@ -1092,7 +1040,7 @@ class ImportJobRunner:
             "albums": len(album_ids),
             "photos": len(asset_ids),
         }
-        job_id, view = self._begin(KIND_EXPORT, user_id, inp, "Export started")
+        job_id, view = self._begin(KIND_EXPORT, user_id, inp, jt("job_export_started"))
         threading.Thread(
             target=self._run_export,
             args=(job_id, user_id, layout, split_bytes, album_ids, asset_ids, everything),
@@ -1138,15 +1086,20 @@ class ImportJobRunner:
                     "zips": info["zips"],
                     "unzipped": info["unzipped"],
                 },
-                f"Export {result.folder.name}: {info['assets']} files in {info['zips']} zip(s)"
-                + (f" and {info['unzipped']} too big to zip" if info["unzipped"] else ""),
+                jt(
+                    "job_export_done_big" if info["unzipped"] else "job_export_done",
+                    name=result.folder.name,
+                    assets=info["assets"],
+                    zips=info["zips"],
+                    unzipped=info["unzipped"],
+                ),
             )
             for warning in info["warnings"]:
-                session.add(JobEvent(id=new_id(), job_id=job_id, level="info", message=warning))
+                add_event(session, job_id, "info", _warning_text(warning))
             session.commit()
         except JobCancelled:
             try:
-                self._mark_cancelled(session, job_id, "nothing was exported")
+                self._mark_cancelled(session, job_id, jt("job_cancelled_export"))
             except Exception:
                 session.rollback()
         except Exception as exc:  # ExportError, OSError, sqlite errors: all end the job the same way
@@ -1201,14 +1154,7 @@ class ImportJobRunner:
             row.processed = row.total
             row.error = None
             row.result_json = json.dumps(result, sort_keys=True)
-            session.add(
-                JobEvent(
-                    id=new_id(),
-                    job_id=row.id,
-                    level="info",
-                    message=f"Imported {assets} assets, {albums} albums",
-                )
-            )
+            add_event(session, row.id, "info", jt("job_import_done", assets=assets, albums=albums))
             session.commit()
         except JobCancelled:
             # The check runs between items, so everything done so far is whole: keep it. A new
@@ -1216,7 +1162,7 @@ class ImportJobRunner:
             try:
                 if lib is not None:
                     lib.commit()
-                self._mark_cancelled(session, job_id, "the items imported so far are kept")
+                self._mark_cancelled(session, job_id, jt("job_cancelled_import"))
             except Exception:
                 session.rollback()
         except Exception as exc:
@@ -1226,16 +1172,11 @@ class ImportJobRunner:
                 row = session.get(Job, job_id)
                 if row is not None:
                     row.status = "error"
-                    row.error = _job_failure_message(row.current, exc)
                     row.finished_at = utcnow()
-                    session.add(
-                        JobEvent(
-                            id=new_id(),
-                            job_id=row.id,
-                            level="error",
-                            message=row.error,
-                        )
-                    )
+                    # The file being worked on leads the message; a line like "importing" is not one.
+                    text = failure(exc, None if row.current_code else row.current)
+                    set_error(row, text)
+                    add_event(session, row.id, "error", text)
                 session.commit()
             except Exception:
                 session.rollback()
@@ -1289,20 +1230,13 @@ class ImportJobRunner:
             row.processed = done
             row.error = None
             row.result_json = json.dumps({"thumbs": done}, sort_keys=True)
-            session.add(
-                JobEvent(
-                    id=new_id(),
-                    job_id=row.id,
-                    level="info",
-                    message=f"Generated {done} thumbnails",
-                )
-            )
+            add_event(session, row.id, "info", jt("job_thumbs_done", count=done))
             session.commit()
         except JobCancelled:
             try:
                 if lib is not None:
                     lib.commit()
-                self._mark_cancelled(session, job_id, "the thumbnails made so far are kept")
+                self._mark_cancelled(session, job_id, jt("job_cancelled_thumbs"))
             except Exception:
                 session.rollback()
         except Exception as exc:
@@ -1312,17 +1246,10 @@ class ImportJobRunner:
                 row = session.get(Job, job_id)
                 if row is not None:
                     row.status = "error"
-                    row.error = str(exc)
                     row.finished_at = utcnow()
                     row.current = None
-                    session.add(
-                        JobEvent(
-                            id=new_id(),
-                            job_id=row.id,
-                            level="error",
-                            message=str(exc),
-                        )
-                    )
+                    set_error(row, failure(exc))
+                    add_event(session, row.id, "error", failure(exc))
                 session.commit()
             except Exception:
                 session.rollback()

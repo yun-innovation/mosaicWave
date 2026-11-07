@@ -125,7 +125,7 @@ def test_unversioned_v1_database_upgrades_and_keeps_rows(tmp_path: Path) -> None
     assert _query(db, "PRAGMA user_version")[0][0] == schema.CURRENT_VERSION
     assert _query(db, 'SELECT provider_subject, locale FROM "user"') == [("nasuser", None)]
     notes = _history(db)
-    assert [v for v, _ in notes] == [1, 2, 3]
+    assert [v for v, _ in notes] == list(range(1, schema.CURRENT_VERSION + 1))
     assert "looked like v1" in notes[0][1]
     backup = db.with_name("library.db.pre-v1")
     assert _query(backup, "PRAGMA user_version")[0][0] == 0
@@ -202,12 +202,12 @@ def test_failed_step_rolls_back(tmp_path: Path) -> None:
     con = sqlite3.connect(db)
     try:
         with pytest.raises(RuntimeError, match="step failed"):
-            schema.ensure_schema(con, db, lambda: None, [*STEPS, Step(4, "rating", broken)])
-        assert schema.stored_version(con) == 3
+            schema.ensure_schema(con, db, lambda: None, [*STEPS, Step(schema.CURRENT_VERSION + 1, "rating", broken)])
+        assert schema.stored_version(con) == schema.CURRENT_VERSION
         assert "rating" not in column_names(con, "job")
     finally:
         con.close()
-    assert [v for v, _ in _history(db)] == [3]
+    assert [v for v, _ in _history(db)] == [schema.CURRENT_VERSION]
 
 
 def test_rebuild_step_keeps_rows_and_foreign_keys(tmp_path: Path) -> None:
@@ -237,9 +237,9 @@ def test_rebuild_step_keeps_rows_and_foreign_keys(tmp_path: Path) -> None:
     try:
         con.execute("PRAGMA foreign_keys=ON")
         schema.ensure_schema(
-            con, db, lambda: None, [*STEPS, Step(3, "rebuild", rebuild, foreign_keys_off=True)]
+            con, db, lambda: None, [*STEPS, Step(schema.CURRENT_VERSION + 1, "rebuild", rebuild, foreign_keys_off=True)]
         )
-        assert schema.stored_version(con) == 3
+        assert schema.stored_version(con) == schema.CURRENT_VERSION + 1
         assert con.execute("SELECT message FROM job_event").fetchall() == [("hello",)]
         assert con.execute("PRAGMA foreign_keys").fetchone()[0] == 1
         assert con.execute("PRAGMA foreign_key_check").fetchall() == []
