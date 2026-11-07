@@ -23,7 +23,7 @@ from mosaicwave.models import (
 from mosaicwave.schema import split
 from mosaicwave.schema.library import LIBRARY_CURRENT_VERSION
 from mosaicwave.schema.split import REPORT_NAME, SplitError, migrate_site_database, split_site_database
-from mosaicwave.schema.steps import STEPS
+from mosaicwave.schema.steps import STEPS, _job_text_codes
 
 SITE_AFTER = {"user", "local_credential", "job", "job_event"}
 
@@ -55,6 +55,9 @@ def _seed_v2_schema(settings: Settings) -> dict[str, str]:
     try:
         for step in STEPS[:2]:
             step.apply(con)
+        # The ORM below writes every column the models have today, so give job and job_event the
+        # step 4 columns up front (step 4 skips columns that are already there).
+        _job_text_codes(con)
         con.execute("PRAGMA user_version = 2")
         con.commit()
     finally:
@@ -178,11 +181,11 @@ def test_site_database_keeps_accounts_and_jobs_only(tmp_path: Path) -> None:
     migrate_site_database(settings.database_path, settings.accounts_dir)
     db = settings.database_path
     assert _tables(db) == SITE_AFTER
-    assert _query(db, "PRAGMA user_version") == [(split.SPLIT_VERSION,)]
+    assert _query(db, "PRAGMA user_version") == [(schema.CURRENT_VERSION,)]
     assert _query(db, "SELECT count(*) FROM user") == [(3,)]
     assert _query(db, f"SELECT password_hash FROM local_credential WHERE user_id='{ids['alice']}'") == [("x",)]
     assert _query(db, "SELECT count(*) FROM job") == [(1,)]
-    assert _query(db, "SELECT version FROM schema_history ORDER BY rowid")[-1] == (split.SPLIT_VERSION,)
+    assert _query(db, "SELECT version FROM schema_history ORDER BY rowid")[-1] == (schema.CURRENT_VERSION,)
     # The pre-upgrade copy still holds everything.
     copy = db.with_name("library.db.pre-v2")
     assert copy.is_file() and "asset" in _tables(copy)
@@ -311,4 +314,4 @@ def test_app_starts_on_an_old_database_and_serves_each_users_library(tmp_path: P
     assert {row["name"] for row in client.get("/api/v1/albums").json()} == {"Trip", "Borrowed cover"}
     assert (settings.accounts_dir / ids["alice"] / "library.db").is_file()
     assert settings.database_path.with_name(REPORT_NAME).is_file()
-    assert schema.CURRENT_VERSION == 3
+    assert schema.CURRENT_VERSION >= 3

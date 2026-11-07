@@ -384,11 +384,11 @@ def test_takeout_sanitizes_colon_filename(tmp_path: Path) -> None:
 
 
 def test_job_failure_includes_current_path() -> None:
-    from mosaicwave.library.importjob import _job_failure_message
+    from mosaicwave.jobtext import failure
 
     assert (
-        _job_failure_message("Album/2:15 PM.jpg", OSError(22, "Invalid argument"))
+        failure(OSError(22, "Invalid argument"), "Album/2:15 PM.jpg").english
         == "Album/2:15 PM.jpg: [Errno 22] Invalid argument"
     )
-    assert _job_failure_message(None, OSError(22, "Invalid argument")) == "[Errno 22] Invalid argument"
+    assert failure(OSError(22, "Invalid argument")).english == "[Errno 22] Invalid argument"
 

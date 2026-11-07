@@ -15,6 +15,8 @@ from mosaicwave.auth.access import can_use_source, granted_source_ids
 from mosaicwave.auth.deps import get_library_session, require_admin, require_user, require_user_brief
 from mosaicwave.config import Settings
 from mosaicwave.db import get_session, sqlite_locked
+from mosaicwave.i18n import current_language, warning_text
+from mosaicwave.jobtext import render
 from mosaicwave.library.dump import TakeoutInspect, inspect_takeout_path
 from mosaicwave.library.importjob import (
     ImportBusy,
@@ -295,11 +297,20 @@ def _inspect_out(report: TakeoutInspect) -> TakeoutInspectOut:
         ready=report.ready,
         warnings=[
             DumpWarningOut(
-                code=w.code, severity=w.severity, message=w.message, path=w.path, params=w.params
+                code=w.code,
+                severity=w.severity,
+                message=_warning_message(w.code, w.params, w.message),
+                path=w.path,
+                params=w.params,
             )
             for w in report.warnings
         ],
     )
+
+
+def _warning_message(code: str, params: dict, message: str) -> str:
+    """The warning's ``message`` in the response language (English keeps the sentence it was written with)."""
+    return warning_text(code, params, current_language(), message)
 
 
 def _warning_outs(raw: list) -> list[DumpWarningOut]:
@@ -308,19 +319,25 @@ def _warning_outs(raw: list) -> list[DumpWarningOut]:
         if isinstance(w, dict):
             path = w.get("path")
             params = w.get("params")
+            params = params if isinstance(params, dict) else {}
+            code = str(w.get("code") or "")
             out.append(
                 DumpWarningOut(
-                    code=str(w.get("code") or ""),
+                    code=code,
                     severity=str(w.get("severity") or "warning"),
-                    message=str(w.get("message") or ""),
+                    message=_warning_message(code, params, str(w.get("message") or "")),
                     path=path if isinstance(path, str) else None,
-                    params=params if isinstance(params, dict) else {},
+                    params=params,
                 )
             )
             continue
         out.append(
             DumpWarningOut(
-                code=w.code, severity=w.severity, message=w.message, path=w.path, params=w.params
+                code=w.code,
+                severity=w.severity,
+                message=_warning_message(w.code, w.params, w.message),
+                path=w.path,
+                params=w.params,
             )
         )
     return out
@@ -931,7 +948,7 @@ def get_job_events(
             id=ev.id,
             at=ev.at.isoformat() if ev.at else "",
             level=ev.level,
-            message=ev.message,
+            message=render(ev.code, ev.params, current_language(), ev.message) or ev.message,
         )
         for ev in list_job_events(session, job_id)
     ]

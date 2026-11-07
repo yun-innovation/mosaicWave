@@ -148,7 +148,7 @@
             "method": "GET",
             "header": [],
             "url": "{{baseUrl}}/api/v1/auth/status",
-            "description": "platform, needs_setup, me if cookied."
+            "description": "platform, needs_setup, me if cookied, locales (languages the server answers and saves in)."
           }
         },
         {
@@ -1656,7 +1656,7 @@
             "method": "GET",
             "header": [],
             "url": "{{baseUrl}}/api/v1/jobs/{{jobId}}",
-            "description": ""
+            "description": "current, error and warnings[].message are written in the response language (X-MosaicWave-Language or ?lang=, else the saved locale, else en) when the job is read, so a job started under one language reads in another. Photo paths and OS messages are never translated."
           }
         },
         {
@@ -1665,7 +1665,21 @@
             "method": "GET",
             "header": [],
             "url": "{{baseUrl}}/api/v1/jobs/{{jobId}}/events",
-            "description": ""
+            "description": "Each event message is rendered in the response language when read (see Get job)."
+          }
+        },
+        {
+          "name": "Job events, in another language",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-MosaicWave-Language",
+                "value": "zh-Hant"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/jobs/{{jobId}}/events",
+            "description": "Same events as above, asked for in Traditional Chinese with the header. Try zh-Hans or ?lang= too."
           }
         }
       ]

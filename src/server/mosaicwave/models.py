@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime, timezone
 
 from sqlalchemy import DateTime, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint, text
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, validates
 
 
 def utcnow() -> datetime:
@@ -81,8 +81,28 @@ class Job(Base):
     processed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     total: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     current: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # `error` and `current` hold the English text; when a person-facing sentence wrote them, the
+    # code and params next to them let the API render it in the response language (jobtext.py).
+    error_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    error_params: Mapped[str | None] = mapped_column(Text, nullable=True)
+    current_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    current_params: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     events: Mapped[list[JobEvent]] = relationship(back_populates="job")
+
+    # A plain assignment (a photo path, None) replaces the text, so it drops the old code too.
+    # jobtext.set_error / set_current assign the text first, then the code.
+    @validates("error")
+    def _error_is_plain(self, _key: str, value: str | None) -> str | None:
+        self.error_code = None
+        self.error_params = None
+        return value
+
+    @validates("current")
+    def _current_is_plain(self, _key: str, value: str | None) -> str | None:
+        self.current_code = None
+        self.current_params = None
+        return value
 
 
 class JobEvent(Base):
@@ -93,6 +113,8 @@ class JobEvent(Base):
     at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     level: Mapped[str] = mapped_column(String(16), nullable=False, default="info")
     message: Mapped[str] = mapped_column(Text, nullable=False)
+    code: Mapped[str | None] = mapped_column(String(64), nullable=True)  # message as code + params
+    params: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     job: Mapped[Job] = relationship(back_populates="events")
 

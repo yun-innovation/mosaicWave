@@ -145,9 +145,11 @@ Phase 3. Server audit of task runs. **Not** a replica entity.
 | `user_id` | TEXT FK → `user.id` | Owner of the job; list/status filter to this user |
 | `input_json` | TEXT | Path and options |
 | `result_json` | TEXT | Counts, `source_id`, warnings |
-| `error` | TEXT | Last error |
+| `error` | TEXT | Last error, in English |
+| `error_code`, `error_params` | TEXT | The error as a code + JSON params (NULL for a plain text); the API renders it in the response language. Assigning `error` alone clears them |
 | `processed`, `total` | INTEGER | Progress |
-| `current` | TEXT | Virtual path being hashed |
+| `current` | TEXT | Virtual path being hashed, or a short English line such as `importing` |
+| `current_code`, `current_params` | TEXT | Same as `error_code` / `error_params`, for `current` |
 
 A row with `status=running` at process start is marked `error` (`interrupted (process stopped)`).
 
@@ -161,7 +163,8 @@ Append-only audit lines for one job.
 | `job_id` | TEXT FK → `job.id` | Indexed |
 | `at` | DATETIME | UTC |
 | `level` | TEXT | `info` \| `error` |
-| `message` | TEXT | Short line |
+| `message` | TEXT | Short line, in English |
+| `code`, `params` | TEXT | The line as a code + JSON params (NULL for plain text); rendered in the response language when read |
 
 API: [workflow.md](workflow.md).
 
@@ -230,7 +233,9 @@ Milestone 5. Code: `src/server/mosaicwave/schema/` (runner in `__init__.py`, ste
 | --- | --- |
 | 0 | Pre-release databases: no `source.owner_user_id`, `album.source_id`, `job.user_id` |
 | 1 | Shipped in v0.1.0 and v0.1.1 |
-| 2 | Adds `user.locale` (milestone 3). Current |
+| 2 | Adds `user.locale` (milestone 3) |
+| 3 | Per-library databases: the site database drops the moved tables (milestone 6) |
+| 4 | Adds `job.error_code/error_params/current_code/current_params` and `job_event.code/params` (milestone 8). Current |
 
 The number is SQLite's `PRAGMA user_version`. Each change also adds a row to `schema_history`:
 
