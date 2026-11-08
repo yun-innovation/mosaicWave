@@ -33,3 +33,4 @@ Open items only. Roadmap: ordered milestones in [roadmap.md](roadmap.md). The ea
   - [x] PR 2: all job text (errors and progress lines) stored as code + params and rendered into the response language when read; Takeout, backup and restore warnings the same
   - [x] PR 3: display time zone (`user.time_zone`, `user.use_dst`, Settings page, web `format.ts`) and dates written in the response language and zone inside API text
 - [ ] Gallery tools: select many, timeline scrubber, search (new API), light theme (**milestone 9**)
+- [ ] iOS and Android clients in a separate repo (`mosaicWave-mobile`); this repo publishes the OpenAPI schema and the endpoints the apps need (**milestone 14**, planned after 9)
