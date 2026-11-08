@@ -13,7 +13,7 @@ Short onboarding snapshot for agents. **Session start:** always read [index.md](
 
 ## Next
 
-Next is **milestone 9** (gallery tools: select many, scrubber, search, light theme). 10 ARM64 QPKG is **frozen** (no ARM hardware) and 11 share links (SaaS) is **deferred**; both are skipped.
+Next is **milestone 9** (gallery tools), one PR each: 1 light theme (merged #52), 2 timeline scrubber (built on `feature/timeline-scrubber` with the UTC audit and EXIF offset fixes, **waiting for `ship`**), then 3 search, 4 select many. Milestone 14 (iOS and Android clients, separate repo) is planned after 9. 10 ARM64 QPKG is **frozen** (no ARM hardware) and 11 share links (SaaS) is **deferred**; both are skipped.
 
 ## Constraints
 
