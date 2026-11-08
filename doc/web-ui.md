@@ -56,3 +56,9 @@ Shared types and URL helpers (`thumbSrc`, `stillSrc`, `isVideo`) are in `app/typ
 - **Upload** is in the top bar, not the gallery header.
 - **Settings** is a view; it has no Close button.
 - Job and progress messages stay in the language they were created in (see milestone 8 in [roadmap.md](roadmap.md)).
+
+## Theme (milestone 9, PR 1)
+
+- **Dark** (default), **Light**, or **Follow this device** (`prefers-color-scheme`), chosen in Settings (`ThemeSelect.tsx`). It is a choice for the **browser**, kept in `localStorage` (`mosaicWave.theme`; dark is stored as no value), not on the account: a phone in the sun and a desktop at night want different themes. The server never sees it.
+- `theme.ts` sets `data-theme="dark|light"` on `<html>`. A small script in `<head>` (`THEME_BOOT_SCRIPT`, `layout.tsx`) does the same before the first paint, so a light-theme user never sees a dark flash. While the choice is "Follow this device" the page follows the device when it flips.
+- All colours come from CSS variables in `globals.css` (`:root` is dark, `:root[data-theme="light"]` overrides them). New CSS uses a variable, never a hex colour, except the photo viewer and video backdrop (`#000`, `#0a0a0c`) and the black overlays, which stay dark in both themes.

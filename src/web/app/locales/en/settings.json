@@ -8,6 +8,13 @@
     "auto": "Automatic (browser)",
     "saveFailed": "Could not save the language: {{detail}}"
   },
+  "theme": {
+    "label": "Theme",
+    "help": "Dark or light. Saved in this browser only, so each device can differ.",
+    "dark": "Dark",
+    "light": "Light",
+    "system": "Follow this device"
+  },
   "timeZone": {
     "label": "Time zone",
     "help": "Dates and times are shown in this zone (UTC until you choose one). Everything is stored in UTC. Saved to your account.",

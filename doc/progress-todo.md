@@ -32,5 +32,9 @@ Open items only. Roadmap: ordered milestones in [roadmap.md](roadmap.md). The ea
   - [x] PR 1: response language: `X-MosaicWave-Language` header or `?lang=` (never `Accept-Language`), then `user.locale`, then `en`; `detail` translated from the server catalog generated from the web `errors.json` (`npm run sync-locales`, checked by `i18n-check`); `Content-Language` and `Vary`; `auth/status.locales`; `PATCH /me` normalizes tags and answers in the new language; the web sends its language with every request
   - [x] PR 2: all job text (errors and progress lines) stored as code + params and rendered into the response language when read; Takeout, backup and restore warnings the same
   - [x] PR 3: display time zone (`user.time_zone`, `user.use_dst`, Settings page, web `format.ts`) and dates written in the response language and zone inside API text
-- [ ] Gallery tools: select many, timeline scrubber, search (new API), light theme (**milestone 9**)
+- [ ] Gallery tools (**milestone 9**), one PR each, in this order:
+  - [ ] PR 1: light theme (Dark / Light / Follow this device in Settings, per browser; all colours are CSS variables)
+  - [ ] PR 2: timeline scrubber (jump by month and year)
+  - [ ] PR 3: search by filename and date (new API)
+  - [ ] PR 4: select many (add to album, download, export by ids)
 - [ ] iOS and Android clients in a separate repo (`mosaicWave-mobile`); this repo publishes the OpenAPI schema and the endpoints the apps need (**milestone 14**, planned after 9)

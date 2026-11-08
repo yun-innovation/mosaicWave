@@ -6,6 +6,51 @@
   --ok: #7dba6a;
   --fail: #e07a6a;
   --card: #1c1c20;
+  --line: #2a2a30;
+  --btn: #3d4454;
+  --btn-hover: #5a6478;
+  --on: #3d6b4f;
+  --accent: #6aa37a;
+  --surface-2: #2a2c34;
+  --surface-3: #22232a;
+  --warn: #d4b06a;
+  --ok-fg: #a8d99a;
+  --info-bg: #24303a;
+  --info-line: #34465a;
+  --ok-bg: #213027;
+  --ok-bg2: #263428;
+  --fail-bg: #392523;
+  --fail-line: #6b3d3a;
+  --warn-bg: #3a3220;
+  --warn-line: #6b5a2e;
+}
+
+/* Light theme: the page sets data-theme="light" (theme.ts); anything else is the dark theme above. */
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f6f4ef;
+  --fg: #1d1d21;
+  --muted: #6b665d;
+  --ok: #2f7d3c;
+  --fail: #b3392b;
+  --card: #ffffff;
+  --line: #d9d6cd;
+  --btn: #dfe2ea;
+  --btn-hover: #c9cedb;
+  --on: #bfe0c9;
+  --accent: #2f7d3c;
+  --surface-2: #e6e8ee;
+  --surface-3: #eceae3;
+  --warn: #8a6410;
+  --ok-fg: #1f5e2b;
+  --info-bg: #e3edf6;
+  --info-line: #b5cde3;
+  --ok-bg: #e2f1e6;
+  --ok-bg2: #dcefe1;
+  --fail-bg: #f7e1de;
+  --fail-line: #e3b3ad;
+  --warn-bg: #f6ecd2;
+  --warn-line: #dcc480;
 }
 
 * {
@@ -116,7 +161,7 @@ h2 {
   padding: 0.5rem 0.65rem;
   border: 0;
   border-radius: 8px;
-  background: #121214;
+  background: var(--bg);
   color: var(--fg);
 }
 
@@ -130,7 +175,7 @@ h2 {
   width: auto;
   padding: 0;
   margin: 0 0.35rem 0 0;
-  accent-color: #6aa37a;
+  accent-color: var(--accent);
 }
 
 .choice-col {
@@ -175,7 +220,7 @@ h2 {
 }
 
 .dest-tabs button[aria-selected="true"] {
-  background: #2a2a30;
+  background: var(--line);
   color: var(--fg);
 }
 
@@ -189,7 +234,7 @@ h2 {
   align-items: stretch;
   flex: 1;
   min-width: 0;
-  background: #121214;
+  background: var(--bg);
   border-radius: 8px;
 }
 
@@ -304,7 +349,7 @@ h2 {
   flex: 1;
   min-height: 8rem;
   border-radius: 8px;
-  background: #121214;
+  background: var(--bg);
 }
 
 .picker-item {
@@ -320,7 +365,7 @@ h2 {
 }
 
 .picker-item:hover {
-  background: #2a2a30;
+  background: var(--line);
 }
 
 .picker-file {
@@ -333,7 +378,7 @@ h2 {
   padding: 0.45rem 0.9rem;
   border: 0;
   border-radius: 8px;
-  background: #3d6b4f;
+  background: var(--on);
   color: var(--fg);
   cursor: pointer;
 }
@@ -345,7 +390,7 @@ h2 {
 }
 
 .import button[type="button"] {
-  background: #3d4454;
+  background: var(--btn);
 }
 
 .inspect {
@@ -364,7 +409,7 @@ h2 {
 }
 
 .warn-list .warning {
-  color: #d4b06a;
+  color: var(--warn);
 }
 
 .missing-sample {
@@ -393,7 +438,7 @@ h2 {
   justify-content: space-between;
   gap: 1rem;
   padding: 0.45rem 0;
-  border-top: 1px solid #2a2a30;
+  border-top: 1px solid var(--line);
 }
 
 .asset-list li:first-child {
@@ -430,7 +475,7 @@ h2 {
   padding: 0.45rem 0.9rem;
   border: 0;
   border-radius: 8px;
-  background: #3d4454;
+  background: var(--btn);
   color: var(--fg);
   cursor: pointer;
 }
@@ -471,7 +516,7 @@ h2 {
   border: 0;
   border-radius: 4px;
   overflow: hidden;
-  background: #2a2c34;
+  background: var(--surface-2);
   cursor: pointer;
 }
 
@@ -587,7 +632,7 @@ h2 {
   padding: 0.35rem 0.7rem;
   border: 0;
   border-radius: 8px;
-  background: #3d4454;
+  background: var(--btn);
   color: var(--fg);
   cursor: pointer;
 }
@@ -600,7 +645,7 @@ h2 {
 .video-transport input[type="range"] {
   flex: 1 1 8rem;
   min-width: 6rem;
-  accent-color: #7dba6a;
+  accent-color: var(--ok);
 }
 
 .video-clock {
@@ -628,7 +673,7 @@ h2 {
 
 .detail-meta a {
   color: var(--fg);
-  background: #3d6b4f;
+  background: var(--on);
   padding: 0.45rem 0.9rem;
   border-radius: 8px;
   text-decoration: none;
@@ -638,7 +683,7 @@ h2 {
   padding: 0.4rem 0.5rem;
   border: 0;
   border-radius: 8px;
-  background: #121214;
+  background: var(--bg);
   color: var(--fg);
   max-width: 16rem;
 }
@@ -649,7 +694,7 @@ h2 {
   padding: 0.45rem 0.9rem;
   border: 0;
   border-radius: 8px;
-  background: #3d4454;
+  background: var(--btn);
   color: var(--fg);
   cursor: pointer;
 }
@@ -676,7 +721,7 @@ h2 {
   padding: 0.4rem 0.5rem;
   border: 0;
   border-radius: 8px;
-  background: #121214;
+  background: var(--bg);
   color: var(--fg);
 }
 
@@ -691,7 +736,7 @@ h2 {
   padding: 0.35rem 0.5rem;
   border: 0;
   border-radius: 8px;
-  background: #121214;
+  background: var(--bg);
   color: var(--fg);
 }
 
@@ -721,7 +766,7 @@ h2 {
   gap: 0.75rem;
   padding: 0 1rem;
   background: var(--bg);
-  border-bottom: 1px solid #2a2a30;
+  border-bottom: 1px solid var(--line);
 }
 
 .top-brand {
@@ -779,7 +824,7 @@ h2 {
 }
 
 .icon-button:hover {
-  background: #2a2a30;
+  background: var(--line);
 }
 
 .nav-toggle {
@@ -792,14 +837,14 @@ h2 {
   gap: 0.4rem;
   padding: 0.45rem 0.9rem;
   border-radius: 8px;
-  background: #3d4454;
+  background: var(--btn);
 }
 
 .avatar {
   width: 2.25rem;
   height: 2.25rem;
   border-radius: 50%;
-  background: #5a6478;
+  background: var(--btn-hover);
   font-weight: 600;
 }
 
@@ -838,7 +883,7 @@ h2 {
   padding: 0.4rem 0.5rem;
   border: 0;
   border-radius: 8px;
-  background: #121214;
+  background: var(--bg);
   color: var(--fg);
 }
 
@@ -847,7 +892,7 @@ h2 {
   padding: 0.45rem 0.7rem;
   border: 0;
   border-radius: 8px;
-  background: #3d4454;
+  background: var(--btn);
   color: var(--fg);
   font: inherit;
   text-align: left;
@@ -879,19 +924,19 @@ h2 {
 }
 
 .sidebar a:hover {
-  background: #22232a;
+  background: var(--surface-3);
 }
 
 .sidebar a[aria-current="page"] {
-  background: #263428;
-  color: #a8d99a;
+  background: var(--ok-bg2);
+  color: var(--ok-fg);
 }
 
 .sidebar-sep {
   width: 100%;
   margin: 0.5rem 0;
   border: 0;
-  border-top: 1px solid #2a2a30;
+  border-top: 1px solid var(--line);
 }
 
 .nav-backdrop {
@@ -1017,7 +1062,7 @@ main.app-main {
 .titled-sections .import label.section-title.divided {
   margin-top: 1.5rem;
   padding-top: 1.5rem;
-  border-top: 1px solid #2a2a30;
+  border-top: 1px solid var(--line);
 }
 
 .titled-sections .backup-heading,
@@ -1045,7 +1090,7 @@ main.app-main {
   width: 1rem;
   height: 1rem;
   margin: 0;
-  accent-color: #6aa37a;
+  accent-color: var(--accent);
 }
 
 .backup-list {
@@ -1061,7 +1106,7 @@ main.app-main {
   gap: 1rem;
   flex-wrap: wrap;
   padding: 0.6rem 0;
-  border-top: 1px solid #2a2a30;
+  border-top: 1px solid var(--line);
 }
 
 .backup-list li:first-child {
@@ -1089,7 +1134,7 @@ main.app-main {
   margin-right: 0.4rem;
   padding: 0 0.4rem;
   border-radius: 6px;
-  background: #3d4454;
+  background: var(--btn);
   color: var(--fg);
   text-decoration: none;
 }
@@ -1098,7 +1143,7 @@ main.app-main {
   display: inline-block;
   padding: 0.45rem 0.9rem;
   border-radius: 8px;
-  background: #3d4454;
+  background: var(--btn);
   color: var(--fg);
   text-decoration: none;
 }
@@ -1106,7 +1151,7 @@ main.app-main {
 .export-box {
   margin: 0.75rem 0;
   padding: 0.75rem 1rem;
-  border: 1px solid #2a2a30;
+  border: 1px solid var(--line);
   border-radius: 8px;
 }
 
@@ -1135,7 +1180,7 @@ main.app-main {
 .restore-box {
   margin: 0.75rem 0;
   padding: 0.75rem 1rem;
-  border: 1px solid #2a2a30;
+  border: 1px solid var(--line);
   border-radius: 8px;
 }
 
@@ -1153,7 +1198,7 @@ main.app-main {
   margin: 0.5rem 0;
   padding: 0.6rem 0.75rem;
   border-radius: 8px;
-  background: #121214;
+  background: var(--bg);
   font-size: 0.85rem;
   white-space: pre-wrap;
   word-break: break-all;
@@ -1171,19 +1216,19 @@ main.app-main {
   margin-bottom: 1rem;
   padding: 0.6rem 1rem;
   border-radius: 12px;
-  background: #24303a;
-  border: 1px solid #34465a;
+  background: var(--info-bg);
+  border: 1px solid var(--info-line);
   font-size: 0.95rem;
 }
 
 .status-bar.done {
-  background: #213027;
-  border-color: #3d6b4f;
+  background: var(--ok-bg);
+  border-color: var(--on);
 }
 
 .status-bar.fail {
-  background: #392523;
-  border-color: #6b3d3a;
+  background: var(--fail-bg);
+  border-color: var(--fail-line);
 }
 
 .status-bar-label {
@@ -1207,7 +1252,7 @@ main.app-main {
   flex: 1 1 8rem;
   min-width: 6rem;
   height: 0.5rem;
-  accent-color: #6aa37a;
+  accent-color: var(--accent);
 }
 
 .status-bar a {
@@ -1222,8 +1267,8 @@ main.app-main {
   margin-bottom: 1rem;
   padding: 0.6rem 1rem;
   border-radius: 12px;
-  background: #3a3220;
-  border: 1px solid #6b5a2e;
+  background: var(--warn-bg);
+  border: 1px solid var(--warn-line);
   font-weight: 600;
 }
 
@@ -1253,8 +1298,8 @@ main.app-main {
   flex-wrap: wrap;
   padding: 0.6rem 1rem;
   border-radius: 12px;
-  background: #24303a;
-  border: 1px solid #34465a;
+  background: var(--info-bg);
+  border: 1px solid var(--info-line);
 }
 
 .maintenance-screen h2 {
@@ -1265,7 +1310,7 @@ main.app-main {
   padding: 0.25rem 0.7rem;
   border: 0;
   border-radius: 8px;
-  background: #3d4454;
+  background: var(--btn);
   color: var(--fg);
   cursor: pointer;
 }
