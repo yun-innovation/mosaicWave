@@ -11,6 +11,15 @@ def utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def iso_utc(value: datetime | None) -> str | None:
+    """A time as the API writes it: ISO 8601, UTC, ending in Z. SQLite hands back naive datetimes; they are UTC."""
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
 def new_id() -> str:
     return str(uuid.uuid4())
 

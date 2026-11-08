@@ -24,7 +24,7 @@ from mosaicwave.library.takeout import import_takeout
 from mosaicwave.library.takeoutpush import safe_staging_file, staging_dir, write_upload
 from mosaicwave.library.thumbs import clear_placeholder_skips, ensure_thumb
 from mosaicwave.storage.errors import InvalidPath
-from mosaicwave.models import Album, AlbumAsset, Asset, Job, JobEvent, Source, new_id, utcnow
+from mosaicwave.models import Album, AlbumAsset, Asset, Job, JobEvent, Source, iso_utc, new_id, utcnow
 from mosaicwave.storage.blobstore import BlobStore
 
 KIND_TAKEOUT = "takeout_import"
@@ -167,9 +167,9 @@ def job_view(row: Job) -> dict:
         "id": row.id,
         "kind": row.kind,
         "status": row.status,
-        "created_at": row.created_at.isoformat() if row.created_at else None,
-        "started_at": row.started_at.isoformat() if row.started_at else None,
-        "finished_at": row.finished_at.isoformat() if row.finished_at else None,
+        "created_at": iso_utc(row.created_at),
+        "started_at": iso_utc(row.started_at),
+        "finished_at": iso_utc(row.finished_at),
         "path": inp.get("path"),
         "processed": row.processed,
         "total": row.total,

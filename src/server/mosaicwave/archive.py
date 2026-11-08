@@ -13,7 +13,6 @@ import json
 import os
 import re
 import shutil
-import struct
 import time
 import zipfile
 import zlib
@@ -24,6 +23,7 @@ from pathlib import Path, PurePosixPath
 
 from mosaicwave.library.dbs import USER_ID
 from mosaicwave.schema.split import SPLIT_VERSION
+from mosaicwave.ziptime import entry_mtime, ut_extra, zip_time  # noqa: F401  (entry_mtime is re-exported)
 
 FORMAT = 1
 # A backup too big for one file is a set of zips (parts). Each part is a complete zip with its own
@@ -423,39 +423,18 @@ def copy_loose(loose: LooseFile, dest: Path) -> None:
             pass
 
 
-# --- times in a zip: always UTC -----------------------------------------------------------------
-#
-# A zip entry has a time without a zone, and tools disagree on what it means (most say local time).
-# mosaicWave keeps every time in UTC, in the databases and in the files, so an entry is written with
-# its modified time in UTC, and exactly: the Info-ZIP "extended timestamp" field holds the UTC epoch
-# second, and the plain zip time (which has two-second steps) is the same moment in UTC.
-
-_UT_FIELD = 0x5455
-_ZIP_MIN = 315532800  # 1980-01-01, the first time a zip entry can hold
-_ZIP_MAX = 4354819198  # 2107-12-31 23:59:58, the last
+# --- times in a zip: always UTC (see ziptime.py) --------------------------------------------------
 
 
 def utc_zipinfo(path: Path, arcname: str, kind: int) -> zipfile.ZipInfo:
     """A zip entry for ``path`` with its modified time in UTC."""
     stat = path.stat()
     mtime = int(stat.st_mtime)
-    info = zipfile.ZipInfo(arcname, time.gmtime(min(max(mtime, _ZIP_MIN), _ZIP_MAX))[:6])
+    info = zipfile.ZipInfo(arcname, zip_time(mtime))
     info.compress_type = kind
     info.external_attr = (stat.st_mode & 0xFFFF) << 16
-    info.extra = struct.pack("<HHBI", _UT_FIELD, 5, 1, max(mtime, 0) & 0xFFFFFFFF)
+    info.extra = ut_extra(mtime)
     return info
-
-
-def entry_mtime(info: zipfile.ZipInfo) -> float:
-    """The modified time (UTC epoch) of a zip entry: the exact one if it has it, else its zip time read as UTC."""
-    extra, pos = info.extra, 0
-    while pos + 4 <= len(extra):
-        field, size = struct.unpack_from("<HH", extra, pos)
-        if field == _UT_FIELD and size >= 5 and extra[pos + 4] & 1:
-            return float(struct.unpack_from("<I", extra, pos + 5)[0])
-        pos += 4 + size
-    return datetime(*info.date_time, tzinfo=timezone.utc).timestamp()
-
 
 def is_media_name(name: str) -> bool:
     """A photo or thumbnail entry (the rest are the databases)."""

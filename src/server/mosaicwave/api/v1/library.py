@@ -57,7 +57,7 @@ from mosaicwave.library.thumbs import (
     ensure_preview,
     ensure_thumb,
 )
-from mosaicwave.models import Asset, Job, Source, User
+from mosaicwave.models import Asset, Job, Source, User, iso_utc
 from mosaicwave.storage.blobstore import BlobStore
 from mosaicwave.library.takeoutpush import MAX_PUSH_BYTES, write_upload_async
 from mosaicwave.storage.errors import InvalidPath, NotSupported
@@ -376,7 +376,7 @@ def _source_out(session: Session, row: Source, *, perm: str | None = None, owned
         id=row.id,
         kind=row.kind,
         backend=row.backend,
-        last_scan_at=row.last_scan_at.isoformat() if row.last_scan_at else None,
+        last_scan_at=iso_utc(row.last_scan_at),
         error=row.error,
         asset_count=_count_live(session, row.id),
         perm=perm,
@@ -983,7 +983,7 @@ def get_job_events(
     return [
         JobEventOut(
             id=ev.id,
-            at=ev.at.isoformat() if ev.at else "",
+            at=iso_utc(ev.at) or "",
             level=ev.level,
             message=render(ev.code, ev.params, current_language(), ev.message) or ev.message,
         )
