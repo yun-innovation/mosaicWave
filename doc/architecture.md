@@ -147,7 +147,7 @@ Illustrative v1 surface (names can change; behavior should not):
 | DELETE | `/api/v1/sources/{id}` | **400** — cannot delete your library |
 | POST | `/api/v1/sources/{id}/scan` | Re-index the **owner’s** library |
 | GET | `/api/v1/assets` | Timeline/list (cursor pagination; `album_id` filters membership; `before` = ISO 8601 instant starts the list at photos taken before it, for the timeline scrubber) |
-| GET | `/api/v1/assets/months` | Photos per UTC month, newest first, plus `undated` (`{months: [{month, count}], undated}`; `album_id` optional). Feeds the timeline scrubber |
+| GET | `/api/v1/assets/months` | Photos per month in the user's display zone, newest first, plus `undated` (`{months: [{month, count}], undated}`; `album_id` optional; `time_zone` and `use_dst` default to the account's saved values, an unknown zone is `400 invalid_time_zone`). Feeds the timeline scrubber |
 | GET | `/api/v1/albums` | Virtual albums in sources the caller may read (`rev` included) |
 | POST | `/api/v1/albums` | Create a manual album (optional replica `id`; 409 if the name exists) |
 | GET | `/api/v1/albums/{id}` | One album |

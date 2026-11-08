@@ -501,8 +501,20 @@ OpenAPI at `{{baseUrl}}/docs` stays the living spec; this collection is a snapsh
                     "Asset months",
                     "GET",
                     "/api/v1/assets/months",
-                    description="Photos per UTC month, newest first, plus the undated count: {months: [{month, count}], undated}. For the timeline scrubber.",
+                    description="Photos per month in the user's display zone, newest first, plus the undated count: {months: [{month, count}], undated}. time_zone and use_dst default to the account's saved values. For the timeline scrubber.",
                     query=[
+                        {
+                            "key": "time_zone",
+                            "value": "Asia/Taipei",
+                            "disabled": True,
+                            "description": "IANA zone to group in (any case). Unknown is 400 invalid_time_zone",
+                        },
+                        {
+                            "key": "use_dst",
+                            "value": "false",
+                            "disabled": True,
+                            "description": "true follows the zone's summer time; false holds its standard time all year",
+                        },
                         {
                             "key": "album_id",
                             "value": "{{albumId}}",

@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 
 import { apiFetch, readDetail } from "./api";
 import { AssetViewer } from "./AssetViewer";
-import { dayKey, formatDay, formatMonth, formatMonthKey, monthEndInstant } from "./format";
+import { chosenTimeZone, dayKey, formatDay, formatMonth, formatMonthKey, monthEndInstant } from "./format";
 import i18n from "./i18n";
 import { TimelineScrubber, UNDATED } from "./TimelineScrubber";
 import { Asset, AssetList, ignoreAbort, isAbortError, LibraryAlbum, MonthsList, thumbSrc } from "./types";
@@ -58,6 +58,7 @@ export function TimelineView({ albumId, albums, libraryRev, onAlbumsChanged, onL
   const [activeMonth, setActiveMonth] = useState<string | null>(null);
   const top = useRef<HTMLDivElement>(null);
   const before = anchor?.before ?? null;
+  const zone = chosenTimeZone(); // changes re-render this view: applyTimeZone emits the language event
 
   useEffect(() => setAnchor(null), [albumId]);
 
@@ -89,12 +90,15 @@ export function TimelineView({ albumId, albums, libraryRev, onAlbumsChanged, onL
 
   useEffect(() => {
     const ctrl = new AbortController();
-    const qs = albumId ? `?${new URLSearchParams({ album_id: albumId })}` : "";
-    apiFetch(`/api/v1/assets/months${qs}`, { signal: ctrl.signal })
+    // Group in the zone this page shows days in. Sent explicitly, so a zone just picked in Settings
+    // counts before its save reaches the account.
+    const qs = new URLSearchParams({ time_zone: zone.zone, use_dst: String(zone.dst) });
+    if (albumId) qs.set("album_id", albumId);
+    apiFetch(`/api/v1/assets/months?${qs}`, { signal: ctrl.signal })
       .then(async (res) => setMonths(res.ok ? ((await res.json()) as MonthsList) : null))
       .catch(() => setMonths(null)); // no scrubber is better than an error: the list still works
     return () => ctrl.abort();
-  }, [albumId, libraryRev]);
+  }, [albumId, libraryRev, zone.zone, zone.dst]);
 
   // Which month the top of the page is in, so the scrubber can show where you are.
   const shown = assets ? `${assets[0]?.id ?? ""}:${assets.length}` : "";

@@ -42,6 +42,7 @@ from mosaicwave.library.albums import (
 )
 from mosaicwave.library.media import is_media
 from mosaicwave.library.query import AssetListOut, AssetOut, MonthsOut, asset_to_out, list_assets, month_counts
+from mosaicwave.timezone import canonical_zone, zone_data_available
 from mosaicwave.library.sync import SyncChangesOut, pull_changes
 from mosaicwave.library.serve import original_file_response
 from mosaicwave.library.ownership import ensure_user_library
@@ -449,16 +450,31 @@ def get_asset_months(
     session: Session = Depends(get_library_session),
     user: User = Depends(require_user),
     album_id: str | None = None,
+    time_zone: str | None = Query(None, description="IANA zone to group months in; default is the account's saved zone, else UTC"),
+    use_dst: bool | None = Query(None, description="Follow the zone's summer time; default is the account's saved setting"),
 ) -> MonthsOut:
-    """Photos per UTC month, newest first, for the timeline scrubber (whole library or one album)."""
+    """Photos per month, newest first, for the timeline scrubber (whole library or one album).
+
+    Months are in the user's display zone (their saved `time_zone` and `use_dst`, or the ones the
+    request names), so the scrubber agrees with the day headings the page draws.
+    """
     _own_library(request, session, user)
+    if time_zone is not None:
+        if not zone_data_available():
+            raise ApiError(503, "time_zone_data_missing", "this server has no time zone database")
+        zone = canonical_zone(time_zone)
+        if zone is None:
+            raise ApiError(400, "invalid_time_zone", f"unknown time zone: {time_zone}", {"time_zone": time_zone})
+    else:
+        zone = canonical_zone(user.time_zone) if user.time_zone else None  # no data or no zone: UTC
+    dst = bool(user.use_dst) if use_dst is None else use_dst
     ids = _readable_ids(session, user)
     if album_id:
         try:
             get_visible_album(session, album_id=album_id, source_ids=ids)
         except FileNotFoundError as exc:
             raise _not_found(exc) from exc
-    return month_counts(session, source_ids=ids, album_id=album_id)
+    return month_counts(session, source_ids=ids, album_id=album_id, zone=zone, use_dst=dst)
 
 
 def _album_out(session: Session, row) -> AlbumOut:

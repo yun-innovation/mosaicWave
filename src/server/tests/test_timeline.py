@@ -24,11 +24,11 @@ PHOTOS = {
 }
 
 
-def _library(tmp_path: Path) -> TestClient:
+def _library(tmp_path: Path, photos: dict[str, datetime] = PHOTOS) -> TestClient:
     settings = Settings(data_dir=tmp_path / "data", takeout_dir=None, source_dir=None)
     client = authed_client(settings)
     folder = library_dir(settings, client)
-    for index, (name, when) in enumerate(PHOTOS.items()):
+    for index, (name, when) in enumerate(photos.items()):
         buf = BytesIO()
         Image.new("RGB", (16, 12), (index * 40, 90, 160)).save(buf, format="JPEG")
         path = folder / name
@@ -99,3 +99,37 @@ def test_months_follow_an_album(tmp_path: Path) -> None:
     body = client.get("/api/v1/assets/months", params={"album_id": album["id"]}).json()
     assert body["months"] == [{"month": "2023-12", "count": 1}]
     assert client.get("/api/v1/assets/months", params={"album_id": "nope"}).status_code == 404
+
+
+def _months(client: TestClient, **params: object) -> dict[str, int]:
+    res = client.get("/api/v1/assets/months", params=params)
+    assert res.status_code == 200, res.text
+    return {row["month"]: row["count"] for row in res.json()["months"]}
+
+
+def test_months_follow_the_zone_in_the_request(tmp_path: Path) -> None:
+    client = _library(tmp_path)
+    # dec.jpg is 2023-12-31 23:30 UTC: already January in Taipei (+08:00), still December in Los Angeles.
+    assert _months(client) == {"2024-03": 2, "2023-12": 1, "2022-06": 1}
+    assert _months(client, time_zone="Asia/Taipei") == {"2024-03": 2, "2024-01": 1, "2022-06": 1}
+    assert _months(client, time_zone="america/los_angeles") == {"2024-03": 2, "2023-12": 1, "2022-06": 1}
+    assert client.get("/api/v1/assets/months", params={"time_zone": "Mars/Base"}).status_code == 400
+
+
+def test_months_default_to_the_accounts_saved_zone(tmp_path: Path) -> None:
+    client = _library(tmp_path)
+    assert client.patch("/api/v1/me", json={"time_zone": "Asia/Taipei"}).status_code == 200
+    assert _months(client) == {"2024-03": 2, "2024-01": 1, "2022-06": 1}
+    assert _months(client, time_zone="UTC") == {"2024-03": 2, "2023-12": 1, "2022-06": 1}  # the request wins
+
+
+def test_months_hold_standard_time_until_summer_time_is_on(tmp_path: Path) -> None:
+    # 2023-09-30 22:30 UTC: 23:30 on Sep 30 in Amsterdam's standard time (+01:00), but 00:30 on
+    # Oct 1 in its summer time (+02:00).
+    client = _library(tmp_path, {"edge.jpg": datetime(2023, 9, 30, 22, 30, tzinfo=timezone.utc)})
+    assert _months(client, time_zone="Europe/Amsterdam") == {"2023-09": 1}
+    assert _months(client, time_zone="Europe/Amsterdam", use_dst="true") == {"2023-10": 1}
+    client.patch("/api/v1/me", json={"time_zone": "Europe/Amsterdam", "use_dst": True})
+    assert _months(client) == {"2023-10": 1}  # the saved switch is the default
+    # A zone with no summer time ignores the switch.
+    assert _months(client, time_zone="Asia/Taipei", use_dst="true") == {"2023-10": 1}

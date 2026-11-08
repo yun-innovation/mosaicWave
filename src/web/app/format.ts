@@ -3,6 +3,8 @@ import i18n, { activeLocale } from "./i18n";
 // The zone dates and times are shown in: the user's own, else UTC (the default).
 // Every stored time is UTC (doc/i18n.md § Time zone); the zone only matters here, when a time is shown.
 let zone = "UTC";
+// What the user chose (zone name and summer time), as the API takes it; `zone` above is what Intl is given.
+let chosen = { zone: "UTC", dst: false };
 
 function usable(name: string | null | undefined): string {
   if (!name) return "UTC";
@@ -12,6 +14,11 @@ function usable(name: string | null | undefined): string {
   } catch {
     return "UTC"; // a name this browser does not know: fall back to the default
   }
+}
+
+/** The zone and summer-time choice in effect, to send to the API so it groups the way this page does. */
+export function chosenTimeZone(): { zone: string; dst: boolean } {
+  return chosen;
 }
 
 /** The zone times are shown in. */
@@ -63,6 +70,7 @@ function offsetName(minutes: number): string {
  */
 export function applyTimeZone(name: string | null | undefined, dst = false): void {
   let next = usable(name);
+  const picked = { zone: next, dst };
   if (!dst) {
     const offsets = zoneOffsets(next);
     if (offsets?.observesDst) {
@@ -75,7 +83,9 @@ export function applyTimeZone(name: string | null | undefined, dst = false): voi
       }
     }
   }
-  if (next === zone) return;
+  const changed = picked.zone !== chosen.zone || picked.dst !== chosen.dst;
+  chosen = picked;
+  if (next === zone && !changed) return;
   zone = next;
   i18n.emit("languageChanged", i18n.language);
 }

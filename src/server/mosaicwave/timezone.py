@@ -15,6 +15,7 @@ package is the one way they change. ``zoneinfo`` is told to look nowhere else wh
 from __future__ import annotations
 
 import importlib.resources
+from datetime import datetime, timezone
 import zoneinfo
 from functools import lru_cache
 
@@ -59,6 +60,21 @@ def zone_choices() -> list[str]:
     """The names a picker offers: ``UTC`` first, then every real place, A to Z."""
     places = [name for name in _names() if name.split("/", 1)[0] in _AREAS and "/" in name]
     return ["UTC", *places]
+
+
+def zone_offsets(name: str) -> tuple[int, bool]:
+    """(standard offset in minutes, whether the zone has summer time) for a canonical zone name.
+
+    The standard offset is the smaller of the zone's January and July offsets this year, the same
+    rule the web uses to hold a zone at standard time when a user has not turned summer time on.
+    """
+    info = zoneinfo.ZoneInfo(name)
+    year = datetime.now(timezone.utc).year
+    jan, jul = (
+        int(datetime(year, month, 1, 12, tzinfo=timezone.utc).astimezone(info).utcoffset().total_seconds() // 60)  # type: ignore[union-attr]
+        for month in (1, 7)
+    )
+    return min(jan, jul), jan != jul
 
 
 def canonical_zone(name: str | None) -> str | None:
