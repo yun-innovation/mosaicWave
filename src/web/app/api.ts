@@ -7,8 +7,10 @@ export type Me = {
   role: string;
   provider: string;
   locale: string | null;
-  /** IANA zone times are shown in; null = automatic (this device). */
+  /** IANA zone times are shown in; null = UTC, the default. */
   time_zone?: string | null;
+  /** Follow the zone's summer time; false (default) = its standard time all year. */
+  use_dst?: boolean;
 };
 
 export type AuthStatus = {
@@ -184,6 +186,16 @@ export function fetchTimeZones(): Promise<string[] | null> {
   });
   return asked;
 }
+export async function saveUseDst(useDst: boolean): Promise<Me> {
+  const res = await apiFetch("/api/v1/me", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ use_dst: useDst }),
+  });
+  if (!res.ok) throw new Error(await readDetail(res));
+  return (await res.json()) as Me;
+}
+
 export async function saveTimeZone(timeZone: string | null): Promise<Me> {
   const res = await apiFetch("/api/v1/me", {
     method: "PATCH",

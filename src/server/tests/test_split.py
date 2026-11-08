@@ -23,7 +23,7 @@ from mosaicwave.models import (
 from mosaicwave.schema import split
 from mosaicwave.schema.library import LIBRARY_CURRENT_VERSION
 from mosaicwave.schema.split import REPORT_NAME, SplitError, migrate_site_database, split_site_database
-from mosaicwave.schema.steps import STEPS, _job_text_codes, _user_time_zone
+from mosaicwave.schema.steps import STEPS, _job_text_codes, _user_time_zone, _user_use_dst
 
 SITE_AFTER = {"user", "local_credential", "job", "job_event"}
 
@@ -59,6 +59,7 @@ def _seed_v2_schema(settings: Settings) -> dict[str, str]:
         # step 4 and 5 columns up front (those steps skip columns that are already there).
         _job_text_codes(con)
         _user_time_zone(con)
+        _user_use_dst(con)
         con.execute("PRAGMA user_version = 2")
         con.commit()
     finally:

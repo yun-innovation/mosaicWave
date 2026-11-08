@@ -69,6 +69,20 @@ def test_time_zone_defaults_to_null_meaning_utc(tmp_path: Path) -> None:
     assert client.get("/api/v1/auth/status").json()["me"]["time_zone"] is None
 
 
+def test_summer_time_is_off_until_a_user_turns_it_on(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    client = authed_client(settings)
+    assert client.get("/api/v1/me").json()["use_dst"] is False
+    res = client.patch("/api/v1/me", json={"time_zone": "Europe/Amsterdam", "use_dst": True})
+    assert res.status_code == 200, res.text
+    assert res.json()["use_dst"] is True
+    # A body that does not name it, or names it null, leaves it alone; it survives a zone change.
+    assert client.patch("/api/v1/me", json={"time_zone": "Asia/Taipei"}).json()["use_dst"] is True
+    assert client.patch("/api/v1/me", json={"use_dst": None}).json()["use_dst"] is True
+    assert client.patch("/api/v1/me", json={"use_dst": False}).json()["use_dst"] is False
+    assert client.get("/api/v1/auth/status").json()["me"]["use_dst"] is False
+
+
 def test_patch_me_saves_and_clears_the_time_zone(tmp_path: Path) -> None:
     settings = _settings(tmp_path)
     client = authed_client(settings)
@@ -160,7 +174,8 @@ def test_migration_adds_the_time_zone_column(tmp_path: Path) -> None:
     try:
         with engine.connect() as db:
             cols = {row[1] for row in db.execute(text('PRAGMA table_info("user")'))}
-            assert "time_zone" in cols
+            assert {"time_zone", "use_dst"} <= cols
             assert db.execute(text('SELECT time_zone FROM "user"')).scalar() is None
+            assert db.execute(text('SELECT use_dst FROM "user"')).scalar() == 0  # standard time
     finally:
         engine.dispose()

@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { fetchTimeZones, Me, saveTimeZone } from "./api";
-import { applyTimeZone, timeZoneNames } from "./format";
+import { fetchTimeZones, Me, saveTimeZone, saveUseDst } from "./api";
+import { applyTimeZone, observesDst, timeZoneNames } from "./format";
 
 type Props = {
   id: string;
@@ -14,12 +14,14 @@ type Props = {
 
 /**
  * An IANA zone from the server's list (UTC until one is chosen); shows times in it at once and
- * saves `user.time_zone` (null, the default, is UTC).
+ * saves `user.time_zone` (null, the default, is UTC). Summer time is a separate switch, offered only
+ * for a zone that has it, and off until the user turns it on.
  */
 export function TimeZoneSelect({ id, me, onMe }: Props) {
   const { t } = useTranslation(["settings", "common"]);
   const [error, setError] = useState<string | null>(null);
   const saved = me.time_zone ?? null;
+  const dst = me.use_dst ?? false;
 
   // The server's list is what counts; the browser's is only for a server that has none (older).
   const [served, setServed] = useState<string[] | null>(null);
@@ -38,14 +40,29 @@ export function TimeZoneSelect({ id, me, onMe }: Props) {
 
   async function change(choice: string) {
     setError(null);
-    applyTimeZone(choice);
+    applyTimeZone(choice, dst);
     onMe({ ...me, time_zone: choice });
     try {
       onMe(await saveTimeZone(choice));
     } catch (err: unknown) {
-      const detail = err instanceof Error ? err.message : t("common:requestFailed");
-      setError(t("settings:timeZone.saveFailed", { detail }));
+      fail(err);
     }
+  }
+
+  async function changeDst(on: boolean) {
+    setError(null);
+    applyTimeZone(saved, on);
+    onMe({ ...me, use_dst: on });
+    try {
+      onMe(await saveUseDst(on));
+    } catch (err: unknown) {
+      fail(err);
+    }
+  }
+
+  function fail(err: unknown) {
+    const detail = err instanceof Error ? err.message : t("common:requestFailed");
+    setError(t("settings:timeZone.saveFailed", { detail }));
   }
 
   return (
@@ -57,6 +74,12 @@ export function TimeZoneSelect({ id, me, onMe }: Props) {
           </option>
         ))}
       </select>
+      {observesDst(saved) && (
+        <label className="check-row">
+          <input type="checkbox" checked={dst} onChange={(e) => void changeDst(e.target.checked)} />
+          <span>{t("settings:timeZone.dst")}</span>
+        </label>
+      )}
       {error && <p className="status fail">{error}</p>}
     </>
   );

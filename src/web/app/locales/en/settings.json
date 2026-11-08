@@ -11,6 +11,7 @@
   "timeZone": {
     "label": "Time zone",
     "help": "Dates and times are shown in this zone (UTC until you choose one). Everything is stored in UTC. Saved to your account.",
+    "dst": "Use summer time (daylight saving) for this zone. Off keeps its standard time all year.",
     "saveFailed": "Could not save the time zone: {{detail}}"
   },
   "library": {

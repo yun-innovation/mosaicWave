@@ -305,6 +305,29 @@
           }
         },
         {
+          "name": "Set summer time",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/me",
+            "description": "use_dst: true follows the saved zone's summer time; false (the default) holds it at its standard time all year. null is ignored. Stored by the server, applied by the client; every timestamp the API sends stays UTC.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"use_dst\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
           "name": "Set language",
           "request": {
             "method": "PATCH",

@@ -344,6 +344,17 @@ OpenAPI at `{{baseUrl}}/docs` stays the living spec; this collection is a snapsh
                     body="{\n  \"time_zone\": \"Asia/Taipei\"\n}",
                 ),
                 req(
+                    "Set summer time",
+                    "PATCH",
+                    "/api/v1/me",
+                    description=(
+                        "use_dst: true follows the saved zone's summer time; false (the default) holds it at its "
+                        "standard time all year. null is ignored. Stored by the server, applied by the client; "
+                        "every timestamp the API sends stays UTC."
+                    ),
+                    body="{\n  \"use_dst\": true\n}",
+                ),
+                req(
                     "Set language",
                     "PATCH",
                     "/api/v1/me",

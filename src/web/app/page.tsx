@@ -53,9 +53,10 @@ export default function Home() {
   }, [savedLocale]);
 
   const savedTimeZone = me?.time_zone ?? null;
+  const useDst = me?.use_dst ?? false;
   useEffect(() => {
-    applyTimeZone(savedTimeZone); // no saved zone = UTC, the default
-  }, [savedTimeZone]);
+    applyTimeZone(savedTimeZone, useDst); // no saved zone = UTC, the default
+  }, [savedTimeZone, useDst]);
   const signedIn = me !== null;
 
   const onLibraryChanged = useCallback(() => {

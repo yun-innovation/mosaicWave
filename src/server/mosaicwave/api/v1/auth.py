@@ -47,11 +47,13 @@ class MeOut(BaseModel):
     provider: str
     locale: str | None = None
     time_zone: str | None = None  # IANA name; null = UTC, the default
+    use_dst: bool = False  # follow the zone's summer time; false = its standard time all year
 
 
 class MePatchIn(BaseModel):
     locale: str | None = None
     time_zone: str | None = None
+    use_dst: bool | None = None  # null is ignored: it is a switch, not a choice that can be cleared
 
 
 class AuthStatusOut(BaseModel):
@@ -124,6 +126,7 @@ def _me_out(request: Request, user: User) -> MeOut:
         provider=user.provider,
         locale=user.locale,
         time_zone=user.time_zone,
+        use_dst=bool(user.use_dst),
     )
 
 
@@ -325,7 +328,11 @@ def patch_me(
         if target is not None:
             request.state.language = target  # this answer already comes in the new language
     if "time_zone" in body.model_fields_set:
-        user.time_zone = zone  # None clears it: automatic
+        user.time_zone = zone  # None clears it: UTC
+        user.updated_at = utcnow()
+        session.flush()
+    if body.use_dst is not None:
+        user.use_dst = body.use_dst
         user.updated_at = utcnow()
         session.flush()
     return _me_out(request, user)

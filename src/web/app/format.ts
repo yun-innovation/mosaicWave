@@ -19,12 +19,62 @@ export function activeTimeZone(): string {
   return zone;
 }
 
+// The UTC offset (minutes) a zone has at one instant, read from Intl's "GMT+05:30" label.
+function offsetMinutes(name: string, at: Date): number | null {
+  try {
+    const label = new Intl.DateTimeFormat("en", { timeZone: name, timeZoneName: "longOffset" })
+      .formatToParts(at)
+      .find((part) => part.type === "timeZoneName")?.value;
+    const m = /^GMT(?:([+-])(\d{1,2})(?::(\d{2}))?)?$/.exec(label ?? "");
+    if (!m) return null;
+    const minutes = m[1] ? Number(m[2]) * 60 + Number(m[3] ?? 0) : 0;
+    return m[1] === "-" ? -minutes : minutes;
+  } catch {
+    return null;
+  }
+}
+
+/** The zone's standard-time offset in minutes (the smaller of its January and July offsets), and whether it has summer time. */
+function zoneOffsets(name: string): { standard: number; observesDst: boolean } | null {
+  const year = new Date().getUTCFullYear();
+  const jan = offsetMinutes(name, new Date(Date.UTC(year, 0, 1, 12)));
+  const jul = offsetMinutes(name, new Date(Date.UTC(year, 6, 1, 12)));
+  if (jan === null || jul === null) return null;
+  return { standard: Math.min(jan, jul), observesDst: jan !== jul };
+}
+
+/** Does this zone move its clocks for summer time? Decides whether the setting is offered. */
+export function observesDst(name: string | null | undefined): boolean {
+  return !!name && (zoneOffsets(name)?.observesDst ?? false);
+}
+
+/** `+05:30` for a number of minutes, the fixed-offset zone name Intl accepts. */
+function offsetName(minutes: number): string {
+  const abs = Math.abs(minutes);
+  const sign = minutes < 0 ? "-" : "+";
+  return `${sign}${String(Math.floor(abs / 60)).padStart(2, "0")}:${String(abs % 60).padStart(2, "0")}`;
+}
+
 /**
- * Show times in `name` (an IANA name; null, empty or unknown = UTC). Components that format during render
- * re-render on the language event, so the screen changes at once.
+ * Show times in `name` (an IANA name; null, empty or unknown = UTC). Without `dst` a zone that has
+ * summer time is held at its standard offset all year, so the clock never jumps; with it the zone
+ * follows its own rules. Components that format during render re-render on the language event, so
+ * the screen changes at once.
  */
-export function applyTimeZone(name: string | null | undefined): void {
-  const next = usable(name);
+export function applyTimeZone(name: string | null | undefined, dst = false): void {
+  let next = usable(name);
+  if (!dst) {
+    const offsets = zoneOffsets(next);
+    if (offsets?.observesDst) {
+      const fixed = offsetName(offsets.standard);
+      try {
+        new Intl.DateTimeFormat("en", { timeZone: fixed });
+        next = fixed; // an older browser without offset zones keeps the zone's own rules
+      } catch {
+        /* keep next */
+      }
+    }
+  }
   if (next === zone) return;
   zone = next;
   i18n.emit("languageChanged", i18n.language);
