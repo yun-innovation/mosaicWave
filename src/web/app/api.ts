@@ -163,25 +163,33 @@ export function warningText(w: DumpWarning): string {
   return hint ? `${text} ${hint}` : text;
 }
 
-let timeZoneList: Promise<string[] | null> | null = null;
+export type TimeZoneInfo = {
+  /** The zones the server accepts, `UTC` first. */
+  zones: string[];
+  /** The server machine's own zone: what a user with no zone of their own sees times in. */
+  serverZone: string;
+};
+
+let timeZoneInfo: Promise<TimeZoneInfo | null> | null = null;
 
 /**
- * The zones the server accepts (`GET /api/v1/time-zones`, from its own tzdata), so the picker and the
- * server never disagree. null when the server is older and has no such call: the caller falls back
- * to the browser's list. Asked once per page load.
+ * `GET /api/v1/time-zones`: the zones the server accepts (from its own tzdata) and the server's own
+ * zone, so the picker, the default and the server never disagree. null when the server is older and
+ * has no such call, or the user is not signed in yet. Asked again after a failure, never after success.
  */
-export function fetchTimeZones(): Promise<string[] | null> {
-  timeZoneList ??= apiFetch("/api/v1/time-zones")
-    .then(async (res) => {
+export function fetchTimeZones(): Promise<TimeZoneInfo | null> {
+  const asked = (timeZoneInfo ??= apiFetch("/api/v1/time-zones")
+    .then(async (res): Promise<TimeZoneInfo | null> => {
       if (!res.ok) return null;
-      const body = (await res.json()) as { zones?: unknown };
-      return Array.isArray(body.zones) ? body.zones.map(String) : null;
+      const body = (await res.json()) as { zones?: unknown; server_zone?: unknown };
+      if (!Array.isArray(body.zones) || typeof body.server_zone !== "string") return null;
+      return { zones: body.zones.map(String), serverZone: body.server_zone };
     })
-    .catch(() => null);
-  void timeZoneList.then((zones) => {
-    if (zones === null) timeZoneList = null; // try again next time rather than remember a failure
+    .catch(() => null));
+  void asked.then((info) => {
+    if (info === null && timeZoneInfo === asked) timeZoneInfo = null;
   });
-  return timeZoneList;
+  return asked;
 }
 
 export async function saveTimeZone(timeZone: string | null): Promise<Me> {

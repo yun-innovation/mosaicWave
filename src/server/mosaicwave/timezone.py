@@ -2,7 +2,7 @@
 
 Every time the server stores or sends in a timestamp field is UTC (ISO 8601). A user may choose the
 zone times are *shown* in; it is saved as ``user.time_zone``, an IANA name such as ``Asia/Taipei``,
-or NULL for automatic (the device's own zone). The server validates and stores the name; the web
+or NULL for the server's own zone (``server_zone()``). The server validates and stores the name; the web
 formats with it, and any date the API writes inside a sentence uses it too.
 
 The zone data comes from the ``tzdata`` package only, never from the operating system. mosaicWave
@@ -15,6 +15,7 @@ package is the one way they change. ``zoneinfo`` is told to look nowhere else wh
 from __future__ import annotations
 
 import importlib.resources
+import os
 import zoneinfo
 from functools import lru_cache
 
@@ -59,6 +60,27 @@ def zone_choices() -> list[str]:
     """The names a picker offers: ``UTC`` first, then every real place, A to Z."""
     places = [name for name in _names() if name.split("/", 1)[0] in _AREAS and "/" in name]
     return ["UTC", *places]
+
+
+def server_zone() -> str:
+    """The zone of the machine the server runs on, as an IANA name: the default users see times in.
+
+    ``MOSAICWAVE_TIME_ZONE`` wins (for a host whose zone cannot be detected); then the host's own
+    setting through ``tzlocal`` (it maps Windows zone names to IANA ones); anything that is not a
+    zone ``tzdata`` knows becomes ``UTC``.
+    """
+    candidates = [os.environ.get("MOSAICWAVE_TIME_ZONE")]
+    try:
+        import tzlocal
+
+        candidates.append(tzlocal.get_localzone_name())
+    except Exception:  # tzlocal missing, or the host has no readable zone: fall through to UTC
+        pass
+    for name in candidates:
+        found = canonical_zone(name)
+        if found:
+            return found
+    return "UTC"
 
 
 def canonical_zone(name: str | None) -> str | None:

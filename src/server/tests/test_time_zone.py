@@ -56,6 +56,34 @@ def test_time_zone_list_is_one_list_for_every_client(tmp_path: Path) -> None:
     assert all(canonical_zone(name) == name for name in zones)
 
 
+def test_time_zone_list_names_the_server_zone(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("MOSAICWAVE_TIME_ZONE", "asia/taipei")
+    client = authed_client(_settings(tmp_path))
+    body = client.get("/api/v1/time-zones").json()
+    assert body["server_zone"] == "Asia/Taipei"  # spelled as tzdata spells it
+    assert body["server_zone"] in body["zones"]
+
+
+def test_server_zone_falls_back_to_the_host_then_utc(monkeypatch: pytest.MonkeyPatch) -> None:
+    import sys
+    import types
+
+    from mosaicwave.timezone import server_zone
+
+    fake = types.ModuleType("tzlocal")
+    fake.get_localzone_name = lambda: "Europe/Amsterdam"  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "tzlocal", fake)
+    monkeypatch.setenv("MOSAICWAVE_TIME_ZONE", "Not/AZone")  # unknown: ignored
+    assert server_zone() == "Europe/Amsterdam"
+
+    def broken() -> str:
+        raise RuntimeError("no zone")
+
+    fake.get_localzone_name = broken  # type: ignore[attr-defined]
+    monkeypatch.delenv("MOSAICWAVE_TIME_ZONE")
+    assert server_zone() == "UTC"
+
+
 def test_legacy_alias_is_still_accepted(tmp_path: Path) -> None:
     client = authed_client(_settings(tmp_path))
     res = client.patch("/api/v1/me", json={"time_zone": "US/Pacific"})

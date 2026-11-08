@@ -10,8 +10,9 @@
   },
   "timeZone": {
     "label": "时区",
-    "help": "日期和时间会按这个时区显示。所有数据都以 UTC 存储。保存在你的账号中。",
-    "auto": "自动（跟随此设备）",
+    "help": "日期和时间会按这个时区显示。服务器默认是 mosaicWave 所在主机的时区。所有数据都以 UTC 存储。保存在你的账号中。",
+    "default": "服务器默认 · {{zone}}",
+    "defaultUnknown": "服务器默认",
     "saveFailed": "无法保存时区：{{detail}}"
   },
   "library": {

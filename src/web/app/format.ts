@@ -1,6 +1,7 @@
 import i18n, { activeLocale } from "./i18n";
 
-// The zone dates and times are shown in. undefined = automatic: the device's own zone.
+// The zone dates and times are shown in: the user's own, else the server's (set by page.tsx).
+// undefined = neither is known yet: the device's own zone.
 // Every stored time is UTC (doc/i18n.md § Time zone); the zone only matters here, when a time is shown.
 let zone: string | undefined;
 
@@ -19,14 +20,10 @@ export function activeTimeZone(): string | undefined {
   return zone;
 }
 
-/** The zone this device is in, shown next to "Automatic". */
-export function deviceTimeZone(): string {
-  return new Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
-}
-
 /**
- * Show times in `name` (an IANA name; null or empty = automatic). Components that format during
- * render re-render on the language event, so the screen changes at once.
+ * Show times in `name` (an IANA name). Null or empty leaves the device's own zone, which is only
+ * what is left when the server could not name a default. Components that format during render
+ * re-render on the language event, so the screen changes at once.
  */
 export function applyTimeZone(name: string | null | undefined): void {
   const next = usable(name);

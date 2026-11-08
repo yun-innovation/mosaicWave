@@ -327,8 +327,10 @@ OpenAPI at `{{baseUrl}}/docs` stays the living spec; this collection is a snapsh
                     "GET",
                     "/api/v1/time-zones",
                     description=(
-                        "The IANA zone names a user can pick: {version, zones}. 'UTC' first, then every real place "
+                        "The IANA zone names a user can pick: {version, zones, server_zone}. 'UTC' first, then every real place "
                         "A to Z, from the server's own tzdata (never the OS), so every client sees the same list. "
+                        "server_zone is the zone of the machine the server runs on (override: env MOSAICWAVE_TIME_ZONE): "
+                        "the default for users with no zone of their own. "
                         "Legacy aliases such as US/Pacific are not listed but PATCH /me still accepts them."
                     ),
                 ),
@@ -338,7 +340,7 @@ OpenAPI at `{{baseUrl}}/docs` stays the living spec; this collection is a snapsh
                     "/api/v1/me",
                     description=(
                         "time_zone: an IANA name such as Asia/Taipei (any case; saved as the database spells it), or "
-                        "null for automatic (the device's zone). Unknown is 400 invalid_time_zone and nothing is "
+                        "null for the server's zone (server_zone in the time zone list). Unknown is 400 invalid_time_zone and nothing is "
                         "saved. Only the display changes: every timestamp the API sends stays UTC."
                     ),
                     body="{\n  \"time_zone\": \"Asia/Taipei\"\n}",

@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import { ActivityView } from "./ActivityView";
 import { BackupView } from "./BackupView";
 import { AlbumsView } from "./AlbumsView";
-import { apiFetch, apiMediaUrl, AuthStatus, Me, setServerLocales } from "./api";
+import { apiFetch, apiMediaUrl, AuthStatus, fetchTimeZones, Me, setServerLocales } from "./api";
 import { AppShell, MAINTENANCE_VIEWS } from "./AppShell";
 import { AuthScreen } from "./AuthScreen";
 import { BrandLockup } from "./BrandLockup";
@@ -53,9 +53,24 @@ export default function Home() {
   }, [savedLocale]);
 
   const savedTimeZone = me?.time_zone ?? null;
+  const signedIn = me !== null;
   useEffect(() => {
-    applyTimeZone(savedTimeZone);
-  }, [savedTimeZone]);
+    // The user's own zone; without one, the server's. An older server has no zone to give, so the
+    // device's own zone applies.
+    if (savedTimeZone) {
+      applyTimeZone(savedTimeZone);
+      return;
+    }
+    if (!signedIn) {
+      applyTimeZone(null);
+      return;
+    }
+    let live = true;
+    void fetchTimeZones().then((info) => live && info && applyTimeZone(info.serverZone));
+    return () => {
+      live = false;
+    };
+  }, [savedTimeZone, signedIn]);
 
   const onLibraryChanged = useCallback(() => {
     setLibraryRev((n) => n + 1);
@@ -119,7 +134,6 @@ export default function Home() {
     return () => ctrl.abort();
   }, []);
 
-  const signedIn = me !== null;
   useEffect(() => {
     if (!signedIn) return;
     const ctrl = new AbortController();
