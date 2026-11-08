@@ -8,6 +8,7 @@ import { ExportPanel } from "./ExportPanel";
 import i18n from "./i18n";
 import { LibraryBackupPanel } from "./LibraryBackupPanel";
 import { LocaleSelect } from "./LocaleSelect";
+import { ThemeSelect } from "./ThemeSelect";
 import { TimeZoneSelect } from "./TimeZoneSelect";
 import type { TakeoutImport } from "./useTakeoutImport";
 
@@ -60,6 +61,13 @@ export function SettingsPanel({ me, importer, onMe }: Props) {
         </label>
         <p className="detail">{t("settings:language.help")}</p>
         <LocaleSelect id="ui_locale" me={me} onMe={onMe} />
+      </div>
+      <div className="import">
+        <label htmlFor="ui_theme" className="section-title">
+          {t("settings:theme.label")}
+        </label>
+        <p className="detail">{t("settings:theme.help")}</p>
+        <ThemeSelect id="ui_theme" />
       </div>
       <div className="import">
         <label htmlFor="ui_time_zone" className="section-title">
