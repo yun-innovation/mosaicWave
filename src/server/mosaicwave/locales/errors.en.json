@@ -118,6 +118,7 @@
   "takeout_not_a_directory": "That path is not a folder.",
   "takeout_path_required": "Enter the Takeout folder path.",
   "thumb_not_found": "Thumbnail not found.",
+  "time_zone_data_missing": "This server has no time zone data. Ask the administrator to install the tzdata package and restart.",
   "unsupported_media_type": "That file type is not a supported photo or video.",
   "upload_failed": "The upload failed: {{message}}",
   "upload_folder_only": "Uploads only work for folder libraries.",

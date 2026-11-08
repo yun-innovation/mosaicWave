@@ -31,7 +31,7 @@ from mosaicwave.db import get_session
 from mosaicwave.i18n import LOCALES, normalize_locale
 from mosaicwave.library.ownership import ensure_user_library
 from mosaicwave.models import LocalCredential, User, utcnow
-from mosaicwave.timezone import canonical_zone
+from mosaicwave.timezone import canonical_zone, zone_data_available
 
 router = APIRouter()
 
@@ -274,6 +274,14 @@ def patch_me(
     zone: str | None = None
     if "time_zone" in body.model_fields_set and body.time_zone is not None:
         # Checked first, so a bad zone saves nothing, not even the locale sent with it.
+        if not zone_data_available():
+            # Not the user's mistake: say so, instead of calling every real zone unknown.
+            raise ApiError(
+                503,
+                "time_zone_data_missing",
+                "this server has no time zone database; install the tzdata package "
+                "(pip install tzdata, or pip install -e .[dev] again) and restart",
+            )
         zone = canonical_zone(body.time_zone)
         if zone is None:
             raise ApiError(

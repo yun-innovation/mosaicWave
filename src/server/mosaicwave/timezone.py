@@ -17,6 +17,11 @@ def _by_lower_name() -> dict[str, str]:
     return {name.lower(): name for name in available_timezones()}
 
 
+def zone_data_available() -> bool:
+    """False when this Python has no IANA database (the ``tzdata`` package is not installed)."""
+    return bool(_by_lower_name())
+
+
 def canonical_zone(name: str | None) -> str | None:
     """The IANA name as the database spells it (``asia/taipei`` → ``Asia/Taipei``), or None if unknown."""
     if not name:

@@ -76,6 +76,20 @@ def test_unknown_zone_is_refused_and_nothing_is_saved(tmp_path: Path, bad: str) 
     assert (me["locale"], me["time_zone"]) == ("zh-Hans", "Asia/Taipei")  # the locale in the same body was not saved
 
 
+def test_missing_zone_database_is_a_server_error_not_an_unknown_zone(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("mosaicwave.api.v1.auth.zone_data_available", lambda: False)
+    client = authed_client(_settings(tmp_path))
+    res = client.patch("/api/v1/me", json={"time_zone": "Asia/Taipei"})
+    assert res.status_code == 503
+    assert res.json()["code"] == "time_zone_data_missing"
+    assert "tzdata" in res.json()["detail"]
+    assert client.get("/api/v1/me").json()["time_zone"] is None
+    # Clearing the zone needs no database.
+    assert client.patch("/api/v1/me", json={"time_zone": None}).status_code == 200
+
+
 def test_zone_error_is_written_in_the_response_language(tmp_path: Path) -> None:
     client = authed_client(_settings(tmp_path))
     res = client.patch(

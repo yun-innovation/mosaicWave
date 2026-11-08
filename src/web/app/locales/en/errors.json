@@ -15,6 +15,7 @@
   "username_taken": "That username already exists.",
   "invalid_locale": "Unsupported language: {{locale}}",
   "invalid_time_zone": "Unknown time zone: {{time_zone}}",
+  "time_zone_data_missing": "This server has no time zone data. Ask the administrator to install the tzdata package and restart.",
 
   "data_dir_rejected": "Could not use that folder: {{message}}",
   "data_dir_env_locked": "MOSAICWAVE_DATA_DIR is set, so the folder cannot be changed on the Server page.",

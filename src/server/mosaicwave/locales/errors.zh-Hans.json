@@ -116,6 +116,7 @@
   "takeout_not_a_directory": "该路径不是文件夹。",
   "takeout_path_required": "请输入 Takeout 文件夹路径。",
   "thumb_not_found": "找不到缩略图。",
+  "time_zone_data_missing": "此服务器没有时区数据。请管理员安装 tzdata 包后重新启动。",
   "unsupported_media_type": "不支持这种照片或视频格式。",
   "upload_failed": "上传失败：{{message}}",
   "upload_folder_only": "只有文件夹类型的照片库可以上传。",

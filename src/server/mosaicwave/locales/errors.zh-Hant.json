@@ -116,6 +116,7 @@
   "takeout_not_a_directory": "這個路徑不是資料夾。",
   "takeout_path_required": "請輸入 Takeout 資料夾路徑。",
   "thumb_not_found": "找不到縮圖。",
+  "time_zone_data_missing": "此伺服器沒有時區資料。請管理員安裝 tzdata 套件後重新啟動。",
   "unsupported_media_type": "不支援這種相片或影片格式。",
   "upload_failed": "上傳失敗：{{message}}",
   "upload_folder_only": "只有資料夾型相片庫可以上傳。",
