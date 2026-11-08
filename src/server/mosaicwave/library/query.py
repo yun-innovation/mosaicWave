@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from pathlib import PurePosixPath
 
 from pydantic import BaseModel, field_serializer
-from sqlalchemy import case, select
+from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session
 
 from mosaicwave.models import AlbumAsset, Asset, Source
@@ -71,6 +71,7 @@ def list_assets(
     cursor: str | None,
     source_ids: set[str] | None = None,
     album_id: str | None = None,
+    before: datetime | None = None,
 ) -> AssetListOut:
     limit = max(1, min(limit, 200))
     if source_ids is not None and not source_ids:
@@ -87,6 +88,12 @@ def list_assets(
             AlbumAsset,
             (AlbumAsset.asset_id == Asset.id) & AlbumAsset.deleted_at.is_(None),
         ).where(AlbumAsset.album_id == album_id)
+    if before is not None and not cursor:
+        # Start the list at a point in time (the timeline scrubber): photos taken before `before`,
+        # newest first, then the undated ones, which always sort last. `before` is an instant.
+        if before.tzinfo is not None:
+            before = before.astimezone(timezone.utc).replace(tzinfo=None)
+        stmt = stmt.where((Asset.taken_at < before) | Asset.taken_at.is_(None))
     if cursor:
         taken, asset_id = decode_cursor(cursor)
         if taken is not None:
@@ -111,3 +118,44 @@ def list_assets(
         next_cursor = encode_cursor(last.taken_at, last.id)
     items = [asset_to_out(row) for row in rows]
     return AssetListOut(items=items, next_cursor=next_cursor)
+
+
+class MonthCount(BaseModel):
+    month: str  # "2026-03": the UTC month photos were taken in
+    count: int
+
+
+class MonthsOut(BaseModel):
+    months: list[MonthCount]  # newest first
+    undated: int = 0  # photos with no taken_at; they sort after every month
+
+
+def month_counts(
+    session: Session,
+    *,
+    source_ids: set[str] | None = None,
+    album_id: str | None = None,
+) -> MonthsOut:
+    """Photos per UTC month for the timeline scrubber (the same photos `list_assets` would list)."""
+    if source_ids is not None and not source_ids:
+        return MonthsOut(months=[])
+    month = func.strftime("%Y-%m", Asset.taken_at)
+    stmt = (
+        select(month, func.count())
+        .select_from(Asset)
+        .join(Source, Source.id == Asset.source_id)
+        .where(Asset.deleted_at.is_(None), Source.deleted_at.is_(None))
+    )
+    if source_ids is not None:
+        stmt = stmt.where(Asset.source_id.in_(source_ids))
+    if album_id:
+        stmt = stmt.join(
+            AlbumAsset,
+            (AlbumAsset.asset_id == Asset.id) & AlbumAsset.deleted_at.is_(None),
+        ).where(AlbumAsset.album_id == album_id)
+    rows = session.execute(stmt.group_by(month).order_by(month.desc())).all()
+    undated = sum(count for key, count in rows if key is None)
+    return MonthsOut(
+        months=[MonthCount(month=key, count=count) for key, count in rows if key is not None],
+        undated=undated,
+    )

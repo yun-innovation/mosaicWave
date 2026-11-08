@@ -488,8 +488,28 @@ OpenAPI at `{{baseUrl}}/docs` stays the living spec; this collection is a snapsh
                             "disabled": True,
                             "description": "Only assets in this album",
                         },
+                        {
+                            "key": "before",
+                            "value": "2024-01-01T00:00:00Z",
+                            "disabled": True,
+                            "description": "Start at photos taken before this instant (ISO 8601); the timeline scrubber uses it. Ignored with a cursor. 0001-01-01T00:00:00Z reaches only undated photos",
+                        },
                     ],
                     tests=SAVE_ASSET,
+                ),
+                req(
+                    "Asset months",
+                    "GET",
+                    "/api/v1/assets/months",
+                    description="Photos per UTC month, newest first, plus the undated count: {months: [{month, count}], undated}. For the timeline scrubber.",
+                    query=[
+                        {
+                            "key": "album_id",
+                            "value": "{{albumId}}",
+                            "disabled": True,
+                            "description": "Only assets in this album",
+                        }
+                    ],
                 ),
                 req("Asset metadata", "GET", "/api/v1/assets/{{assetId}}"),
                 req("Thumb", "GET", "/api/v1/assets/{{assetId}}/thumb", description="JPEG. May generate on first hit."),

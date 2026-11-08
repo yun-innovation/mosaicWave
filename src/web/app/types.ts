@@ -14,6 +14,10 @@ export type AssetList = {
   next_cursor: string | null;
 };
 
+/** `GET /api/v1/assets/months`: photos per UTC month, newest first, for the timeline scrubber. */
+export type MonthCount = { month: string; count: number };
+export type MonthsList = { months: MonthCount[]; undated: number };
+
 export type LibraryAlbum = {
   id: string;
   name: string;

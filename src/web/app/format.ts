@@ -127,6 +127,23 @@ export function formatMonth(key: string): string {
   );
 }
 
+/**
+ * The instant the month after `month` ("2026-03") begins in the display zone, as ISO 8601 UTC.
+ * `GET /assets?before=` with it starts the timeline at the newest photo of `month`.
+ */
+export function monthEndInstant(month: string): string {
+  const [year, number] = month.split("-").map(Number);
+  const utc = Date.UTC(year, number, 1); // `number` is 1-based, so this is the first of the next month
+  let offset = offsetMinutes(zone, new Date(utc)) ?? 0;
+  offset = offsetMinutes(zone, new Date(utc - offset * 60000)) ?? offset; // a second look settles a switch of summer time
+  return new Date(utc - offset * 60000).toISOString();
+}
+
+/** "March 2026" for a month key ("2026-03"). */
+export function formatMonthKey(month: string): string {
+  return formatMonth(`${month}-01`);
+}
+
 export function formatDate(value: string | null): string | null {
   const key = dayKey(value);
   return key ? formatDay(key) : null;

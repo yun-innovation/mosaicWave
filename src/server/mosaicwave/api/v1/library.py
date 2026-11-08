@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import datetime
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile
@@ -40,7 +41,7 @@ from mosaicwave.library.albums import (
     remove_asset,
 )
 from mosaicwave.library.media import is_media
-from mosaicwave.library.query import AssetListOut, AssetOut, asset_to_out, list_assets
+from mosaicwave.library.query import AssetListOut, AssetOut, MonthsOut, asset_to_out, list_assets, month_counts
 from mosaicwave.library.sync import SyncChangesOut, pull_changes
 from mosaicwave.library.serve import original_file_response
 from mosaicwave.library.ownership import ensure_user_library
@@ -420,6 +421,7 @@ def get_assets(
     limit: int = Query(50, ge=1, le=200),
     cursor: str | None = None,
     album_id: str | None = None,
+    before: datetime | None = Query(None, description="Start at photos taken before this instant (ISO 8601); ignored with a cursor"),
 ) -> AssetListOut:
     _own_library(request, session, user)
     ids = _readable_ids(session, user)
@@ -435,9 +437,28 @@ def get_assets(
             cursor=cursor,
             source_ids=ids,
             album_id=album_id,
+            before=before,
         )
     except (ValueError, OSError) as exc:
         raise ApiError(400, "invalid_cursor", f"invalid cursor: {exc}", {"message": str(exc)}) from exc
+
+
+@router.get("/assets/months", response_model=MonthsOut)
+def get_asset_months(
+    request: Request,
+    session: Session = Depends(get_library_session),
+    user: User = Depends(require_user),
+    album_id: str | None = None,
+) -> MonthsOut:
+    """Photos per UTC month, newest first, for the timeline scrubber (whole library or one album)."""
+    _own_library(request, session, user)
+    ids = _readable_ids(session, user)
+    if album_id:
+        try:
+            get_visible_album(session, album_id=album_id, source_ids=ids)
+        except FileNotFoundError as exc:
+            raise _not_found(exc) from exc
+    return month_counts(session, source_ids=ids, album_id=album_id)
 
 
 def _album_out(session: Session, row) -> AlbumOut:

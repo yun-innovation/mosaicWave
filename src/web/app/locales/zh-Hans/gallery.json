@@ -1,6 +1,11 @@
 {
   "deleteAlbum": "删除相册",
   "generateThumbs": "生成缩略图",
+  "scrubber": {
+    "label": "跳到日期",
+    "from": "显示 {{when}} 及更早的照片",
+    "latest": "回到最新"
+  },
   "album": {
     "back": "所有相册",
     "notFound": "找不到这个相册",

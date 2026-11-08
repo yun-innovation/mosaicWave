@@ -1,6 +1,11 @@
 {
   "deleteAlbum": "Delete album",
   "generateThumbs": "Generate thumbs",
+  "scrubber": {
+    "label": "Jump to a date",
+    "from": "Showing {{when}} and older",
+    "latest": "Back to newest"
+  },
   "album": {
     "back": "All albums",
     "notFound": "Album not found",
