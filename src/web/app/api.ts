@@ -7,6 +7,10 @@ export type Me = {
   role: string;
   provider: string;
   locale: string | null;
+  /** IANA zone times are shown in; null = UTC, the default. */
+  time_zone?: string | null;
+  /** Follow the zone's summer time; false (default) = its standard time all year. */
+  use_dst?: boolean;
 };
 
 export type AuthStatus = {
@@ -159,6 +163,47 @@ export function warningText(w: DumpWarning): string {
       ? translateCode("no_takeout_zips_hint_names", params)
       : null;
   return hint ? `${text} ${hint}` : text;
+}
+
+let timeZoneList: Promise<string[] | null> | null = null;
+
+/**
+ * `GET /api/v1/time-zones`: the zones the server accepts (from its own tzdata, `UTC` first), so the
+ * picker and the server never disagree. null when the server is older and has no such call, or the
+ * user is not signed in yet: the caller falls back to the browser's list. Asked again after a
+ * failure, never after success.
+ */
+export function fetchTimeZones(): Promise<string[] | null> {
+  const asked = (timeZoneList ??= apiFetch("/api/v1/time-zones")
+    .then(async (res) => {
+      if (!res.ok) return null;
+      const body = (await res.json()) as { zones?: unknown };
+      return Array.isArray(body.zones) ? body.zones.map(String) : null;
+    })
+    .catch(() => null));
+  void asked.then((zones) => {
+    if (zones === null && timeZoneList === asked) timeZoneList = null;
+  });
+  return asked;
+}
+export async function saveUseDst(useDst: boolean): Promise<Me> {
+  const res = await apiFetch("/api/v1/me", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ use_dst: useDst }),
+  });
+  if (!res.ok) throw new Error(await readDetail(res));
+  return (await res.json()) as Me;
+}
+
+export async function saveTimeZone(timeZone: string | null): Promise<Me> {
+  const res = await apiFetch("/api/v1/me", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ time_zone: timeZone }),
+  });
+  if (!res.ok) throw new Error(await readDetail(res));
+  return (await res.json()) as Me;
 }
 
 export async function saveLocale(locale: string | null): Promise<Me> {

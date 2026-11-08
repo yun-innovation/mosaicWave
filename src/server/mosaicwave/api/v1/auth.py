@@ -31,6 +31,7 @@ from mosaicwave.db import get_session
 from mosaicwave.i18n import LOCALES, normalize_locale
 from mosaicwave.library.ownership import ensure_user_library
 from mosaicwave.models import LocalCredential, User, utcnow
+from mosaicwave.timezone import canonical_zone, tzdata_version, zone_choices, zone_data_available
 
 router = APIRouter()
 
@@ -45,10 +46,14 @@ class MeOut(BaseModel):
     role: str
     provider: str
     locale: str | None = None
+    time_zone: str | None = None  # IANA name; null = UTC, the default
+    use_dst: bool = False  # follow the zone's summer time; false = its standard time all year
 
 
 class MePatchIn(BaseModel):
     locale: str | None = None
+    time_zone: str | None = None
+    use_dst: bool | None = None  # null is ignored: it is a switch, not a choice that can be cleared
 
 
 class AuthStatusOut(BaseModel):
@@ -120,6 +125,8 @@ def _me_out(request: Request, user: User) -> MeOut:
         role=user.role,
         provider=user.provider,
         locale=user.locale,
+        time_zone=user.time_zone,
+        use_dst=bool(user.use_dst),
     )
 
 
@@ -260,6 +267,20 @@ def get_me(
     return _me_out(request, user)
 
 
+class TimeZonesOut(BaseModel):
+    version: str | None = None  # the IANA tzdata release the names come from, e.g. 2026f
+    zones: list[str]  # "UTC" first, then every real place A to Z; the web offers exactly these
+
+@router.get("/time-zones", response_model=TimeZonesOut)
+def get_time_zones(_user: User = Depends(require_user)) -> TimeZonesOut:
+    """The zones a user can pick for ``PATCH /me``, from the server's own ``tzdata``.
+
+    One list for every client, so the web and the server never disagree about a name. Legacy aliases
+    (``US/Pacific``) are not listed but are still accepted by ``PATCH /me``.
+    """
+    return TimeZonesOut(version=tzdata_version(), zones=zone_choices())
+
+
 @router.patch("/me", response_model=MeOut)
 def patch_me(
     body: MePatchIn,
@@ -267,6 +288,25 @@ def patch_me(
     session: Session = Depends(get_session),
     user: User = Depends(require_user),
 ) -> MeOut:
+    zone: str | None = None
+    if "time_zone" in body.model_fields_set and body.time_zone is not None:
+        # Checked first, so a bad zone saves nothing, not even the locale sent with it.
+        if not zone_data_available():
+            # Not the user's mistake: say so, instead of calling every real zone unknown.
+            raise ApiError(
+                503,
+                "time_zone_data_missing",
+                "this server has no time zone database; install the tzdata package "
+                "(pip install tzdata, or pip install -e .[dev] again) and restart",
+            )
+        zone = canonical_zone(body.time_zone)
+        if zone is None:
+            raise ApiError(
+                400,
+                "invalid_time_zone",
+                f"unknown time zone: {body.time_zone}",
+                {"time_zone": body.time_zone},
+            )
     if "locale" in body.model_fields_set:
         # A wide tag (zh-TW, en-GB) is saved as the supported code it maps to; only the
         # canonical code is stored or returned. An unsupported target is refused, and nothing
@@ -287,6 +327,14 @@ def patch_me(
         request.state.user_locale = target
         if target is not None:
             request.state.language = target  # this answer already comes in the new language
+    if "time_zone" in body.model_fields_set:
+        user.time_zone = zone  # None clears it: UTC
+        user.updated_at = utcnow()
+        session.flush()
+    if body.use_dst is not None:
+        user.use_dst = body.use_dst
+        user.updated_at = utcnow()
+        session.flush()
     return _me_out(request, user)
 
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint, text
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint, text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, validates
 
 
@@ -28,6 +28,12 @@ class User(Base):
     display_name: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     role: Mapped[str] = mapped_column(String(32), nullable=False, default="member")
     locale: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    # IANA zone name the user wants times shown in; NULL = UTC, the default.
+    # Everything stored is UTC; the zone only matters when a time is presented to a person.
+    time_zone: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # Summer time (daylight saving) for that zone. False (the default) shows the zone's standard
+    # time all year; True follows the zone's own rules. Only meaningful for a zone that has them.
+    use_dst: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("0"))
     rev: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

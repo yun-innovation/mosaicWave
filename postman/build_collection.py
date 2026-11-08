@@ -323,6 +323,38 @@ OpenAPI at `{{baseUrl}}/docs` stays the living spec; this collection is a snapsh
                     headers=[{"key": "X-MosaicWave-Language", "value": "zh-Hant"}],
                 ),
                 req(
+                    "Time zone list",
+                    "GET",
+                    "/api/v1/time-zones",
+                    description=(
+                        "The IANA zone names a user can pick: {version, zones}. 'UTC' first, then every real place "
+                        "A to Z, from the server's own tzdata (never the OS), so every client sees the same list. "
+                        "Legacy aliases such as US/Pacific are not listed but PATCH /me still accepts them."
+                    ),
+                ),
+                req(
+                    "Set time zone",
+                    "PATCH",
+                    "/api/v1/me",
+                    description=(
+                        "time_zone: an IANA name such as Asia/Taipei (any case; saved as the database spells it), or "
+                        "null for the default, UTC. Unknown is 400 invalid_time_zone and nothing is "
+                        "saved. Only the display changes: every timestamp the API sends stays UTC."
+                    ),
+                    body="{\n  \"time_zone\": \"Asia/Taipei\"\n}",
+                ),
+                req(
+                    "Set summer time",
+                    "PATCH",
+                    "/api/v1/me",
+                    description=(
+                        "use_dst: true follows the saved zone's summer time; false (the default) holds it at its "
+                        "standard time all year. null is ignored. Stored by the server, applied by the client; "
+                        "every timestamp the API sends stays UTC."
+                    ),
+                    body="{\n  \"use_dst\": true\n}",
+                ),
+                req(
                     "Set language",
                     "PATCH",
                     "/api/v1/me",

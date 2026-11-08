@@ -8,6 +8,12 @@
     "auto": "自动（跟随浏览器）",
     "saveFailed": "无法保存语言：{{detail}}"
   },
+  "timeZone": {
+    "label": "时区",
+    "help": "日期和时间会按这个时区显示（未选择时为 UTC）。所有数据都以 UTC 存储。保存在你的账号中。",
+    "dst": "此时区使用夏令时（日光节约时间）。关闭则全年使用标准时间。",
+    "saveFailed": "无法保存时区：{{detail}}"
+  },
   "library": {
     "summary_other": "你的照片库 · {{count, number}} 个项目"
   },

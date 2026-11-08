@@ -82,6 +82,18 @@ def _job_text_codes(con: sqlite3.Connection) -> None:
                 con.execute(f'ALTER TABLE "{table}" ADD COLUMN {name} {kind}')
 
 
+def _user_time_zone(con: sqlite3.Connection) -> None:
+    """Step 5: the zone a user wants times shown in, an IANA name or NULL for UTC (milestone 8)."""
+    if "time_zone" not in column_names(con, "user"):
+        con.execute('ALTER TABLE "user" ADD COLUMN time_zone VARCHAR(64)')
+
+
+def _user_use_dst(con: sqlite3.Connection) -> None:
+    """Step 6: whether a user's time zone follows summer time; 0 = standard time all year (milestone 8)."""
+    if "use_dst" not in column_names(con, "user"):
+        con.execute('ALTER TABLE "user" ADD COLUMN use_dst BOOLEAN NOT NULL DEFAULT 0')
+
+
 def _drop_moved_tables(con: sqlite3.Connection) -> None:
     """Step 3 only runs after schema/split.py has copied every library out (see split.py)."""
     for table in ("album_asset", "album", "asset", "source_grant", "source"):
@@ -99,4 +111,6 @@ STEPS: list[Step] = [
         foreign_keys_off=True,
     ),
     Step(4, "job.error_code/error_params/current_code/current_params, job_event.code/params (milestone 8)", _job_text_codes),
+    Step(5, "user.time_zone (milestone 8)", _user_time_zone),
+    Step(6, "user.use_dst (milestone 8)", _user_use_dst),
 ]

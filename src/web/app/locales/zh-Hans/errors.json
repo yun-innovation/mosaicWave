@@ -14,6 +14,8 @@
   "user_not_found": "找不到用户。",
   "username_taken": "该用户名已存在。",
   "invalid_locale": "不支持的语言：{{locale}}",
+  "invalid_time_zone": "未知的时区：{{time_zone}}",
+  "time_zone_data_missing": "此服务器没有时区数据。请管理员安装 tzdata 包后重新启动。",
 
   "data_dir_rejected": "无法使用该文件夹：{{message}}",
   "data_dir_env_locked": "已设置 MOSAICWAVE_DATA_DIR，因此无法在“服务器”页更改文件夹。",
