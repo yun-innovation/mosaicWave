@@ -102,7 +102,7 @@ erDiagram
 | `display_name` | TEXT | |
 | `role` | TEXT | `admin` \| `member` (default `member`) |
 | `locale` | VARCHAR(16) NULL | `en` \| `zh-Hant` \| `zh-Hans`; NULL = follow the browser ([i18n.md](i18n.md)) |
-| `time_zone` | VARCHAR(64) NULL | IANA name times are shown in (`Asia/Taipei`); NULL = the server's zone. Stored times stay UTC ([i18n.md](i18n.md#api-language-milestone-8)) |
+| `time_zone` | VARCHAR(64) NULL | IANA name times are shown in (`Asia/Taipei`); NULL = UTC, the default. Stored times stay UTC ([i18n.md](i18n.md#api-language-milestone-8)) |
 | `rev`, `updated_at`, `deleted_at` | | Sync fields |
 
 Auth is enforced from Phase 5. DDL exists since Phase 2.

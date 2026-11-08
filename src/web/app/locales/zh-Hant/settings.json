@@ -10,9 +10,7 @@
   },
   "timeZone": {
     "label": "時區",
-    "help": "日期與時間會以這個時區顯示。伺服器預設是 mosaicWave 所在主機的時區。所有資料都以 UTC 儲存。儲存在你的帳號中。",
-    "default": "伺服器預設 · {{zone}}",
-    "defaultUnknown": "伺服器預設",
+    "help": "日期與時間會以這個時區顯示（未選擇時為 UTC）。所有資料都以 UTC 儲存。儲存在你的帳號中。",
     "saveFailed": "無法儲存時區：{{detail}}"
   },
   "library": {

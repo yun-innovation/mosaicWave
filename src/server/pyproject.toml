@@ -13,7 +13,6 @@ dependencies = [
   "python-multipart>=0.0.9",
   "imageio-ffmpeg>=0.5",
   "tzdata>=2024.1",  # IANA zones for the display time zone; Windows has no system copy
-  "tzlocal>=5.0",  # the host's own zone as an IANA name: the default display zone
 ]
 
 [project.optional-dependencies]

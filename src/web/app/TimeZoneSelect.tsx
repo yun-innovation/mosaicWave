@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { fetchTimeZones, Me, saveTimeZone, TimeZoneInfo } from "./api";
+import { fetchTimeZones, Me, saveTimeZone } from "./api";
 import { applyTimeZone, timeZoneNames } from "./format";
 
 type Props = {
@@ -13,34 +13,32 @@ type Props = {
 };
 
 /**
- * The server's default zone or an IANA zone from the server's list; shows times in it at once and
- * saves `user.time_zone` (null = the server's zone).
+ * An IANA zone from the server's list (UTC until one is chosen); shows times in it at once and
+ * saves `user.time_zone` (null, the default, is UTC).
  */
 export function TimeZoneSelect({ id, me, onMe }: Props) {
   const { t } = useTranslation(["settings", "common"]);
   const [error, setError] = useState<string | null>(null);
   const saved = me.time_zone ?? null;
 
-  // The server's list and its own zone are what count; the browser's list is only for a server
-  // that has none (older), and then "default" falls back to this device's zone.
-  const [info, setInfo] = useState<TimeZoneInfo | null>(null);
+  // The server's list is what counts; the browser's is only for a server that has none (older).
+  const [served, setServed] = useState<string[] | null>(null);
   useEffect(() => {
     let live = true;
-    void fetchTimeZones().then((got) => live && setInfo(got));
+    void fetchTimeZones().then((zones) => live && setServed(zones));
     return () => {
       live = false;
     };
   }, []);
   const names = useMemo(() => {
-    if (!info) return timeZoneNames(saved);
+    if (!served) return timeZoneNames(saved);
     // A saved legacy alias (US/Pacific) is still valid, so it stays selectable.
-    return saved && !info.zones.includes(saved) ? [saved, ...info.zones] : info.zones;
-  }, [info, saved]);
+    return saved && !served.includes(saved) ? [saved, ...served] : served;
+  }, [served, saved]);
 
-  async function change(value: string) {
-    const choice = value === "default" ? null : value;
+  async function change(choice: string) {
     setError(null);
-    applyTimeZone(choice ?? info?.serverZone);
+    applyTimeZone(choice);
     onMe({ ...me, time_zone: choice });
     try {
       onMe(await saveTimeZone(choice));
@@ -50,14 +48,9 @@ export function TimeZoneSelect({ id, me, onMe }: Props) {
     }
   }
 
-  const defaultLabel = info
-    ? t("settings:timeZone.default", { zone: info.serverZone })
-    : t("settings:timeZone.defaultUnknown");
-
   return (
     <>
-      <select id={id} value={saved ?? "default"} onChange={(e) => void change(e.target.value)}>
-        <option value="default">{defaultLabel}</option>
+      <select id={id} value={saved ?? "UTC"} onChange={(e) => void change(e.target.value)}>
         {names.map((name) => (
           <option key={name} value={name}>
             {name}

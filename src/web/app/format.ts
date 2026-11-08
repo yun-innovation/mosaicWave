@@ -1,28 +1,26 @@
 import i18n, { activeLocale } from "./i18n";
 
-// The zone dates and times are shown in: the user's own, else the server's (set by page.tsx).
-// undefined = neither is known yet: the device's own zone.
+// The zone dates and times are shown in: the user's own, else UTC (the default).
 // Every stored time is UTC (doc/i18n.md § Time zone); the zone only matters here, when a time is shown.
-let zone: string | undefined;
+let zone = "UTC";
 
-function usable(name: string | null | undefined): string | undefined {
-  if (!name) return undefined;
+function usable(name: string | null | undefined): string {
+  if (!name) return "UTC";
   try {
     new Intl.DateTimeFormat("en", { timeZone: name });
     return name;
   } catch {
-    return undefined; // a name this browser does not know: fall back to automatic
+    return "UTC"; // a name this browser does not know: fall back to the default
   }
 }
 
-/** The zone times are shown in, or undefined for automatic. */
-export function activeTimeZone(): string | undefined {
+/** The zone times are shown in. */
+export function activeTimeZone(): string {
   return zone;
 }
 
 /**
- * Show times in `name` (an IANA name). Null or empty leaves the device's own zone, which is only
- * what is left when the server could not name a default. Components that format during render
+ * Show times in `name` (an IANA name; null, empty or unknown = UTC). Components that format during render
  * re-render on the language event, so the screen changes at once.
  */
 export function applyTimeZone(name: string | null | undefined): void {

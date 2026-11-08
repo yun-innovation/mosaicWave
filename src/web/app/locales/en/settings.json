@@ -10,9 +10,7 @@
   },
   "timeZone": {
     "label": "Time zone",
-    "help": "Dates and times are shown in this zone. Server default is the zone of the machine mosaicWave runs on. Everything is stored in UTC. Saved to your account.",
-    "default": "Server default · {{zone}}",
-    "defaultUnknown": "Server default",
+    "help": "Dates and times are shown in this zone (UTC until you choose one). Everything is stored in UTC. Saved to your account.",
     "saveFailed": "Could not save the time zone: {{detail}}"
   },
   "library": {
