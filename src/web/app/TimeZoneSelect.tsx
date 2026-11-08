@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { Me, saveTimeZone } from "./api";
+import { fetchTimeZones, Me, saveTimeZone } from "./api";
 import { applyTimeZone, deviceTimeZone, timeZoneNames } from "./format";
 
 type Props = {
@@ -17,7 +17,20 @@ export function TimeZoneSelect({ id, me, onMe }: Props) {
   const { t } = useTranslation(["settings", "common"]);
   const [error, setError] = useState<string | null>(null);
   const saved = me.time_zone ?? null;
-  const names = useMemo(() => timeZoneNames(saved), [saved]);
+  // The server's list is the one that counts; the browser's is only for a server that has none.
+  const [served, setServed] = useState<string[] | null>(null);
+  useEffect(() => {
+    let live = true;
+    void fetchTimeZones().then((zones) => live && setServed(zones));
+    return () => {
+      live = false;
+    };
+  }, []);
+  const names = useMemo(() => {
+    if (!served) return timeZoneNames(saved);
+    // A saved legacy alias (US/Pacific) is still valid, so it stays selectable.
+    return saved && !served.includes(saved) ? [saved, ...served] : served;
+  }, [served, saved]);
 
   async function change(value: string) {
     const choice = value === "auto" ? null : value;

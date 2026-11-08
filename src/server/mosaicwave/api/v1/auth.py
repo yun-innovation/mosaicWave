@@ -31,7 +31,7 @@ from mosaicwave.db import get_session
 from mosaicwave.i18n import LOCALES, normalize_locale
 from mosaicwave.library.ownership import ensure_user_library
 from mosaicwave.models import LocalCredential, User, utcnow
-from mosaicwave.timezone import canonical_zone, zone_data_available
+from mosaicwave.timezone import canonical_zone, tzdata_version, zone_choices, zone_data_available
 
 router = APIRouter()
 
@@ -262,6 +262,21 @@ def get_me(
     user: User = Depends(require_user),
 ) -> MeOut:
     return _me_out(request, user)
+
+
+class TimeZonesOut(BaseModel):
+    version: str | None = None  # the IANA tzdata release the names come from, e.g. 2026f
+    zones: list[str]  # "UTC" first, then every real place A to Z; the web offers exactly these
+
+
+@router.get("/time-zones", response_model=TimeZonesOut)
+def get_time_zones(_user: User = Depends(require_user)) -> TimeZonesOut:
+    """The zones a user can pick for ``PATCH /me``, from the server's own ``tzdata``.
+
+    One list for every client, so the web and the server never disagree about a name. Legacy aliases
+    (``US/Pacific``) are not listed but are still accepted by ``PATCH /me``.
+    """
+    return TimeZonesOut(version=tzdata_version(), zones=zone_choices())
 
 
 @router.patch("/me", response_model=MeOut)

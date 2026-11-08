@@ -273,6 +273,15 @@
           }
         },
         {
+          "name": "Time zone list",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/time-zones",
+            "description": "The IANA zone names a user can pick: {version, zones}. 'UTC' first, then every real place A to Z, from the server's own tzdata (never the OS), so every client sees the same list. Legacy aliases such as US/Pacific are not listed but PATCH /me still accepts them."
+          }
+        },
+        {
           "name": "Set time zone",
           "request": {
             "method": "PATCH",

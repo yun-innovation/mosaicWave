@@ -163,6 +163,27 @@ export function warningText(w: DumpWarning): string {
   return hint ? `${text} ${hint}` : text;
 }
 
+let timeZoneList: Promise<string[] | null> | null = null;
+
+/**
+ * The zones the server accepts (`GET /api/v1/time-zones`, from its own tzdata), so the picker and the
+ * server never disagree. null when the server is older and has no such call: the caller falls back
+ * to the browser's list. Asked once per page load.
+ */
+export function fetchTimeZones(): Promise<string[] | null> {
+  timeZoneList ??= apiFetch("/api/v1/time-zones")
+    .then(async (res) => {
+      if (!res.ok) return null;
+      const body = (await res.json()) as { zones?: unknown };
+      return Array.isArray(body.zones) ? body.zones.map(String) : null;
+    })
+    .catch(() => null);
+  void timeZoneList.then((zones) => {
+    if (zones === null) timeZoneList = null; // try again next time rather than remember a failure
+  });
+  return timeZoneList;
+}
+
 export async function saveTimeZone(timeZone: string | null): Promise<Me> {
   const res = await apiFetch("/api/v1/me", {
     method: "PATCH",

@@ -136,6 +136,7 @@ Illustrative v1 surface (names can change; behavior should not):
 | GET | `/api/v1/auth/status` | `platform`, `needs_setup`, current `me` if cookied |
 | POST | `/api/v1/auth/logout` | Clear session cookie |
 | GET | `/api/v1/me` | Current user, role, private library id, `locale` |
+| GET | `/api/v1/time-zones` | The IANA zone names a user can pick (`{version, zones}`), from the server's own `tzdata` ([i18n.md](i18n.md#api-language-milestone-8)) |
 | PATCH | `/api/v1/me` | Set `locale` (`en`, `zh-Hant`, `zh-Hans`, or `null` for automatic; a wider tag such as `zh-TW` is saved as the code it maps to, an unsupported one is `400 invalid_locale`); answers in the new language. Also `time_zone` (an IANA name such as `Asia/Taipei`, or `null` for automatic; unknown is `400 invalid_time_zone`); [i18n.md](i18n.md) |
 | GET | `/api/v1/users` | List app users (any signed-in user; for share picker). Create members is still **admin** `PUT` |
 | PUT | `/api/v1/users` | Create/update local user or role (**admin**) |

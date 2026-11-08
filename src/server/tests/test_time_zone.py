@@ -29,6 +29,40 @@ def test_zone_names_are_checked_against_the_iana_database() -> None:
         assert canonical_zone(bad) is None, bad
 
 
+def test_zone_data_comes_from_tzdata_only() -> None:
+    import zoneinfo
+
+    # Nothing on the operating system is searched, so Windows, macOS, Linux and a NAS agree.
+    assert zoneinfo.TZPATH == ()
+    assert zoneinfo.ZoneInfo("Asia/Taipei").key == "Asia/Taipei"
+
+
+def test_time_zone_list_is_one_list_for_every_client(tmp_path: Path) -> None:
+    client = TestClient(create_app(_settings(tmp_path)))
+    assert client.get("/api/v1/time-zones").status_code == 401  # the list is for signed-in users
+
+    client = authed_client(_settings(tmp_path / "again"))
+    res = client.get("/api/v1/time-zones")
+    assert res.status_code == 200, res.text
+    body = res.json()
+    zones = body["zones"]
+    assert body["version"]
+    assert zones[0] == "UTC"
+    assert zones[1:] == sorted(zones[1:])
+    assert {"Asia/Taipei", "Europe/Amsterdam", "America/New_York"} <= set(zones)
+    # Legacy aliases are not offered...
+    assert not {"US/Pacific", "Etc/GMT+8", "EST5EDT", "GB"} & set(zones)
+    # ...but every name that is offered is one the server accepts, as spelled.
+    assert all(canonical_zone(name) == name for name in zones)
+
+
+def test_legacy_alias_is_still_accepted(tmp_path: Path) -> None:
+    client = authed_client(_settings(tmp_path))
+    res = client.patch("/api/v1/me", json={"time_zone": "US/Pacific"})
+    assert res.status_code == 200
+    assert res.json()["time_zone"] == "US/Pacific"
+
+
 def test_time_zone_defaults_to_automatic(tmp_path: Path) -> None:
     client = authed_client(_settings(tmp_path))
     assert client.get("/api/v1/me").json()["time_zone"] is None
