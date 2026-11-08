@@ -292,7 +292,7 @@ Thumbnails (and later optional transcodes) live in the **BlobStore**, keyed by a
 
 ## Mobile client
 
-Out of the first QPKG milestones. When started:
+Out of the first QPKG milestones; planned as **milestone 14** ([roadmap.md](roadmap.md)). The iOS and Android apps live in a **separate repository** (`mosaicWave-mobile`); this repo owns the server, the API contract (OpenAPI, Postman) and its compatibility. When started:
 
 - Same `/api/v1` and auth model
 - Local **replica** of metadata + cached thumbs for offline ([schema.md](schema.md)); server SQLite remains canonical
