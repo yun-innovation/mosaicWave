@@ -8,9 +8,10 @@ import os
 import shutil
 import subprocess
 import tempfile
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from io import BytesIO
 from pathlib import Path, PurePosixPath
+from typing import Any
 
 from mosaicwave.storage.filestore import FileStore
 
@@ -260,7 +261,7 @@ def taken_at_from_exif(store: FileStore, rel: str) -> datetime | None:
     if PurePosixPath(rel).suffix.lower() not in IMAGE_EXT:
         return None
     try:
-        from PIL import Image, ExifTags
+        from PIL import Image
         try:
             from pillow_heif import register_heif_opener
 
@@ -273,16 +274,64 @@ def taken_at_from_exif(store: FileStore, rel: str) -> datetime | None:
         with store.open_read(rel) as handle:
             data = handle.read()
         image = Image.open(BytesIO(data))
-        exif = image.getexif()
-        if not exif:
-            return None
-        tags = {ExifTags.TAGS.get(k, k): v for k, v in exif.items()}
-        raw = tags.get("DateTimeOriginal") or tags.get("DateTime")
-        if not isinstance(raw, str):
-            return None
-        return datetime.strptime(raw, "%Y:%m:%d %H:%M:%S").replace(tzinfo=timezone.utc)
+        return taken_at_from_exif_tags(image.getexif())
     except Exception:
         return None
+
+
+# EXIF tag numbers. The capture time lives in the Exif sub-IFD (a real camera file has no
+# DateTimeOriginal in the top-level table); its zone, when the camera knows one, is a separate tag.
+_EXIF_IFD = 0x8769
+_DATE_TIME = 0x0132  # top level
+_DATE_TIME_ORIGINAL = 0x9003
+_DATE_TIME_DIGITIZED = 0x9004
+_OFFSET_TIME = 0x9010  # goes with DateTime
+_OFFSET_TIME_ORIGINAL = 0x9011  # goes with DateTimeOriginal
+_OFFSET_TIME_DIGITIZED = 0x9012  # goes with DateTimeDigitized
+_EXIF_OFFSET = re.compile(r"^([+-])(\d\d):(\d\d)$")
+
+
+def _exif_text(value: object) -> str | None:
+    if isinstance(value, bytes):
+        value = value.decode("ascii", "ignore")
+    return value.strip("\x00 ") if isinstance(value, str) and value.strip("\x00 ") else None
+
+
+def taken_at_from_exif_tags(exif: Any) -> datetime | None:
+    """The instant an EXIF block says the photo was taken, in UTC.
+
+    EXIF stores a wall-clock time with no zone. When the camera also recorded its UTC offset
+    (`OffsetTimeOriginal` and friends, written by most phones since 2016) the instant is exact. When it
+    did not, the wall clock is read as if it were UTC: the time shown is the one on the camera, and
+    the photo can sort a few hours away from one that has a true instant (doc/i18n.md § Time zone).
+    """
+    try:
+        sub = exif.get_ifd(_EXIF_IFD)
+    except Exception:
+        sub = {}
+    candidates = (
+        (sub.get(_DATE_TIME_ORIGINAL) or exif.get(_DATE_TIME_ORIGINAL), sub.get(_OFFSET_TIME_ORIGINAL)),
+        (sub.get(_DATE_TIME_DIGITIZED) or exif.get(_DATE_TIME_DIGITIZED), sub.get(_OFFSET_TIME_DIGITIZED)),
+        (exif.get(_DATE_TIME), sub.get(_OFFSET_TIME)),
+    )
+    for raw, offset in candidates:
+        text = _exif_text(raw)
+        if text is None:
+            continue
+        try:
+            wall = datetime.strptime(text, "%Y:%m:%d %H:%M:%S")
+        except ValueError:
+            continue  # "0000:00:00 00:00:00" and the like: try the next tag
+        zone = _exif_text(offset)
+        match = _EXIF_OFFSET.match(zone) if zone else None
+        if match:
+            minutes = int(match.group(2)) * 60 + int(match.group(3))
+            if match.group(1) == "-":
+                minutes = -minutes
+            if abs(minutes) <= 14 * 60:
+                return wall.replace(tzinfo=timezone(timedelta(minutes=minutes))).astimezone(timezone.utc)
+        return wall.replace(tzinfo=timezone.utc)
+    return None
 
 
 def extra_from_sidecar(sidecar: dict) -> dict:

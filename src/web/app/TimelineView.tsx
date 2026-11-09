@@ -1,13 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { apiFetch, readDetail } from "./api";
 import { AssetViewer } from "./AssetViewer";
-import { dayKey, formatDay, formatMonth } from "./format";
+import { chosenTimeZone, dayKey, formatDay, formatMonth, formatMonthKey, monthEndInstant } from "./format";
 import i18n from "./i18n";
-import { Asset, AssetList, ignoreAbort, isAbortError, LibraryAlbum, thumbSrc } from "./types";
+import { TimelineScrubber, UNDATED } from "./TimelineScrubber";
+import { Asset, AssetList, ignoreAbort, isAbortError, LibraryAlbum, MonthsList, thumbSrc } from "./types";
+
+// Before every real date: a list started here holds only the photos with no date.
+const BEFORE_ALL = "0001-01-01T00:00:00Z";
 
 const UNKNOWN_DAY = "unknown";
 
@@ -48,6 +52,15 @@ export function TimelineView({ albumId, albums, libraryRev, onAlbumsChanged, onL
   const [error, setError] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [selected, setSelected] = useState<Asset | null>(null);
+  // Set by the scrubber: the list starts at this month instead of the newest photo.
+  const [anchor, setAnchor] = useState<{ month: string; before: string } | null>(null);
+  const [months, setMonths] = useState<MonthsList | null>(null);
+  const [activeMonth, setActiveMonth] = useState<string | null>(null);
+  const top = useRef<HTMLDivElement>(null);
+  const before = anchor?.before ?? null;
+  const zone = chosenTimeZone(); // changes re-render this view: applyTimeZone emits the language event
+
+  useEffect(() => setAnchor(null), [albumId]);
 
   const load = useCallback(
     async (signal?: AbortSignal, cursor?: string | null) => {
@@ -56,6 +69,7 @@ export function TimelineView({ albumId, albums, libraryRev, onAlbumsChanged, onL
         const qs = new URLSearchParams({ limit: "50" });
         if (cursor) qs.set("cursor", cursor);
         if (albumId) qs.set("album_id", albumId);
+        if (before && !cursor) qs.set("before", before);
         const res = await apiFetch(`/api/v1/assets?${qs}`, { signal });
         if (!res.ok) {
           if (!cursor) setAssets(null);
@@ -71,8 +85,49 @@ export function TimelineView({ albumId, albums, libraryRev, onAlbumsChanged, onL
         setError(err instanceof Error ? err.message : i18n.t("common:networkError"));
       }
     },
-    [albumId],
+    [albumId, before],
   );
+
+  useEffect(() => {
+    const ctrl = new AbortController();
+    // Group in the zone this page shows days in. Sent explicitly, so a zone just picked in Settings
+    // counts before its save reaches the account.
+    const qs = new URLSearchParams({ time_zone: zone.zone, use_dst: String(zone.dst) });
+    if (albumId) qs.set("album_id", albumId);
+    apiFetch(`/api/v1/assets/months?${qs}`, { signal: ctrl.signal })
+      .then(async (res) => setMonths(res.ok ? ((await res.json()) as MonthsList) : null))
+      .catch(() => setMonths(null)); // no scrubber is better than an error: the list still works
+    return () => ctrl.abort();
+  }, [albumId, libraryRev, zone.zone, zone.dst]);
+
+  // Which month the top of the page is in, so the scrubber can show where you are.
+  const shown = assets ? `${assets[0]?.id ?? ""}:${assets.length}` : "";
+  useEffect(() => {
+    if (!shown || typeof IntersectionObserver === "undefined") return;
+    const blocks = [...document.querySelectorAll<HTMLElement>(".day-block[data-day]")];
+    const inView = new Set<HTMLElement>();
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) inView.add(entry.target as HTMLElement);
+          else inView.delete(entry.target as HTMLElement);
+        }
+        const first = blocks.find((block) => inView.has(block));
+        const day = first?.dataset.day;
+        if (day) setActiveMonth(day === UNKNOWN_DAY ? UNDATED : day.slice(0, 7));
+      },
+      { rootMargin: "-15% 0px -80% 0px" },
+    );
+    blocks.forEach((block) => observer.observe(block));
+    return () => observer.disconnect();
+  }, [shown]);
+
+  function jumpTo(key: string) {
+    const next = key === UNDATED ? { month: key, before: BEFORE_ALL } : { month: key, before: monthEndInstant(key) };
+    setAnchor(next);
+    setActiveMonth(key);
+    top.current?.scrollIntoView({ block: "start" });
+  }
 
   useEffect(() => {
     const ctrl = new AbortController();
@@ -92,7 +147,18 @@ export function TimelineView({ albumId, albums, libraryRev, onAlbumsChanged, onL
   const closeViewer = useCallback(() => setSelected(null), []);
 
   return (
-    <>
+    <div ref={top} className={months ? "timeline with-scrubber" : "timeline"}>
+      {months && <TimelineScrubber list={months} active={activeMonth} onJump={jumpTo} />}
+      {anchor && (
+        <p className="timeline-anchor">
+          {t("gallery:scrubber.from", {
+            when: anchor.month === UNDATED ? t("common:unknownDate") : formatMonthKey(anchor.month),
+          })}{" "}
+          <button type="button" className="link-button" onClick={() => setAnchor(null)}>
+            {t("gallery:scrubber.latest")}
+          </button>
+        </p>
+      )}
       {error && <p className="status fail">{error}</p>}
       {!error && assets === null && <p className="detail">{t("gallery:loadingLibrary")}</p>}
       {!error && assets && assets.length === 0 && (
@@ -101,7 +167,7 @@ export function TimelineView({ albumId, albums, libraryRev, onAlbumsChanged, onL
       {!error && assets && assets.length > 0 && (
         <>
           {timelineBlocks(assets).map((group) => (
-            <div key={group.key} className="day-block">
+            <div key={group.key} className="day-block" data-day={group.key}>
               {group.month && <h3 className="timeline-month">{group.month}</h3>}
               <h4 className="timeline-day">{group.day}</h4>
               <div className="thumb-grid">
@@ -142,6 +208,6 @@ export function TimelineView({ albumId, albums, libraryRev, onAlbumsChanged, onL
           }}
         />
       )}
-    </>
+    </div>
   );
 }

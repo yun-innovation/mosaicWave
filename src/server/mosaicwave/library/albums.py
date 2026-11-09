@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from mosaicwave.library.sync import assign_sync_rev
 from mosaicwave.library.takeout import _ensure_membership, _touch
-from mosaicwave.models import Album, AlbumAsset, Asset, new_id, utcnow
+from mosaicwave.models import Album, AlbumAsset, Asset, iso_utc, new_id, utcnow
 
 
 class AlbumConflict(Exception):
@@ -58,7 +58,7 @@ def album_view(session: Session, row: Album) -> dict:
         "sort": int(row.sort or 0),
         "rev": int(row.rev or 0),
         "asset_count": _live_count(session, row.id),
-        "updated_at": row.updated_at.isoformat() if row.updated_at else None,
+        "updated_at": iso_utc(row.updated_at),
     }
 
 

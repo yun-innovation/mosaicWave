@@ -1,14 +1,16 @@
 from __future__ import annotations
 
 import base64
+import zoneinfo
 from datetime import datetime, timezone
 from pathlib import PurePosixPath
 
 from pydantic import BaseModel, field_serializer
-from sqlalchemy import case, select
+from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session
 
 from mosaicwave.models import AlbumAsset, Asset, Source
+from mosaicwave.timezone import zone_offsets
 
 
 class AssetOut(BaseModel):
@@ -71,6 +73,7 @@ def list_assets(
     cursor: str | None,
     source_ids: set[str] | None = None,
     album_id: str | None = None,
+    before: datetime | None = None,
 ) -> AssetListOut:
     limit = max(1, min(limit, 200))
     if source_ids is not None and not source_ids:
@@ -87,6 +90,12 @@ def list_assets(
             AlbumAsset,
             (AlbumAsset.asset_id == Asset.id) & AlbumAsset.deleted_at.is_(None),
         ).where(AlbumAsset.album_id == album_id)
+    if before is not None and not cursor:
+        # Start the list at a point in time (the timeline scrubber): photos taken before `before`,
+        # newest first, then the undated ones, which always sort last. `before` is an instant.
+        if before.tzinfo is not None:
+            before = before.astimezone(timezone.utc).replace(tzinfo=None)
+        stmt = stmt.where((Asset.taken_at < before) | Asset.taken_at.is_(None))
     if cursor:
         taken, asset_id = decode_cursor(cursor)
         if taken is not None:
@@ -111,3 +120,77 @@ def list_assets(
         next_cursor = encode_cursor(last.taken_at, last.id)
     items = [asset_to_out(row) for row in rows]
     return AssetListOut(items=items, next_cursor=next_cursor)
+
+
+class MonthCount(BaseModel):
+    month: str  # "2026-03": the UTC month photos were taken in
+    count: int
+
+
+class MonthsOut(BaseModel):
+    months: list[MonthCount]  # newest first
+    undated: int = 0  # photos with no taken_at; they sort after every month
+
+
+def month_counts(
+    session: Session,
+    *,
+    source_ids: set[str] | None = None,
+    album_id: str | None = None,
+    zone: str | None = None,
+    use_dst: bool = False,
+) -> MonthsOut:
+    """Photos per month for the timeline scrubber (the same photos `list_assets` would list).
+
+    Months are in `zone` (a canonical IANA name; None = UTC), the zone the user's page shows days in.
+    Without `use_dst` a zone is held at its standard offset all year, which SQLite can do itself; with
+    it, a zone that has summer time needs each photo's own offset, so those rows are read and
+    bucketed here.
+    """
+    if source_ids is not None and not source_ids:
+        return MonthsOut(months=[])
+    python_zone = None
+    offset = 0
+    if zone and zone != "UTC":
+        offset, observes = zone_offsets(zone)
+        if observes and use_dst:
+            python_zone = zoneinfo.ZoneInfo(zone)
+    if python_zone is not None:
+        month = Asset.taken_at
+    elif offset:
+        month = func.strftime("%Y-%m", Asset.taken_at, f"{offset:+d} minutes")
+    else:
+        month = func.strftime("%Y-%m", Asset.taken_at)
+    stmt = (
+        select(month, func.count())
+        .select_from(Asset)
+        .join(Source, Source.id == Asset.source_id)
+        .where(Asset.deleted_at.is_(None), Source.deleted_at.is_(None))
+    )
+    if source_ids is not None:
+        stmt = stmt.where(Asset.source_id.in_(source_ids))
+    if album_id:
+        stmt = stmt.join(
+            AlbumAsset,
+            (AlbumAsset.asset_id == Asset.id) & AlbumAsset.deleted_at.is_(None),
+        ).where(AlbumAsset.album_id == album_id)
+    if python_zone is not None:
+        counts: dict[str | None, int] = {}
+        for (taken,) in session.execute(stmt.with_only_columns(Asset.taken_at)).all():
+            if taken is None:
+                key = None
+            else:
+                if taken.tzinfo is None:
+                    taken = taken.replace(tzinfo=timezone.utc)
+                key = taken.astimezone(python_zone).strftime("%Y-%m")
+            counts[key] = counts.get(key, 0) + 1
+        rows = sorted(((k, c) for k, c in counts.items() if k is not None), reverse=True)
+        if None in counts:
+            rows.append((None, counts[None]))
+    else:
+        rows = session.execute(stmt.group_by(month).order_by(month.desc())).all()
+    undated = sum(count for key, count in rows if key is None)
+    return MonthsOut(
+        months=[MonthCount(month=key, count=count) for key, count in rows if key is not None],
+        undated=undated,
+    )

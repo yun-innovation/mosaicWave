@@ -488,8 +488,40 @@ OpenAPI at `{{baseUrl}}/docs` stays the living spec; this collection is a snapsh
                             "disabled": True,
                             "description": "Only assets in this album",
                         },
+                        {
+                            "key": "before",
+                            "value": "2024-01-01T00:00:00Z",
+                            "disabled": True,
+                            "description": "Start at photos taken before this instant (ISO 8601); the timeline scrubber uses it. Ignored with a cursor. 0001-01-01T00:00:00Z reaches only undated photos",
+                        },
                     ],
                     tests=SAVE_ASSET,
+                ),
+                req(
+                    "Asset months",
+                    "GET",
+                    "/api/v1/assets/months",
+                    description="Photos per month in the user's display zone, newest first, plus the undated count: {months: [{month, count}], undated}. time_zone and use_dst default to the account's saved values. For the timeline scrubber.",
+                    query=[
+                        {
+                            "key": "time_zone",
+                            "value": "Asia/Taipei",
+                            "disabled": True,
+                            "description": "IANA zone to group in (any case). Unknown is 400 invalid_time_zone",
+                        },
+                        {
+                            "key": "use_dst",
+                            "value": "false",
+                            "disabled": True,
+                            "description": "true follows the zone's summer time; false holds its standard time all year",
+                        },
+                        {
+                            "key": "album_id",
+                            "value": "{{albumId}}",
+                            "disabled": True,
+                            "description": "Only assets in this album",
+                        }
+                    ],
                 ),
                 req("Asset metadata", "GET", "/api/v1/assets/{{assetId}}"),
                 req("Thumb", "GET", "/api/v1/assets/{{assetId}}/thumb", description="JPEG. May generate on first hit."),

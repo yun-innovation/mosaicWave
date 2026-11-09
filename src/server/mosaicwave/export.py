@@ -42,6 +42,7 @@ from mosaicwave.library.takeout import filestore_for_source
 from mosaicwave.models import Album, AlbumAsset, Asset, Source
 from mosaicwave.restore import _require_space
 from mosaicwave.storage.errors import InvalidPath, NotFound, PermissionDenied
+from mosaicwave.ziptime import ut_extra, zip_time
 
 FORMAT = 1
 KIND_EXPORT = "export"
@@ -308,12 +309,12 @@ def sidecar_json(entry: Entry) -> bytes:
     return json.dumps(data, indent=2, ensure_ascii=False).encode("utf-8")
 
 
-def _zip_time(when: datetime) -> tuple[int, int, int, int, int, int]:
-    if when.year < 1980:
-        return (1980, 1, 1, 0, 0, 0)
-    if when.year > 2107:
-        return (2107, 12, 31, 23, 59, 58)
-    return (when.year, when.month, when.day, when.hour, when.minute, when.second - when.second % 2)
+def _zip_info(arcname: str, when: datetime) -> zipfile.ZipInfo:
+    """A zip entry stamped with `when` in UTC: the plain zip time is the UTC wall clock, and the
+    extended timestamp holds the exact second, so any reader that honours it gets the right instant."""
+    info = zipfile.ZipInfo(arcname, zip_time(when.timestamp()))
+    info.extra = ut_extra(when.timestamp())
+    return info
 
 
 class _Parts:
@@ -449,7 +450,7 @@ def export_library(
                     loose_count += 1
                 else:
                     zf = parts.for_file(size)
-                    info = zipfile.ZipInfo(arcname, _zip_time(entry.when))
+                    info = _zip_info(arcname, entry.when)
                     info.compress_type = zipfile.ZIP_STORED
                     info.external_attr = 0o644 << 16
                     info.file_size = size
@@ -462,7 +463,7 @@ def export_library(
                 reader.__exit__(None, None, None)
             if layout == LAYOUT_TAKEOUT:
                 body = sidecar_json(entry)
-                info = zipfile.ZipInfo(f"{arcname}.json", _zip_time(entry.when))
+                info = _zip_info(f"{arcname}.json", entry.when)
                 info.compress_type = zipfile.ZIP_DEFLATED
                 info.external_attr = 0o644 << 16
                 parts.current().writestr(info, body)

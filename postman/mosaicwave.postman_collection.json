@@ -667,6 +667,12 @@
                   "value": "{{albumId}}",
                   "disabled": true,
                   "description": "Only assets in this album"
+                },
+                {
+                  "key": "before",
+                  "value": "2024-01-01T00:00:00Z",
+                  "disabled": true,
+                  "description": "Start at photos taken before this instant (ISO 8601); the timeline scrubber uses it. Ignored with a cursor. 0001-01-01T00:00:00Z reaches only undated photos"
                 }
               ]
             },
@@ -687,6 +693,46 @@
               }
             }
           ]
+        },
+        {
+          "name": "Asset months",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/assets/months",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "assets",
+                "months"
+              ],
+              "query": [
+                {
+                  "key": "time_zone",
+                  "value": "Asia/Taipei",
+                  "disabled": true,
+                  "description": "IANA zone to group in (any case). Unknown is 400 invalid_time_zone"
+                },
+                {
+                  "key": "use_dst",
+                  "value": "false",
+                  "disabled": true,
+                  "description": "true follows the zone's summer time; false holds its standard time all year"
+                },
+                {
+                  "key": "album_id",
+                  "value": "{{albumId}}",
+                  "disabled": true,
+                  "description": "Only assets in this album"
+                }
+              ]
+            },
+            "description": "Photos per month in the user's display zone, newest first, plus the undated count: {months: [{month, count}], undated}. time_zone and use_dst default to the account's saved values. For the timeline scrubber."
+          }
         },
         {
           "name": "Asset metadata",

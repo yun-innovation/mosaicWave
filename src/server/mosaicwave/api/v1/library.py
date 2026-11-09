@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import datetime
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile
@@ -40,7 +41,8 @@ from mosaicwave.library.albums import (
     remove_asset,
 )
 from mosaicwave.library.media import is_media
-from mosaicwave.library.query import AssetListOut, AssetOut, asset_to_out, list_assets
+from mosaicwave.library.query import AssetListOut, AssetOut, MonthsOut, asset_to_out, list_assets, month_counts
+from mosaicwave.timezone import canonical_zone, zone_data_available
 from mosaicwave.library.sync import SyncChangesOut, pull_changes
 from mosaicwave.library.serve import original_file_response
 from mosaicwave.library.ownership import ensure_user_library
@@ -55,7 +57,7 @@ from mosaicwave.library.thumbs import (
     ensure_preview,
     ensure_thumb,
 )
-from mosaicwave.models import Asset, Job, Source, User
+from mosaicwave.models import Asset, Job, Source, User, iso_utc
 from mosaicwave.storage.blobstore import BlobStore
 from mosaicwave.library.takeoutpush import MAX_PUSH_BYTES, write_upload_async
 from mosaicwave.storage.errors import InvalidPath, NotSupported
@@ -374,7 +376,7 @@ def _source_out(session: Session, row: Source, *, perm: str | None = None, owned
         id=row.id,
         kind=row.kind,
         backend=row.backend,
-        last_scan_at=row.last_scan_at.isoformat() if row.last_scan_at else None,
+        last_scan_at=iso_utc(row.last_scan_at),
         error=row.error,
         asset_count=_count_live(session, row.id),
         perm=perm,
@@ -420,6 +422,7 @@ def get_assets(
     limit: int = Query(50, ge=1, le=200),
     cursor: str | None = None,
     album_id: str | None = None,
+    before: datetime | None = Query(None, description="Start at photos taken before this instant (ISO 8601); ignored with a cursor"),
 ) -> AssetListOut:
     _own_library(request, session, user)
     ids = _readable_ids(session, user)
@@ -435,9 +438,43 @@ def get_assets(
             cursor=cursor,
             source_ids=ids,
             album_id=album_id,
+            before=before,
         )
     except (ValueError, OSError) as exc:
         raise ApiError(400, "invalid_cursor", f"invalid cursor: {exc}", {"message": str(exc)}) from exc
+
+
+@router.get("/assets/months", response_model=MonthsOut)
+def get_asset_months(
+    request: Request,
+    session: Session = Depends(get_library_session),
+    user: User = Depends(require_user),
+    album_id: str | None = None,
+    time_zone: str | None = Query(None, description="IANA zone to group months in; default is the account's saved zone, else UTC"),
+    use_dst: bool | None = Query(None, description="Follow the zone's summer time; default is the account's saved setting"),
+) -> MonthsOut:
+    """Photos per month, newest first, for the timeline scrubber (whole library or one album).
+
+    Months are in the user's display zone (their saved `time_zone` and `use_dst`, or the ones the
+    request names), so the scrubber agrees with the day headings the page draws.
+    """
+    _own_library(request, session, user)
+    if time_zone is not None:
+        if not zone_data_available():
+            raise ApiError(503, "time_zone_data_missing", "this server has no time zone database")
+        zone = canonical_zone(time_zone)
+        if zone is None:
+            raise ApiError(400, "invalid_time_zone", f"unknown time zone: {time_zone}", {"time_zone": time_zone})
+    else:
+        zone = canonical_zone(user.time_zone) if user.time_zone else None  # no data or no zone: UTC
+    dst = bool(user.use_dst) if use_dst is None else use_dst
+    ids = _readable_ids(session, user)
+    if album_id:
+        try:
+            get_visible_album(session, album_id=album_id, source_ids=ids)
+        except FileNotFoundError as exc:
+            raise _not_found(exc) from exc
+    return month_counts(session, source_ids=ids, album_id=album_id, zone=zone, use_dst=dst)
 
 
 def _album_out(session: Session, row) -> AlbumOut:
@@ -946,7 +983,7 @@ def get_job_events(
     return [
         JobEventOut(
             id=ev.id,
-            at=ev.at.isoformat() if ev.at else "",
+            at=iso_utc(ev.at) or "",
             level=ev.level,
             message=render(ev.code, ev.params, current_language(), ev.message) or ev.message,
         )

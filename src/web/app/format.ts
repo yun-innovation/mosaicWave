@@ -3,6 +3,8 @@ import i18n, { activeLocale } from "./i18n";
 // The zone dates and times are shown in: the user's own, else UTC (the default).
 // Every stored time is UTC (doc/i18n.md § Time zone); the zone only matters here, when a time is shown.
 let zone = "UTC";
+// What the user chose (zone name and summer time), as the API takes it; `zone` above is what Intl is given.
+let chosen = { zone: "UTC", dst: false };
 
 function usable(name: string | null | undefined): string {
   if (!name) return "UTC";
@@ -12,6 +14,11 @@ function usable(name: string | null | undefined): string {
   } catch {
     return "UTC"; // a name this browser does not know: fall back to the default
   }
+}
+
+/** The zone and summer-time choice in effect, to send to the API so it groups the way this page does. */
+export function chosenTimeZone(): { zone: string; dst: boolean } {
+  return chosen;
 }
 
 /** The zone times are shown in. */
@@ -63,6 +70,7 @@ function offsetName(minutes: number): string {
  */
 export function applyTimeZone(name: string | null | undefined, dst = false): void {
   let next = usable(name);
+  const picked = { zone: next, dst };
   if (!dst) {
     const offsets = zoneOffsets(next);
     if (offsets?.observesDst) {
@@ -75,7 +83,9 @@ export function applyTimeZone(name: string | null | undefined, dst = false): voi
       }
     }
   }
-  if (next === zone) return;
+  const changed = picked.zone !== chosen.zone || picked.dst !== chosen.dst;
+  chosen = picked;
+  if (next === zone && !changed) return;
   zone = next;
   i18n.emit("languageChanged", i18n.language);
 }
@@ -125,6 +135,23 @@ export function formatMonth(key: string): string {
   return new Intl.DateTimeFormat(activeLocale(), { year: "numeric", month: "long", timeZone: "UTC" }).format(
     fromDayKey(key),
   );
+}
+
+/**
+ * The instant the month after `month` ("2026-03") begins in the display zone, as ISO 8601 UTC.
+ * `GET /assets?before=` with it starts the timeline at the newest photo of `month`.
+ */
+export function monthEndInstant(month: string): string {
+  const [year, number] = month.split("-").map(Number);
+  const utc = Date.UTC(year, number, 1); // `number` is 1-based, so this is the first of the next month
+  let offset = offsetMinutes(zone, new Date(utc)) ?? 0;
+  offset = offsetMinutes(zone, new Date(utc - offset * 60000)) ?? offset; // a second look settles a switch of summer time
+  return new Date(utc - offset * 60000).toISOString();
+}
+
+/** "March 2026" for a month key ("2026-03"). */
+export function formatMonthKey(month: string): string {
+  return formatMonth(`${month}-01`);
 }
 
 export function formatDate(value: string | null): string | null {

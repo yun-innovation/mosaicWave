@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-import calendar
+import struct
 import zipfile
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
-from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 from typing import BinaryIO
 
@@ -21,6 +20,7 @@ from mosaicwave.library.media import (
 from mosaicwave.storage.errors import InvalidPath, NotFound, NotSupported
 from mosaicwave.storage.filestore import FileStat
 from mosaicwave.storage.paths import normalize_rel
+from mosaicwave.ziptime import entry_mtime
 
 
 @dataclass(frozen=True)
@@ -70,11 +70,10 @@ def _safe_parts(parts: list[str]) -> bool:
 
 
 def _zip_mtime(info: zipfile.ZipInfo) -> float:
+    """UTC epoch: the exact extended timestamp if the entry has one, else its zip time read as UTC."""
     try:
-        t = info.date_time
-        dt = datetime(t[0], t[1], t[2], t[3], t[4], t[5], tzinfo=timezone.utc)
-        return calendar.timegm(dt.timetuple())
-    except (ValueError, OverflowError, OSError):
+        return entry_mtime(info)
+    except (ValueError, OverflowError, OSError, struct.error):
         return 0.0
 
 
