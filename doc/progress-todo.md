@@ -32,9 +32,9 @@ Open items only. Roadmap: ordered milestones in [roadmap.md](roadmap.md). The ea
   - [x] PR 1: response language: `X-MosaicWave-Language` header or `?lang=` (never `Accept-Language`), then `user.locale`, then `en`; `detail` translated from the server catalog generated from the web `errors.json` (`npm run sync-locales`, checked by `i18n-check`); `Content-Language` and `Vary`; `auth/status.locales`; `PATCH /me` normalizes tags and answers in the new language; the web sends its language with every request
   - [x] PR 2: all job text (errors and progress lines) stored as code + params and rendered into the response language when read; Takeout, backup and restore warnings the same
   - [x] PR 3: display time zone (`user.time_zone`, `user.use_dst`, Settings page, web `format.ts`) and dates written in the response language and zone inside API text
-- [ ] Gallery tools (**milestone 9**), one PR each, in this order:
+- [x] Gallery tools (**milestone 9**, done), one PR each, in this order:
   - [x] PR 1: light theme — merged [#52](https://github.com/yun-innovation/mosaicWave/pull/52)
   - [x] PR 2: timeline scrubber (jump by month and year; `GET /assets/months` grouped in the display zone, `GET /assets?before=`) — merged [#53](https://github.com/yun-innovation/mosaicWave/pull/53); the same PR carries the UTC audit (`Z` on every API time, `ziptime.py`, `test_utc_contract.py`) and the EXIF fixes (Exif sub-IFD, recorded UTC offset)
   - [x] PR 3: search by filename and date (`GET /assets?q=&taken_from=&taken_to=`, search row in Photos and albums, album name filter) — merged [#54](https://github.com/yun-innovation/mosaicWave/pull/54)
-  - [ ] PR 4: select many (select mode, add to / remove from album, export by ids; no new API): built on `feature/select-many`, waiting for `ship`
+  - [x] PR 4: select many (select mode, add to / remove from album, create album from the selection, export by ids; no new API) — merged [#55](https://github.com/yun-innovation/mosaicWave/pull/55)
 - [ ] iOS and Android clients in a separate repo (`mosaicWave-mobile`); this repo publishes the OpenAPI schema and the endpoints the apps need (**milestone 14**, planned after 9)
