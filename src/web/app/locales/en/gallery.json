@@ -2,6 +2,8 @@
   "deleteAlbum": "Delete album",
   "generateThumbs": "Generate thumbs",
   "select": {
+    "newAlbumPlaceholder": "New album name",
+    "newAlbum": "Create album and add",
     "start": "Select",
     "label": "Selected photos",
     "count": "{{count}} selected",

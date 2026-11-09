@@ -2,6 +2,8 @@
   "deleteAlbum": "删除相册",
   "generateThumbs": "生成缩略图",
   "select": {
+    "newAlbumPlaceholder": "新相册名称",
+    "newAlbum": "创建相册并加入",
     "start": "选择",
     "label": "已选择的照片",
     "count": "已选择 {{count}} 张",

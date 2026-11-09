@@ -28,6 +28,7 @@ type Props = {
 export function SelectionBar({ ids, shownCount, albums, albumId, onSelectShown, onClear, onDone, onChanged }: Props) {
   const { t } = useTranslation(["gallery", "backup", "common"]);
   const [target, setTarget] = useState("");
+  const [newName, setNewName] = useState("");
   const [busy, setBusy] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
@@ -36,12 +37,41 @@ export function SelectionBar({ ids, shownCount, albums, albumId, onSelectShown, 
   const none = ids.length === 0;
 
   async function addToAlbum() {
-    if (!album || none) return;
+    if (album) await addTo(album.id, album.name);
+  }
+
+  async function createAlbum() {
+    const name = newName.trim();
+    if (!name || none) return;
     setBusy(true);
     setNotice(null);
     try {
+      const res = await apiFetch("/api/v1/albums", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+      if (!res.ok) {
+        setNotice({ text: await readDetail(res), ok: false });
+        return;
+      }
+      const created = (await res.json()) as LibraryAlbum;
+      setNewName("");
+      setTarget(created.id);
+      onChanged(false); // the album exists now, even if adding to it fails below
+      await addTo(created.id, created.name, true);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function addTo(albumKey: string, name: string, owned = false) {
+    if (none) return;
+    if (!owned) setBusy(true);
+    setNotice(null);
+    try {
       for (let at = 0; at < ids.length; at += ALBUM_CHUNK) {
-        const res = await apiFetch(`/api/v1/albums/${album.id}/assets`, {
+        const res = await apiFetch(`/api/v1/albums/${albumKey}/assets`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ asset_ids: ids.slice(at, at + ALBUM_CHUNK) }),
@@ -52,10 +82,10 @@ export function SelectionBar({ ids, shownCount, albums, albumId, onSelectShown, 
           return;
         }
       }
-      setNotice({ text: t("gallery:select.added", { count: ids.length, name: album.name }), ok: true });
+      setNotice({ text: t("gallery:select.added", { count: ids.length, name }), ok: true });
       onChanged(false);
     } finally {
-      setBusy(false);
+      if (!owned) setBusy(false);
     }
   }
 
@@ -108,6 +138,20 @@ export function SelectionBar({ ids, shownCount, albums, albumId, onSelectShown, 
             </button>
           </>
         )}
+        <input
+          value={newName}
+          maxLength={255}
+          disabled={busy}
+          placeholder={t("gallery:select.newAlbumPlaceholder")}
+          aria-label={t("gallery:select.newAlbumPlaceholder")}
+          onChange={(e) => setNewName(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") void createAlbum();
+          }}
+        />
+        <button type="button" disabled={busy || none || !newName.trim()} onClick={() => void createAlbum()}>
+          {t("gallery:select.newAlbum")}
+        </button>
         {albumId && (
           <button type="button" disabled={busy || none} onClick={() => void removeFromAlbum()}>
             {t("gallery:detail.removeFromAlbum")}
