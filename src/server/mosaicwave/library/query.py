@@ -66,6 +66,13 @@ def decode_cursor(cursor: str) -> tuple[datetime | None, str]:
     return taken, asset_id
 
 
+def _naive_utc(value: datetime) -> datetime:
+    """An instant as the naive UTC datetime SQLite stores."""
+    if value.tzinfo is not None:
+        value = value.astimezone(timezone.utc).replace(tzinfo=None)
+    return value
+
+
 def list_assets(
     session: Session,
     *,
@@ -74,6 +81,9 @@ def list_assets(
     source_ids: set[str] | None = None,
     album_id: str | None = None,
     before: datetime | None = None,
+    q: str | None = None,
+    taken_from: datetime | None = None,
+    taken_to: datetime | None = None,
 ) -> AssetListOut:
     limit = max(1, min(limit, 200))
     if source_ids is not None and not source_ids:
@@ -90,12 +100,19 @@ def list_assets(
             AlbumAsset,
             (AlbumAsset.asset_id == Asset.id) & AlbumAsset.deleted_at.is_(None),
         ).where(AlbumAsset.album_id == album_id)
+    # Search filters hold for every page of the list, cursor or not.
+    words = (q or "").strip()
+    if words:
+        # The path holds the file name and its folders ("Trip to Kyoto/IMG_1.jpg"), so a name or a folder matches.
+        stmt = stmt.where(func.lower(Asset.relative_path).contains(words.lower(), autoescape=True))
+    if taken_from is not None:
+        stmt = stmt.where(Asset.taken_at >= _naive_utc(taken_from))  # undated photos never match a date range
+    if taken_to is not None:
+        stmt = stmt.where(Asset.taken_at < _naive_utc(taken_to))
     if before is not None and not cursor:
         # Start the list at a point in time (the timeline scrubber): photos taken before `before`,
         # newest first, then the undated ones, which always sort last. `before` is an instant.
-        if before.tzinfo is not None:
-            before = before.astimezone(timezone.utc).replace(tzinfo=None)
-        stmt = stmt.where((Asset.taken_at < before) | Asset.taken_at.is_(None))
+        stmt = stmt.where((Asset.taken_at < _naive_utc(before)) | Asset.taken_at.is_(None))
     if cursor:
         taken, asset_id = decode_cursor(cursor)
         if taken is not None:

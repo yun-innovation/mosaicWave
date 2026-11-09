@@ -1,6 +1,14 @@
 {
   "deleteAlbum": "Delete album",
   "generateThumbs": "Generate thumbs",
+  "search": {
+    "placeholder": "Search by file or folder name",
+    "from": "From",
+    "to": "To",
+    "submit": "Search",
+    "clear": "Clear",
+    "none": "No photos match this search."
+  },
   "scrubber": {
     "label": "Jump to a date",
     "from": "Showing {{when}} and older",

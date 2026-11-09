@@ -1,6 +1,14 @@
 {
   "deleteAlbum": "删除相册",
   "generateThumbs": "生成缩略图",
+  "search": {
+    "placeholder": "搜索文件或文件夹名称",
+    "from": "从",
+    "to": "到",
+    "submit": "搜索",
+    "clear": "清除",
+    "none": "没有符合的照片。"
+  },
   "scrubber": {
     "label": "跳到日期",
     "from": "显示 {{when}} 及更早的照片",

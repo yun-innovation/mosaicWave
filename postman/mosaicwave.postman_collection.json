@@ -673,6 +673,24 @@
                   "value": "2024-01-01T00:00:00Z",
                   "disabled": true,
                   "description": "Start at photos taken before this instant (ISO 8601); the timeline scrubber uses it. Ignored with a cursor. 0001-01-01T00:00:00Z reaches only undated photos"
+                },
+                {
+                  "key": "q",
+                  "value": "kyoto",
+                  "disabled": true,
+                  "description": "Search: the file or folder name contains this text, any case (plain text, max 200 characters)"
+                },
+                {
+                  "key": "taken_from",
+                  "value": "2024-03-01T00:00:00Z",
+                  "disabled": true,
+                  "description": "Only photos taken at or after this instant (ISO 8601). Undated photos are left out. Applies to every page"
+                },
+                {
+                  "key": "taken_to",
+                  "value": "2024-04-01T00:00:00Z",
+                  "disabled": true,
+                  "description": "Only photos taken before this instant (ISO 8601). Undated photos are left out. Applies to every page"
                 }
               ]
             },

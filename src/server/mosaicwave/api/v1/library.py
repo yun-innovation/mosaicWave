@@ -423,6 +423,9 @@ def get_assets(
     cursor: str | None = None,
     album_id: str | None = None,
     before: datetime | None = Query(None, description="Start at photos taken before this instant (ISO 8601); ignored with a cursor"),
+    q: str | None = Query(None, max_length=200, description="Search: the file or folder name contains this text, any case"),
+    taken_from: datetime | None = Query(None, description="Only photos taken at or after this instant (ISO 8601); undated photos are left out"),
+    taken_to: datetime | None = Query(None, description="Only photos taken before this instant (ISO 8601); undated photos are left out"),
 ) -> AssetListOut:
     _own_library(request, session, user)
     ids = _readable_ids(session, user)
@@ -439,6 +442,9 @@ def get_assets(
             source_ids=ids,
             album_id=album_id,
             before=before,
+            q=q,
+            taken_from=taken_from,
+            taken_to=taken_to,
         )
     except (ValueError, OSError) as exc:
         raise ApiError(400, "invalid_cursor", f"invalid cursor: {exc}", {"message": str(exc)}) from exc
