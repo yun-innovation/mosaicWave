@@ -1341,6 +1341,55 @@ main.app-main {
   font-size: 0.9rem;
 }
 
+.select-toggle {
+  margin: 0 0 0.75rem;
+}
+
+.selection-bar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  margin: 0 0 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface-2);
+}
+
+.timeline-day .link-button {
+  margin-left: 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 400;
+}
+
+.thumb.picked img {
+  opacity: 0.6;
+}
+
+.thumb.picked {
+  outline: 3px solid var(--accent);
+  outline-offset: -3px;
+}
+
+.pick-mark {
+  position: absolute;
+  top: 0.3rem;
+  left: 0.3rem;
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  background: rgba(0, 0, 0, 0.35);
+  color: #fff;
+  font-size: 0.9rem;
+  line-height: 1.1rem;
+  text-align: center;
+}
+
+.thumb.picked .pick-mark {
+  background: var(--accent);
+}
+
 .timeline-anchor {
   margin: 0 0 0.75rem;
   color: var(--muted);

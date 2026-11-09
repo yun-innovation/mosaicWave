@@ -1,6 +1,19 @@
 {
   "deleteAlbum": "Delete album",
   "generateThumbs": "Generate thumbs",
+  "select": {
+    "start": "Select",
+    "label": "Selected photos",
+    "count": "{{count}} selected",
+    "all": "Select all shown ({{count}})",
+    "none": "Clear selection",
+    "export": "Export",
+    "exportStart": "Export {{count}} selected",
+    "done": "Done",
+    "pickDay": "Select day",
+    "unpickDay": "Unselect day",
+    "added": "Added {{count}} to {{name}}"
+  },
   "search": {
     "placeholder": "Search by file or folder name",
     "from": "From",

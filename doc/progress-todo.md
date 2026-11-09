@@ -35,6 +35,6 @@ Open items only. Roadmap: ordered milestones in [roadmap.md](roadmap.md). The ea
 - [ ] Gallery tools (**milestone 9**), one PR each, in this order:
   - [x] PR 1: light theme — merged [#52](https://github.com/yun-innovation/mosaicWave/pull/52)
   - [x] PR 2: timeline scrubber (jump by month and year; `GET /assets/months` grouped in the display zone, `GET /assets?before=`) — merged [#53](https://github.com/yun-innovation/mosaicWave/pull/53); the same PR carries the UTC audit (`Z` on every API time, `ziptime.py`, `test_utc_contract.py`) and the EXIF fixes (Exif sub-IFD, recorded UTC offset)
-  - [ ] PR 3: search by filename and date (`GET /assets?q=&taken_from=&taken_to=`, search row in Photos and albums): built on `feature/search`, waiting for `ship`
-  - [ ] PR 4: select many (add to album, download, export by ids)
+  - [x] PR 3: search by filename and date (`GET /assets?q=&taken_from=&taken_to=`, search row in Photos and albums, album name filter) — merged [#54](https://github.com/yun-innovation/mosaicWave/pull/54)
+  - [ ] PR 4: select many (select mode, add to / remove from album, export by ids; no new API): built on `feature/select-many`, waiting for `ship`
 - [ ] iOS and Android clients in a separate repo (`mosaicWave-mobile`); this repo publishes the OpenAPI schema and the endpoints the apps need (**milestone 14**, planned after 9)

@@ -7,6 +7,7 @@ import { apiFetch, readDetail } from "./api";
 import { AssetViewer } from "./AssetViewer";
 import { chosenTimeZone, dayKey, formatDay, formatMonth, formatMonthKey, monthEndInstant, dateRangeInstants } from "./format";
 import i18n from "./i18n";
+import { SelectionBar } from "./SelectionBar";
 import { TimelineScrubber, UNDATED } from "./TimelineScrubber";
 import { Asset, AssetList, ignoreAbort, isAbortError, LibraryAlbum, MonthsList, thumbSrc } from "./types";
 
@@ -59,6 +60,9 @@ export function TimelineView({ albumId, albums, libraryRev, onAlbumsChanged, onL
   // What the search row shows (draft) and what the list is using (applied, set on Search).
   const [draft, setDraft] = useState({ q: "", from: "", to: "" });
   const [applied, setApplied] = useState({ q: "", from: "", to: "" });
+  // Select mode: a click picks a photo instead of opening it. Picks keep the order they were made in.
+  const [selecting, setSelecting] = useState(false);
+  const [picked, setPicked] = useState<string[]>([]);
   const top = useRef<HTMLDivElement>(null);
   const searching = Boolean(applied.q || applied.from || applied.to);
   const before = anchor?.before ?? null;
@@ -68,7 +72,18 @@ export function TimelineView({ albumId, albums, libraryRev, onAlbumsChanged, onL
     setAnchor(null);
     setDraft({ q: "", from: "", to: "" });
     setApplied({ q: "", from: "", to: "" });
+    setSelecting(false);
+    setPicked([]);
   }, [albumId]);
+
+  // A new search shows different photos, so picks made on the old list would be hidden ones.
+  useEffect(() => setPicked([]), [applied]);
+
+  const togglePick = (ids: string[]) =>
+    setPicked((prev) => {
+      const all = ids.every((id) => prev.includes(id));
+      return all ? prev.filter((id) => !ids.includes(id)) : [...prev, ...ids.filter((id) => !prev.includes(id))];
+    });
 
   const load = useCallback(
     async (signal?: AbortSignal, cursor?: string | null) => {
@@ -218,6 +233,35 @@ export function TimelineView({ albumId, albums, libraryRev, onAlbumsChanged, onL
           </button>
         </p>
       )}
+      {assets && assets.length > 0 && !selecting && (
+        <div className="select-toggle">
+          <button type="button" onClick={() => setSelecting(true)}>
+            {t("gallery:select.start")}
+          </button>
+        </div>
+      )}
+      {selecting && (
+        <SelectionBar
+          ids={picked}
+          shownCount={assets?.length ?? 0}
+          albums={albums}
+          albumId={albumId}
+          onSelectShown={() => setPicked((assets ?? []).map((asset) => asset.id))}
+          onClear={() => setPicked([])}
+          onDone={() => {
+            setSelecting(false);
+            setPicked([]);
+          }}
+          onChanged={(removed) => {
+            if (removed) {
+              setPicked([]);
+              onLibraryChanged();
+            } else {
+              onAlbumsChanged();
+            }
+          }}
+        />
+      )}
       {error && <p className="status fail">{error}</p>}
       {!error && assets === null && <p className="detail">{t("gallery:loadingLibrary")}</p>}
       {!error && assets && assets.length === 0 && (
@@ -230,17 +274,32 @@ export function TimelineView({ albumId, albums, libraryRev, onAlbumsChanged, onL
           {timelineBlocks(assets).map((group) => (
             <div key={group.key} className="day-block" data-day={group.key}>
               {group.month && <h3 className="timeline-month">{group.month}</h3>}
-              <h4 className="timeline-day">{group.day}</h4>
+              <h4 className="timeline-day">
+                {group.day}
+                {selecting && (
+                  <button
+                    type="button"
+                    className="link-button"
+                    onClick={() => togglePick(group.items.map((asset) => asset.id))}
+                  >
+                    {group.items.every((asset) => picked.includes(asset.id))
+                      ? t("gallery:select.unpickDay")
+                      : t("gallery:select.pickDay")}
+                  </button>
+                )}
+              </h4>
               <div className="thumb-grid">
                 {group.items.map((asset) => (
                   <button
                     type="button"
                     key={asset.id}
-                    className="thumb"
-                    onClick={() => setSelected(asset)}
+                    className={selecting && picked.includes(asset.id) ? "thumb picked" : "thumb"}
+                    aria-pressed={selecting ? picked.includes(asset.id) : undefined}
+                    onClick={() => (selecting ? togglePick([asset.id]) : setSelected(asset))}
                     title={asset.filename}
                   >
                     <img src={thumbSrc(asset)} alt={asset.filename} loading="lazy" />
+                    {selecting && <span className="pick-mark" aria-hidden="true">{picked.includes(asset.id) ? "✓" : ""}</span>}
                   </button>
                 ))}
               </div>

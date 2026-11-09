@@ -62,6 +62,14 @@ Shared types and URL helpers (`thumbSrc`, `stillSrc`, `isVideo`) are in `app/typ
 - **Dark** (default), **Light**, or **Follow this device** (`prefers-color-scheme`), chosen in Settings (`ThemeSelect.tsx`). It is a choice for the **browser**, kept in `localStorage` (`mosaicWave.theme`; dark is stored as no value), not on the account: a phone in the sun and a desktop at night want different themes. The server never sees it.
 - `theme.ts` sets `data-theme="dark|light"` on `<html>`. A small script in `<head>` (`THEME_BOOT_SCRIPT`, `layout.tsx`) does the same before the first paint, so a light-theme user never sees a dark flash. While the choice is "Follow this device" the page follows the device when it flips.
 - All colours come from CSS variables in `globals.css` (`:root` is dark, `:root[data-theme="light"]` overrides them). New CSS uses a variable, never a hex colour, except the photo viewer and video backdrop (`#000`, `#0a0a0c`) and the black overlays, which stay dark in both themes.
+## Select many (milestone 9, PR 4)
+
+- **Select** (above the list, Photos and albums) turns on select mode: a click picks a photo (check mark, outlined) instead of opening it, and each day heading gets **Select day** / **Unselect day**. A bar sticks to the top with the count, **Select all shown** (only what is loaded; Load more first for more), **Clear selection**, and the actions. **Done** leaves select mode and drops the picks. Picks are dropped too when the album or the search changes, so a count never includes photos you cannot see.
+- **Add to album:** the same album picker as the photo viewer; sends `POST /albums/{id}/assets` in chunks of 200 (the endpoint limit). Photos already in the album stay as they are. If a chunk fails, the earlier chunks stay added and the error is shown.
+- **Remove from album:** inside an album only; one `DELETE /albums/{id}/assets/{asset_id}` per photo, stopping at the first error. The list reloads.
+- **Export:** "download" for many photos is an export job, not a browser download (a zip of 5,000 originals cannot be streamed from one click): the same layout and split-size choices as Settings, then `POST /me/exports` with `asset_ids`. Progress is in the status bar and the finished files are under Settings, Export my photos. A single photo is still downloaded from the viewer.
+- No new API: it uses the album and export endpoints that already took lists of ids. Shift-click ranges and select-by-drag are not built.
+
 ## Search (milestone 9, PR 3)
 
 - A search row sits above the Photos list and above an album's list: a text box (file or folder name, any case, plain text: `%` and `_` are not wildcards), a **From** and a **To** date, **Search** and **Clear**. Nothing runs until Search is pressed (or Enter); Clear and changing album reset it.
