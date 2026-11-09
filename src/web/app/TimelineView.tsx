@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 
 import { apiFetch, readDetail } from "./api";
 import { AssetViewer } from "./AssetViewer";
-import { chosenTimeZone, dayKey, formatDay, formatMonth, formatMonthKey, monthEndInstant } from "./format";
+import { chosenTimeZone, dayKey, formatDay, formatMonth, formatMonthKey, monthEndInstant, dateRangeInstants } from "./format";
 import i18n from "./i18n";
 import { TimelineScrubber, UNDATED } from "./TimelineScrubber";
 import { Asset, AssetList, ignoreAbort, isAbortError, LibraryAlbum, MonthsList, thumbSrc } from "./types";
@@ -56,11 +56,19 @@ export function TimelineView({ albumId, albums, libraryRev, onAlbumsChanged, onL
   const [anchor, setAnchor] = useState<{ month: string; before: string } | null>(null);
   const [months, setMonths] = useState<MonthsList | null>(null);
   const [activeMonth, setActiveMonth] = useState<string | null>(null);
+  // What the search row shows (draft) and what the list is using (applied, set on Search).
+  const [draft, setDraft] = useState({ q: "", from: "", to: "" });
+  const [applied, setApplied] = useState({ q: "", from: "", to: "" });
   const top = useRef<HTMLDivElement>(null);
+  const searching = Boolean(applied.q || applied.from || applied.to);
   const before = anchor?.before ?? null;
   const zone = chosenTimeZone(); // changes re-render this view: applyTimeZone emits the language event
 
-  useEffect(() => setAnchor(null), [albumId]);
+  useEffect(() => {
+    setAnchor(null);
+    setDraft({ q: "", from: "", to: "" });
+    setApplied({ q: "", from: "", to: "" });
+  }, [albumId]);
 
   const load = useCallback(
     async (signal?: AbortSignal, cursor?: string | null) => {
@@ -70,6 +78,10 @@ export function TimelineView({ albumId, albums, libraryRev, onAlbumsChanged, onL
         if (cursor) qs.set("cursor", cursor);
         if (albumId) qs.set("album_id", albumId);
         if (before && !cursor) qs.set("before", before);
+        if (applied.q.trim()) qs.set("q", applied.q.trim());
+        const range = dateRangeInstants(applied.from, applied.to);
+        if (range.from) qs.set("taken_from", range.from);
+        if (range.to) qs.set("taken_to", range.to);
         const res = await apiFetch(`/api/v1/assets?${qs}`, { signal });
         if (!res.ok) {
           if (!cursor) setAssets(null);
@@ -85,7 +97,8 @@ export function TimelineView({ albumId, albums, libraryRev, onAlbumsChanged, onL
         setError(err instanceof Error ? err.message : i18n.t("common:networkError"));
       }
     },
-    [albumId, before],
+    // `zone` is a dependency because a date range means different instants in another zone.
+    [albumId, before, applied, zone.zone, zone.dst],
   );
 
   useEffect(() => {
@@ -122,6 +135,18 @@ export function TimelineView({ albumId, albums, libraryRev, onAlbumsChanged, onL
     return () => observer.disconnect();
   }, [shown]);
 
+  function runSearch(event: React.FormEvent) {
+    event.preventDefault();
+    setAnchor(null);
+    setApplied({ ...draft });
+  }
+
+  function clearSearch() {
+    const empty = { q: "", from: "", to: "" };
+    setDraft(empty);
+    setApplied(empty);
+  }
+
   function jumpTo(key: string) {
     const next = key === UNDATED ? { month: key, before: BEFORE_ALL } : { month: key, before: monthEndInstant(key) };
     setAnchor(next);
@@ -147,9 +172,43 @@ export function TimelineView({ albumId, albums, libraryRev, onAlbumsChanged, onL
   const closeViewer = useCallback(() => setSelected(null), []);
 
   return (
-    <div ref={top} className={months ? "timeline with-scrubber" : "timeline"}>
-      {months && <TimelineScrubber list={months} active={activeMonth} onJump={jumpTo} />}
-      {anchor && (
+    <div ref={top} className={months && !searching ? "timeline with-scrubber" : "timeline"}>
+      <form className="search-row" role="search" onSubmit={runSearch}>
+        <input
+          type="search"
+          value={draft.q}
+          maxLength={200}
+          placeholder={t("gallery:search.placeholder")}
+          aria-label={t("gallery:search.placeholder")}
+          onChange={(e) => setDraft({ ...draft, q: e.target.value })}
+        />
+        <label>
+          {t("gallery:search.from")}
+          <input
+            type="date"
+            value={draft.from}
+            max={draft.to || undefined}
+            onChange={(e) => setDraft({ ...draft, from: e.target.value })}
+          />
+        </label>
+        <label>
+          {t("gallery:search.to")}
+          <input
+            type="date"
+            value={draft.to}
+            min={draft.from || undefined}
+            onChange={(e) => setDraft({ ...draft, to: e.target.value })}
+          />
+        </label>
+        <button type="submit">{t("gallery:search.submit")}</button>
+        {(searching || draft.q || draft.from || draft.to) && (
+          <button type="button" className="link-button" onClick={clearSearch}>
+            {t("gallery:search.clear")}
+          </button>
+        )}
+      </form>
+      {months && !searching && <TimelineScrubber list={months} active={activeMonth} onJump={jumpTo} />}
+      {anchor && !searching && (
         <p className="timeline-anchor">
           {t("gallery:scrubber.from", {
             when: anchor.month === UNDATED ? t("common:unknownDate") : formatMonthKey(anchor.month),
@@ -162,7 +221,9 @@ export function TimelineView({ albumId, albums, libraryRev, onAlbumsChanged, onL
       {error && <p className="status fail">{error}</p>}
       {!error && assets === null && <p className="detail">{t("gallery:loadingLibrary")}</p>}
       {!error && assets && assets.length === 0 && (
-        <p className="detail">{albumId ? t("gallery:emptyAlbum") : t("gallery:emptyLibrary")}</p>
+        <p className="detail">
+          {searching ? t("gallery:search.none") : albumId ? t("gallery:emptyAlbum") : t("gallery:emptyLibrary")}
+        </p>
       )}
       {!error && assets && assets.length > 0 && (
         <>

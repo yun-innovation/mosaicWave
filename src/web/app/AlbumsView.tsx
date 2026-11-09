@@ -23,6 +23,9 @@ type Props = {
 export function AlbumsView({ albumId, albums, libraryRev, importer, go, onAlbumsChanged, onLibraryChanged }: Props) {
   const { t } = useTranslation(["gallery", "backup", "common"]);
   const [newName, setNewName] = useState("");
+  const [find, setFind] = useState(""); // filters the album list by name as you type; the list is already in the page
+  const needle = find.trim().toLowerCase();
+  const shownAlbums = albums ? albums.filter((album) => album.name.toLowerCase().includes(needle)) : null;
   const [busy, setBusy] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
@@ -133,9 +136,24 @@ export function AlbumsView({ albumId, albums, libraryRev, importer, go, onAlbums
       </form>
       {albums === null && <p className="detail">{t("gallery:album.loading")}</p>}
       {albums && albums.length === 0 && <p className="detail">{t("gallery:album.empty")}</p>}
-      {albums && albums.length > 0 && (
+      {albums && albums.length > 1 && (
+        <form className="search-row" role="search" onSubmit={(event) => event.preventDefault()}>
+          <input
+            type="search"
+            value={find}
+            maxLength={255}
+            placeholder={t("gallery:album.filter")}
+            aria-label={t("gallery:album.filter")}
+            onChange={(e) => setFind(e.target.value)}
+          />
+        </form>
+      )}
+      {shownAlbums && albums && albums.length > 0 && shownAlbums.length === 0 && (
+        <p className="detail">{t("gallery:album.noMatch")}</p>
+      )}
+      {shownAlbums && shownAlbums.length > 0 && (
         <div className="thumb-grid">
-          {albums.map((album) => (
+          {shownAlbums.map((album) => (
             <a key={album.id} className="thumb album-tile" title={album.name} href={routeHash({ view: "albums", albumId: album.id })}>
               {album.cover_asset_id ? (
                 <img src={`/api/v1/assets/${album.cover_asset_id}/thumb`} alt="" loading="lazy" />

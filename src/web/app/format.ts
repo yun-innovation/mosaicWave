@@ -143,10 +143,26 @@ export function formatMonth(key: string): string {
  */
 export function monthEndInstant(month: string): string {
   const [year, number] = month.split("-").map(Number);
-  const utc = Date.UTC(year, number, 1); // `number` is 1-based, so this is the first of the next month
+  return startOfDay(year, number, 1); // `number` is 1-based, so this is the first of the next month
+}
+
+/** The instant a calendar day starts in the zone this page shows; `day` may overflow ("2026-03-32" is April 1). */
+function startOfDay(year: number, month: number, day: number): string {
+  const utc = Date.UTC(year, month - 1, day);
   let offset = offsetMinutes(zone, new Date(utc)) ?? 0;
   offset = offsetMinutes(zone, new Date(utc - offset * 60000)) ?? offset; // a second look settles a switch of summer time
   return new Date(utc - offset * 60000).toISOString();
+}
+
+/** A search date range from two calendar days ("2026-03-01"; either may be empty) as instants, end exclusive. */
+export function dateRangeInstants(from: string, to: string): { from: string | null; to: string | null } {
+  const parts = (value: string) => value.split("-").map(Number);
+  const [fy, fm, fd] = parts(from);
+  const [ty, tm, td] = parts(to);
+  return {
+    from: from ? startOfDay(fy, fm, fd) : null,
+    to: to ? startOfDay(ty, tm, td + 1) : null, // the whole last day counts
+  };
 }
 
 /** "March 2026" for a month key ("2026-03"). */
