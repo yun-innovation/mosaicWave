@@ -1,6 +1,21 @@
 {
   "deleteAlbum": "删除相册",
   "generateThumbs": "生成缩略图",
+  "select": {
+    "newAlbumPlaceholder": "新相册名称",
+    "newAlbum": "创建相册并加入",
+    "start": "选择",
+    "label": "已选择的照片",
+    "count": "已选择 {{count}} 张",
+    "all": "选择全部已显示（{{count}}）",
+    "none": "清除选择",
+    "export": "导出",
+    "exportStart": "导出已选择的 {{count}} 张",
+    "done": "完成",
+    "pickDay": "选择当天",
+    "unpickDay": "取消选择当天",
+    "added": "已将 {{count}} 张加入 {{name}}"
+  },
   "search": {
     "placeholder": "搜索文件或文件夹名称",
     "from": "从",
