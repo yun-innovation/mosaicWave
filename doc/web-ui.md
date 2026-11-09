@@ -69,6 +69,8 @@ Shared types and URL helpers (`thumbSrc`, `stillSrc`, `isVideo`) are in `app/typ
 - The dates are calendar days in the user's **display zone** (the same zone the day headings use, so a search for 1 March finds what the page shows under 1 March). The web turns them into instants (`dateRangeInstants` in `format.ts`: start of **From**, start of the day after **To**) and sends `taken_from` (inclusive) and `taken_to` (exclusive). Either may be left empty. Photos with no date never match a date range; a name search alone still finds them.
 - Unlike `before`, which only starts the list and is ignored once a cursor is sent, the search filters apply to every page. While a search is active the timeline scrubber and its "Showing ... and older" line are hidden, and an empty result says "No photos match this search."
 
+- **Album list.** With two or more albums, the Albums page has a search box that filters the tiles by album name as you type (any case, plain text, in the browser; the list is already loaded, so no API call). An empty match says "No album has that name." Searching the photos inside one album is the search row above.
+
 ## Timeline scrubber (milestone 9, PR 2)
 
 - A rail down the right edge of the Photos view and of an album stands for the whole timeline, newest at the top, with the years labelled and a dot where the page is now. Press or drag on it to see a month and let go to jump there; Arrow, Page and Home/End keys do the same. It is shown only when there are at least two months (or one month and undated photos) to jump between.

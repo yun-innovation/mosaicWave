@@ -15,6 +15,8 @@
     "latest": "回到最新"
   },
   "album": {
+    "filter": "依名稱搜尋相簿",
+    "noMatch": "沒有符合名稱的相簿。",
     "back": "所有相簿",
     "notFound": "找不到這本相簿",
     "newPlaceholder": "新相簿名稱",

@@ -15,6 +15,8 @@
     "latest": "Back to newest"
   },
   "album": {
+    "filter": "Search albums by name",
+    "noMatch": "No album has that name.",
     "back": "All albums",
     "notFound": "Album not found",
     "newPlaceholder": "New album name",
