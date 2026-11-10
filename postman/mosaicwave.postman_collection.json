@@ -250,6 +250,38 @@
           ]
         },
         {
+          "name": "Login as an app (token)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/auth/login",
+            "description": "For the mobile apps: with token true the answer also holds session_token and expires_in and no cookie is set. Send the value as Authorization: Bearer <session_token> (a Bearer header wins over the cookie).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\",\n  \"token\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Refresh app session",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/auth/refresh",
+            "description": "A fresh session_token (90 days) while the current one, as Bearer header or cookie, is still valid. The old value stays valid until it expires."
+          }
+        },
+        {
           "name": "Me",
           "request": {
             "method": "GET",

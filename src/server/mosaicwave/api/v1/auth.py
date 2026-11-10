@@ -25,7 +25,7 @@ from mosaicwave.auth.providers import (
     verify_qnap_password,
     verify_qnap_sid,
 )
-from mosaicwave.auth.session import COOKIE_NAME, DEFAULT_TTL_SEC, sign_session
+from mosaicwave.auth.session import APP_TTL_SEC, COOKIE_NAME, DEFAULT_TTL_SEC, sign_session
 from mosaicwave.config import Settings
 from mosaicwave.db import get_session
 from mosaicwave.i18n import LOCALES, normalize_locale
@@ -66,6 +66,17 @@ class AuthStatusOut(BaseModel):
 class LoginIn(BaseModel):
     username: str | None = None
     password: str | None = None
+    token: bool = False  # an app: answer with the session value in the body, set no cookie
+
+
+class LoginOut(MeOut):
+    session_token: str | None = None  # only when `token` was asked for; send it as `Authorization: Bearer`
+    expires_in: int | None = None  # seconds the token is good for
+
+
+class RefreshOut(BaseModel):
+    session_token: str
+    expires_in: int
 
 
 class SetupIn(BaseModel):
@@ -210,13 +221,13 @@ def auth_setup(
     return _me_out(request, user)
 
 
-@router.post("/auth/login", response_model=MeOut)
+@router.post("/auth/login", response_model=LoginOut)
 def auth_login(
     body: LoginIn,
     request: Request,
     response: Response,
     session: Session = Depends(get_session),
-) -> MeOut:
+) -> LoginOut:
     settings = _settings(request)
     user: User | None = None
     if settings.platform == "standalone":
@@ -248,8 +259,25 @@ def auth_login(
         )
     request.state.user_locale = user.locale
     refuse_non_admin(settings, user)
-    _set_session_cookie(request, response, user)
-    return _me_out(request, user)
+    me = LoginOut(**_me_out(request, user).model_dump())
+    if body.token:
+        me.session_token = sign_session(user.id, request.app.state.session_secret, ttl=APP_TTL_SEC)
+        me.expires_in = APP_TTL_SEC
+    else:
+        _set_session_cookie(request, response, user)
+    return me
+
+
+@router.post("/auth/refresh", response_model=RefreshOut)
+def auth_refresh(request: Request, user: User = Depends(require_user)) -> RefreshOut:
+    """A fresh app session value while the current one (bearer header or cookie) is still good.
+
+    Sessions are signed, not stored, so the old value stays valid until it expires; there is no
+    per-session revoke (doc/mobile.md § Open questions). Removing the account or changing the
+    server secret ends every session.
+    """
+    token = sign_session(user.id, request.app.state.session_secret, ttl=APP_TTL_SEC)
+    return RefreshOut(session_token=token, expires_in=APP_TTL_SEC)
 
 
 @router.post("/auth/logout")

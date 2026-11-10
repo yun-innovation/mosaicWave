@@ -310,6 +310,19 @@ OpenAPI at `{{baseUrl}}/docs` stays the living spec; this collection is a snapsh
                     body="{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\"\n}",
                     tests=SAVE_COOKIE,
                 ),
+                req(
+                    "Login as an app (token)",
+                    "POST",
+                    "/api/v1/auth/login",
+                    description="For the mobile apps: with token true the answer also holds session_token and expires_in and no cookie is set. Send the value as Authorization: Bearer <session_token> (a Bearer header wins over the cookie).",
+                    body="{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\",\n  \"token\": true\n}",
+                ),
+                req(
+                    "Refresh app session",
+                    "POST",
+                    "/api/v1/auth/refresh",
+                    description="A fresh session_token (90 days) while the current one, as Bearer header or cookie, is still valid. The old value stays valid until it expires.",
+                ),
                 req("Me", "GET", "/api/v1/me", description="Current user, role, private library ids, locale."),
                 req(
                     "Me, answered in another language",

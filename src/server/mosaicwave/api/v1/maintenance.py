@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from mosaicwave import maintenance
 from mosaicwave.api.errors import ApiError
-from mosaicwave.auth.deps import _user_id_from_cookie, require_admin
+from mosaicwave.auth.deps import _user_id_from_request, require_admin
 from mosaicwave.db import get_session
 from mosaicwave.models import Job, User
 
@@ -79,7 +79,7 @@ def maintenance_guard(request: Request) -> None:
     path = request.url.path
     if not path.startswith(API_PREFIX) or path in OPEN_PATHS:
         return
-    user_id = _user_id_from_cookie(request)
+    user_id = _user_id_from_request(request)
     if user_id:
         session = request.app.state.session_factory()
         try:

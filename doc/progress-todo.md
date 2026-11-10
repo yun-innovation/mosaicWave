@@ -40,6 +40,6 @@ Open items only. Roadmap: ordered milestones in [roadmap.md](roadmap.md). The ea
 - [ ] iOS and Android clients in a separate repo (`mosaicWave-mobile`); this repo publishes the OpenAPI schema and the endpoints the apps need (**milestone 14**, Flutter; design in [mobile.md](mobile.md)), one PR each in this order:
   - [x] PR 1: design note ([mobile.md](mobile.md)) — merged [#57](https://github.com/yun-innovation/mosaicWave/pull/57)
   - [x] Step B: private `yun-innovation/mosaicWave-mobile` created, working copy `D:\mosaicWave\mw.mobile` (README and `.gitignore` only)
-  - [ ] PR 3: `openapi/openapi.json` published and checked in CI (`openapi_export.py`, `tests/test_openapi_file.py`); built on `feature/openapi-publish`, waiting for `ship`
-  - [ ] PR 4: bearer header, `token: true` on login, `/auth/refresh`
+  - [x] PR 3: `openapi/openapi.json` published and checked in CI (`openapi_export.py`, `tests/test_openapi_file.py`) — merged [#58](https://github.com/yun-innovation/mosaicWave/pull/58)
+  - [ ] PR 4: bearer header, `token: true` on login, `POST /auth/refresh` (`tests/test_app_token.py`); built on `feature/app-token`, waiting for `ship`
   - [ ] PR 5: resumable upload design and endpoint (the app itself is built in its own repo)

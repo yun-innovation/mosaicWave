@@ -5,7 +5,8 @@ import hashlib
 import time
 
 COOKIE_NAME = "mw_session"
-DEFAULT_TTL_SEC = 14 * 24 * 60 * 60
+DEFAULT_TTL_SEC = 14 * 24 * 60 * 60  # the browser cookie
+APP_TTL_SEC = 90 * 24 * 60 * 60  # a phone app signs in rarely; `POST /auth/refresh` renews it (doc/mobile.md)
 
 
 def sign_session(user_id: str, secret: str, *, ttl: int = DEFAULT_TTL_SEC, now: int | None = None) -> str:

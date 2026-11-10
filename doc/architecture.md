@@ -131,7 +131,8 @@ Illustrative v1 surface (names can change; behavior should not):
 
 | Method | Path | Role |
 | --- | --- | --- |
-| POST | `/api/v1/auth/login` | Check identity with the **auth provider** (QNAP or local); return mosaicWave session |
+| POST | `/api/v1/auth/login` | Check identity with the **auth provider** (QNAP or local); return mosaicWave session (cookie). `{"token": true}` (apps): no cookie, the answer also holds `session_token` and `expires_in` (90 days) |
+| POST | `/api/v1/auth/refresh` | A fresh `session_token` while the current session (bearer or cookie) is valid |
 | POST | `/api/v1/auth/setup` | First standalone admin (`local_credential`) |
 | GET | `/api/v1/auth/status` | `platform`, `needs_setup`, current `me` if cookied |
 | POST | `/api/v1/auth/logout` | Clear session cookie |
@@ -372,6 +373,10 @@ Publish: `scripts/publish-posix.ps1` (or `.sh`) → `dist/posix/mosaicWave/`. Pa
 | Standalone web / mobile | Same `POST /api/v1/auth/login` against the **local** provider. First-run: `POST /api/v1/auth/setup`. |
 
 **Do not:** copy `/etc/shadow`, skip QNAP auth on a QPKG install, or teach clients to call undocumented CGI as the public API.
+
+### App sign-in (bearer header)
+
+An app sends `Authorization: Bearer <session_token>` on every request. It is the **same signed value** as the browser cookie (`user_id.expiry.signature`), so there is one session mechanism, not two. The header wins over the cookie; a bearer that does not verify is **not** rescued by a cookie, and another scheme (`Basic`) is ignored. The browser cookie lasts 14 days, an app token 90 days (`APP_TTL_SEC`); `POST /auth/refresh` returns a new 90 days from now. Sessions are signed, not stored: logout only clears the cookie, a token cannot be revoked on its own and ends when it expires, when the account is removed, or when the server's session secret changes. A per-session list and revoke is a later decision ([mobile.md](mobile.md)).
 
 ## Authorization
 

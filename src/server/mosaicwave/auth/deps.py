@@ -11,8 +11,21 @@ from mosaicwave.db import get_session
 from mosaicwave.models import User
 
 
-def _user_id_from_cookie(request: Request) -> str | None:
-    token = request.cookies.get(COOKIE_NAME)
+def bearer_token(request: Request) -> str | None:
+    """The value of ``Authorization: Bearer <value>``, or None when the header is absent or another scheme."""
+    scheme, _, value = request.headers.get("authorization", "").partition(" ")
+    value = value.strip()
+    return value if scheme.lower() == "bearer" and value else None
+
+
+def _user_id_from_request(request: Request) -> str | None:
+    """Who is calling: the bearer header (apps) when sent, else the session cookie (browsers).
+
+    Both carry the same signed session value. A bearer header that does not verify is not
+    rescued by a cookie, so a client never acts as someone it did not mean to.
+    """
+    header = bearer_token(request)
+    token = header if header is not None else request.cookies.get(COOKIE_NAME)
     if not token:
         return None
     secret: str = request.app.state.session_secret
@@ -23,7 +36,7 @@ def optional_user(
     request: Request,
     session: Session = Depends(get_session),
 ) -> User | None:
-    user_id = _user_id_from_cookie(request)
+    user_id = _user_id_from_request(request)
     if not user_id:
         return None
     user = session.get(User, user_id)
@@ -41,7 +54,7 @@ def require_user(user: User | None = Depends(optional_user)) -> User:
 
 def require_user_brief(request: Request) -> User:
     """Load the caller and close SQLite before a long body (Takeout device upload / finish)."""
-    user_id = _user_id_from_cookie(request)
+    user_id = _user_id_from_request(request)
     if not user_id:
         raise ApiError(401, "not_authenticated", "not authenticated")
     factory = request.app.state.session_factory

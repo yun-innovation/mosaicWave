@@ -99,7 +99,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/MeOut"
+                  "$ref": "#/components/schemas/LoginOut"
                 }
               }
             }
@@ -110,6 +110,25 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/refresh": {
+      "post": {
+        "summary": "Auth Refresh",
+        "description": "A fresh app session value while the current one (bearer header or cookie) is still good.\n\nSessions are signed, not stored, so the old value stays valid until it expires; there is no\nper-session revoke (doc/mobile.md § Open questions). Removing the account or changing the\nserver secret ends every session.",
+        "operationId": "auth_refresh_api_v1_auth_refresh_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RefreshOut"
                 }
               }
             }
@@ -3940,10 +3959,97 @@
               }
             ],
             "title": "Password"
+          },
+          "token": {
+            "type": "boolean",
+            "title": "Token",
+            "default": false
           }
         },
         "type": "object",
         "title": "LoginIn"
+      },
+      "LoginOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "provider": {
+            "type": "string",
+            "title": "Provider"
+          },
+          "locale": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Locale"
+          },
+          "time_zone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Time Zone"
+          },
+          "use_dst": {
+            "type": "boolean",
+            "title": "Use Dst",
+            "default": false
+          },
+          "session_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Session Token"
+          },
+          "expires_in": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires In"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "username",
+          "display_name",
+          "role",
+          "provider"
+        ],
+        "title": "LoginOut"
       },
       "LooseMediaOut": {
         "properties": {
@@ -4195,6 +4301,24 @@
           "size"
         ],
         "title": "PartOut"
+      },
+      "RefreshOut": {
+        "properties": {
+          "session_token": {
+            "type": "string",
+            "title": "Session Token"
+          },
+          "expires_in": {
+            "type": "integer",
+            "title": "Expires In"
+          }
+        },
+        "type": "object",
+        "required": [
+          "session_token",
+          "expires_in"
+        ],
+        "title": "RefreshOut"
       },
       "RestartOut": {
         "properties": {
