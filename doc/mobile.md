@@ -37,7 +37,7 @@ Uploading while the app is closed is limited by each OS, not by this repo. Andro
 
 ## Upload design (step G)
 
-**Status: decided, not built.** The two open points were settled on 2026-11-10 (the `removed` rule, and the album per device when the file does not show its device). Nothing below is built; the endpoint is the PR after this one. It replaces nothing: the Takeout push session (`/import/takeout/push`) stays for dumps.
+**Status: decided, not built.** The open points were settled on 2026-11-10 (the `removed` rule; no device album, files go to `Uploads/{year}`). Nothing below is built; the endpoint is the PR after this one. It replaces nothing: the Takeout push session (`/import/takeout/push`) stays for dumps.
 
 ### Why a new endpoint
 
@@ -50,7 +50,7 @@ The verbs and headers follow [tus 1.0](https://tus.io/protocols/resumable-upload
 | Call | What it does |
 | --- | --- |
 | `POST /uploads/check` | `{items: [{content_hash, size}]}` (at most 500) answers `{known: [hash…], removed: [hash…]}`: hashes the library already has, and hashes of photos the user deleted on purpose. The app skips both; one request replaces hundreds of attempts. |
-| `POST /uploads` | `{filename, size, content_hash, taken_at?, mime?, device_name?}` starts an upload and answers `201 {id, offset: 0, chunk_size, expires_at}`. **Idempotent** per `(user, content_hash)`: if one is already open it answers `200` with the same `id` and the offset it has reached, so an app that lost its state resumes without a list call. If the library already has the hash: `200 {state: "exists", asset_id}` and nothing is uploaded. |
+| `POST /uploads` | `{filename, size, content_hash, taken_at?, mime?}` starts an upload and answers `201 {id, offset: 0, chunk_size, expires_at}`. **Idempotent** per `(user, content_hash)`: if one is already open it answers `200` with the same `id` and the offset it has reached, so an app that lost its state resumes without a list call. If the library already has the hash: `200 {state: "exists", asset_id}` and nothing is uploaded. |
 | `HEAD /uploads/{id}` | Headers `Upload-Offset` and `Upload-Length`: where to continue. `404` once finished, aborted or expired. |
 | `PATCH /uploads/{id}` | Raw bytes (`Content-Type: application/offset+octet-stream`) with `Upload-Offset: <n>`. Appends when `n` equals the server's offset, else `409 upload_offset_mismatch` with the true `offset` in `params`. Answers the new offset. A small file is `POST` + one `PATCH`. |
 | `DELETE /uploads/{id}` | Abort and delete the partial file. |
@@ -63,7 +63,7 @@ The last byte completes the upload **in the same response**: the server checks t
 
 - **Staging:** `{data_dir}/tmp/uploads/{user_id}/{id}.part` with a small `{id}.json` beside it (filename, size, hash, `taken_at`, created, last touched). No database table, so no schema step. Open uploads survive a restart; those untouched for 7 days are deleted at start-up and whenever a new upload starts.
 - **Finishing a file:** the same steps as one Takeout file, minus sidecars: read the capture time (EXIF, then video metadata, then the app's `taken_at`, then the file time), pick a free name (`unused_relative`), move the file into the user's library folder, add the asset with its hash, queue the thumbnail. Stored under `Uploads/{year}/{filename}` so it is easy to find in the folder tree and by name search; the year is the capture year in UTC.
-- **Which device it came from (decided):** a file carries its own trail when its EXIF names the camera (`Make` and `Model`); nothing is added then. When the file gives **no other way to trace the device** (screenshots, saved or forwarded images, videos without that metadata), the server adds it to an **album named after the uploading device**, creating the album the first time. The name is `device_name` from the upload (else the app session's device name, else `Phone`); the same name always reaches the same album. The album is an ordinary album: the user can rename, move or delete it.
+- **Which device it came from (decided: not tracked):** the server does not record or sort by the uploading device. Photo management does not need it: a file keeps whatever its own EXIF says about the camera, everything lands in `Uploads/{year}`, and the library works the same for photos from any device. Only the session list ("Signed-in devices") knows device names.
 - **Limits (settings, not constants in the app):** a file at most 64 GiB; at most 100 open uploads per user; free space on the data folder is checked when an upload starts (`507 insufficient_storage`); only photo and video types the library already accepts (`415 unsupported_media_type`, judged by file name, then confirmed when the metadata is read).
 - **Safety:** `filename` is reduced to a plain name (no folders, no reserved names); a second `PATCH` to the same upload while one runs is refused (`409 upload_busy`); another user's upload id is `404`; maintenance mode blocks uploads like every other write.
 - **Time:** all times are UTC ISO 8601 with `Z`, as everywhere ([i18n.md](i18n.md)).
@@ -71,7 +71,7 @@ The last byte completes the upload **in the same response**: the server checks t
 
 ### How an app learns a photo was removed
 
-The rule is about the **file**, not the device: `removed` is answered by `content_hash`, so it works the same whether or not the device can be traced (the device album above is only a place to put the photo; it plays no part in this). Three things make it hold:
+The rule is about the **file**, not the device: `removed` is answered by `content_hash`, so it works the same whether or not the device can be traced (the server does not track the uploading device at all, so there is nothing to trace). Three things make it hold:
 
 1. **The server keeps a tombstone.** Removing a photo soft-deletes its row (`deleted_at`), and the row keeps its `content_hash`; `check` reports that hash as `removed`. Two gaps to close in the endpoint PR or just before it: (a) **there is no "delete a photo" call today** (only albums and sources can be deleted; a photo is marked deleted only when a rescan finds its file gone), so the PR adds `DELETE /assets/{id}` for the web and apps, soft-deleting and never dropping the hash; (b) assets found by a folder scan may have **no stored hash**, so the delete computes it (reads the file once) before the row is marked deleted. A photo whose file was deleted outside the app has no bytes left to hash; it is only `removed` if it had a hash already.
 2. **Another device sends the same file.** The same hash is `removed` for every device of the same user, so a phone and a tablet holding the same photo both skip it.
@@ -107,5 +107,4 @@ Milestone 14 is marked done only when you say so.
 ## Open questions
 
 - Upload: revisit the `removed` rule (a deleted photo is not uploaded again) after the Flutter client is ready.
-- Upload: what the device album does with a device that is renamed (today the name is just text; a renamed device starts a new album).
 - Distribution: TestFlight and Play internal testing first; store listing is a later decision.
