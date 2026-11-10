@@ -41,6 +41,7 @@ from mosaicwave.library.albums import (
     remove_asset,
 )
 from mosaicwave.library.media import is_media
+from mosaicwave.library.remove import remove_photo
 from mosaicwave.library.query import AssetListOut, AssetOut, MonthsOut, asset_to_out, list_assets, month_counts
 from mosaicwave.timezone import canonical_zone, zone_data_available
 from mosaicwave.library.sync import SyncChangesOut, pull_changes
@@ -689,6 +690,29 @@ def get_asset(
 
 
 _THUMB_RETRY_CACHE = {"Cache-Control": "private, max-age=0, must-revalidate"}
+
+
+@router.delete("/assets/{asset_id}")
+def delete_asset(
+    asset_id: str,
+    request: Request,
+    session: Session = Depends(get_library_session),
+    user: User = Depends(require_user),
+) -> dict:
+    """Delete one photo: its file and thumbnails go, albums lose it, and a tombstone keeps its hash.
+
+    Only photos in a folder library can be deleted (a Takeout dump is read-only). Deleting it again is 404.
+    """
+    asset, source = _live_asset(session, asset_id, user)
+    _own_library(request, session, user)
+    if source.kind != "folder" or source.id not in _writable_ids(session, user):
+        raise ApiError(400, "delete_folder_only", "only photos in your own library can be deleted")
+    try:
+        remove_photo(session, asset, filestore_for_source(source), request.app.state.blob_store)
+    except OSError as exc:
+        _log.warning("could not delete %s: %s", asset.relative_path, exc)
+        raise ApiError(409, "asset_delete_failed", "the file could not be deleted") from exc
+    return {"status": "ok"}
 
 
 @router.get("/assets/{asset_id}/thumb")

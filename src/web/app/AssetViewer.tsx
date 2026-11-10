@@ -61,6 +61,17 @@ export function AssetViewer({ asset, albums, albumId, onClose, onChanged }: Prop
     onChanged(false);
   }
 
+  async function deletePhoto() {
+    if (!window.confirm(t("gallery:detail.deleteConfirm", { name: asset.filename }))) return;
+    setNotice(null);
+    const res = await apiFetch(`/api/v1/assets/${asset.id}`, { method: "DELETE" });
+    if (!res.ok) {
+      setNotice({ text: await readDetail(res), ok: false });
+      return;
+    }
+    onChanged(true);
+  }
+
   async function removeFromAlbum() {
     if (!albumId) return;
     setNotice(null);
@@ -121,6 +132,9 @@ export function AssetViewer({ asset, albums, albumId, onClose, onChanged }: Prop
                 {t("gallery:detail.removeFromAlbum")}
               </button>
             )}
+            <button type="button" onClick={() => void deletePhoto()}>
+              {t("gallery:detail.delete")}
+            </button>
             <button type="button" onClick={onClose}>
               {t("common:close")}
             </button>

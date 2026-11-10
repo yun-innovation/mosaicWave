@@ -1,4 +1,6 @@
 {
+  "delete_folder_only": "只能删除你自己相册库中的照片。",
+  "asset_delete_failed": "无法删除该文件。",
   "session_not_found": "找不到该登录会话。",
   "session_days_out_of_range": "登录有效期为 {{min}} 至 {{max}} 天。",
   "not_authenticated": "尚未登录。",

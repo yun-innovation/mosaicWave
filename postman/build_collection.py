@@ -561,6 +561,12 @@ OpenAPI at `{{baseUrl}}/docs` stays the living spec; this collection is a snapsh
                     tests=SAVE_ASSET,
                 ),
                 req(
+                    "Delete photo",
+                    "DELETE",
+                    "/api/v1/assets/{{assetId}}",
+                    description="Deletes the original file and thumbnails, removes the photo from albums, keeps a tombstone with content_hash. 400 delete_folder_only (not your folder library), 409 asset_delete_failed, 404 when already gone. Not undoable.",
+                ),
+                req(
                     "Asset months",
                     "GET",
                     "/api/v1/assets/months",

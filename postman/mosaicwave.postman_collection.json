@@ -808,6 +808,15 @@
           ]
         },
         {
+          "name": "Delete photo",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/assets/{{assetId}}",
+            "description": "Deletes the original file and thumbnails, removes the photo from albums, keeps a tombstone with content_hash. 400 delete_folder_only (not your folder library), 409 asset_delete_failed, 404 when already gone. Not undoable."
+          }
+        },
+        {
           "name": "Asset months",
           "request": {
             "method": "GET",

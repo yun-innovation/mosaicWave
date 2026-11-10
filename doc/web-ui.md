@@ -34,7 +34,7 @@ Each view has a hash URL, so links, reload and Back / Forward work without a ser
 
 An empty or unknown hash shows Photos. Routing is `app/hashRoute.ts`: `useRoute()` reads `location.hash` with `useSyncExternalStore` on `hashchange`, and navigation sets `location.hash` (one history entry per view). The file is not called `route.ts` because that name is reserved by the Next App Router.
 
-The photo viewer (`AssetViewer.tsx`) is a dialog over the current view, not a URL. Escape closes it.
+The photo viewer (`AssetViewer.tsx`) is a dialog over the current view, not a URL. Escape closes it. Its **Delete** button asks to confirm, then calls `DELETE /assets/{id}`: the file is deleted from the server for good (no trash), the photo leaves every album, and the list reloads. In select mode the bar has **Delete** for all picked photos (one confirm, then one call each; a photo already gone counts as done).
 
 **Upload** opens a dialog (`UploadDialog.tsx`) from any view. It lists the caller's writable folder sources and shows a picker only when there is more than one.
 

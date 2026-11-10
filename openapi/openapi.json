@@ -1185,6 +1185,46 @@
             }
           }
         }
+      },
+      "delete": {
+        "summary": "Delete Asset",
+        "description": "Delete one photo: its file and thumbnails go, albums lose it, and a tombstone keeps its hash.\n\nOnly photos in a folder library can be deleted (a Takeout dump is read-only). Deleting it again is 404.",
+        "operationId": "delete_asset_api_v1_assets__asset_id__delete",
+        "parameters": [
+          {
+            "name": "asset_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Asset Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Delete Asset Api V1 Assets  Asset Id  Delete"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/assets/{asset_id}/thumb": {

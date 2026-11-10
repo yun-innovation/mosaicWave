@@ -1,4 +1,6 @@
 {
+  "delete_folder_only": "Only photos in your own library can be deleted.",
+  "asset_delete_failed": "The file could not be deleted.",
   "session_not_found": "That session was not found.",
   "session_days_out_of_range": "A sign-in lasts {{min}} to {{max}} days.",
   "not_authenticated": "Not signed in.",

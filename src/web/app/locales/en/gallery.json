@@ -2,6 +2,8 @@
   "deleteAlbum": "Delete album",
   "generateThumbs": "Generate thumbs",
   "select": {
+    "delete": "Delete",
+    "deleteConfirm": "Delete {{count}} selected photos from your library? The files are deleted from the server and cannot be restored.",
     "newAlbumPlaceholder": "New album name",
     "newAlbum": "Create album and add",
     "start": "Select",
@@ -61,6 +63,8 @@
   "emptyLibrary": "Empty library. Import a Takeout folder to seed SQLite.",
   "loadMore": "Load more",
   "detail": {
+    "delete": "Delete",
+    "deleteConfirm": "Delete {{name}} from your library? The file is deleted from the server and cannot be restored.",
     "download": "Download original",
     "albumLabel": "Album",
     "addToAlbum": "Add to album",
