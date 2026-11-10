@@ -1,4 +1,6 @@
 {
+  "session_not_found": "找不到该登录会话。",
+  "session_days_out_of_range": "登录有效期为 {{min}} 至 {{max}} 天。",
   "not_authenticated": "尚未登录。",
   "admin_only": "只有管理员可以执行此操作。",
   "invalid_username": "用户名只能使用英文字母、数字、点、连字符或下划线（最多 64 个字符）。",

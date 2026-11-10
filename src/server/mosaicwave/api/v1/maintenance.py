@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from mosaicwave import maintenance
 from mosaicwave.api.errors import ApiError
-from mosaicwave.auth.deps import _user_id_from_request, require_admin
+from mosaicwave.auth.deps import current_login, require_admin
 from mosaicwave.db import get_session
 from mosaicwave.models import Job, User
 
@@ -79,15 +79,13 @@ def maintenance_guard(request: Request) -> None:
     path = request.url.path
     if not path.startswith(API_PREFIX) or path in OPEN_PATHS:
         return
-    user_id = _user_id_from_request(request)
-    if user_id:
-        session = request.app.state.session_factory()
-        try:
-            user = session.get(User, user_id)
-            if user is not None and user.deleted_at is None and user.role == "admin":
-                return
-        finally:
-            session.close()
+    session = request.app.state.session_factory()
+    try:
+        login = current_login(request, session, touch=False, cache=False)
+        if login is not None and login[1].role == "admin":
+            return
+    finally:
+        session.close()
     raise maintenance_error(flag)
 
 

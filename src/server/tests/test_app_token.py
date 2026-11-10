@@ -8,8 +8,11 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from authutil import ADMIN_PASS, ADMIN_USER, authed_client
-from mosaicwave.auth.session import APP_TTL_SEC, sign_session
+from mosaicwave.auth.session import sign_session
+from mosaicwave.auth.sessions import APP, DEFAULT_DAYS
 from mosaicwave.config import Settings
+
+APP_TTL_SEC = DEFAULT_DAYS[APP] * 86400
 
 
 def _server(tmp_path: Path) -> TestClient:

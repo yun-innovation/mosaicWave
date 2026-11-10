@@ -87,6 +87,7 @@ erDiagram
   source ||--o{ album : albums
   user ||--o| local_credential : standalone
   user ||--o{ job : runs
+  user ||--o{ user_session : signed in
   album ||--o{ album_asset : members
   asset ||--o{ album_asset : in
   asset ||--o| album : cover
@@ -133,6 +134,23 @@ Standalone-only. Not a replica entity. Not used when `platform=qnap`.
 | --- | --- | --- |
 | `user_id` | TEXT PK, FK → `user.id` | |
 | `password_hash` | TEXT | |
+
+### `user_session`
+
+One sign-in of a browser or an app (site database, not replicated). The signed session value a client sends names a row; the row decides whether it still works ([architecture.md § App sign-in](architecture.md#app-sign-in-bearer-header)).
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| `id` | TEXT PK | The subject of the signed value |
+| `user_id` | TEXT, FK → `user.id` | Indexed |
+| `kind` | TEXT | `browser` or `app` |
+| `device_name` | TEXT null | What the app sent, or the browser's User-Agent; at most 100 characters |
+| `created_at`, `last_seen_at`, `expires_at` | DATETIME | UTC. `last_seen_at` is written at most every 5 minutes |
+| `revoked_at` | DATETIME null | Set by sign out; the session is dead from then on. Rows expired or revoked for over a day are deleted at the next sign-in |
+
+### `site_setting`
+
+Server-wide settings an admin changes while the server runs: `key` (TEXT PK), `value` (TEXT), `updated_at`. Today only `session_days_browser` (default 14) and `session_days_app` (default 90), each 1 to 365.
 
 ### `job`
 
@@ -239,7 +257,8 @@ Milestone 5. Code: `src/server/mosaicwave/schema/` (runner in `__init__.py`, ste
 | 3 | Per-library databases: the site database drops the moved tables (milestone 6) |
 | 4 | Adds `job.error_code/error_params/current_code/current_params` and `job_event.code/params` (milestone 8) |
 | 5 | Adds `user.time_zone` (milestone 8) |
-| 6 | Adds `user.use_dst` (milestone 8). Current |
+| 6 | Adds `user.use_dst` (milestone 8) |
+| 7 | Adds `user_session` and `site_setting` (milestone 14). Current. Sign-ins from before this step (signed values with no row) stop working once |
 
 The number is SQLite's `PRAGMA user_version`. Each change also adds a row to `schema_history`:
 

@@ -94,6 +94,26 @@ def _user_use_dst(con: sqlite3.Connection) -> None:
         con.execute('ALTER TABLE "user" ADD COLUMN use_dst BOOLEAN NOT NULL DEFAULT 0')
 
 
+def _sessions_and_site_settings(con: sqlite3.Connection) -> None:
+    """Step 7: stored sign-ins (`user_session`) and admin-editable server settings (`site_setting`).
+
+    Sessions that were signed values with no row (the user id was the subject) stop working: people sign in again.
+    """
+    con.execute(
+        "CREATE TABLE IF NOT EXISTS user_session ("
+        "id VARCHAR(36) NOT NULL PRIMARY KEY, "
+        "user_id VARCHAR(36) NOT NULL REFERENCES \"user\" (id), "
+        "kind VARCHAR(16) NOT NULL, device_name VARCHAR(100), "
+        "created_at DATETIME NOT NULL, last_seen_at DATETIME NOT NULL, "
+        "expires_at DATETIME NOT NULL, revoked_at DATETIME)"
+    )
+    con.execute("CREATE INDEX IF NOT EXISTS ix_user_session_user_id ON user_session (user_id)")
+    con.execute(
+        "CREATE TABLE IF NOT EXISTS site_setting ("
+        "key VARCHAR(64) NOT NULL PRIMARY KEY, value TEXT NOT NULL, updated_at DATETIME NOT NULL)"
+    )
+
+
 def _drop_moved_tables(con: sqlite3.Connection) -> None:
     """Step 3 only runs after schema/split.py has copied every library out (see split.py)."""
     for table in ("album_asset", "album", "asset", "source_grant", "source"):
@@ -113,4 +133,5 @@ STEPS: list[Step] = [
     Step(4, "job.error_code/error_params/current_code/current_params, job_event.code/params (milestone 8)", _job_text_codes),
     Step(5, "user.time_zone (milestone 8)", _user_time_zone),
     Step(6, "user.use_dst (milestone 8)", _user_use_dst),
+    Step(7, "user_session and site_setting tables (milestone 14)", _sessions_and_site_settings),
 ]

@@ -6,9 +6,10 @@ from fastapi import Depends, Request
 from sqlalchemy.orm import Session
 
 from mosaicwave.api.errors import ApiError
-from mosaicwave.auth.session import COOKIE_NAME, read_session
+from mosaicwave.auth.session import COOKIE_NAME
+from mosaicwave.auth.sessions import resolve
 from mosaicwave.db import get_session
-from mosaicwave.models import User
+from mosaicwave.models import User, UserSession
 
 
 def bearer_token(request: Request) -> str | None:
@@ -18,30 +19,43 @@ def bearer_token(request: Request) -> str | None:
     return value if scheme.lower() == "bearer" and value else None
 
 
-def _user_id_from_request(request: Request) -> str | None:
-    """Who is calling: the bearer header (apps) when sent, else the session cookie (browsers).
+def session_token(request: Request) -> str | None:
+    """The signed session value a request carries: the bearer header (apps) when sent, else the cookie (browsers).
 
-    Both carry the same signed session value. A bearer header that does not verify is not
-    rescued by a cookie, so a client never acts as someone it did not mean to.
+    A bearer header that does not verify is not rescued by a cookie, so a client never acts as someone it
+    did not mean to.
     """
     header = bearer_token(request)
-    token = header if header is not None else request.cookies.get(COOKIE_NAME)
+    return header if header is not None else request.cookies.get(COOKIE_NAME)
+
+
+def current_login(
+    request: Request, session: Session, *, touch: bool = True, cache: bool = True
+) -> tuple[UserSession, User] | None:
+    """The live session and user behind this request, looked up once per request.
+
+    ``cache=False`` is for a caller that closes its session right after (the objects would outlive it).
+    """
+    cached = getattr(request.state, "login", None) if cache else None
+    if cached is not None:
+        return cached
+    token = session_token(request)
     if not token:
         return None
-    secret: str = request.app.state.session_secret
-    return read_session(token, secret)
+    login = resolve(session, token, request.app.state.session_secret, touch=touch)
+    if login is not None and cache:
+        request.state.login = login
+    return login
 
 
 def optional_user(
     request: Request,
     session: Session = Depends(get_session),
 ) -> User | None:
-    user_id = _user_id_from_request(request)
-    if not user_id:
+    login = current_login(request, session)
+    if login is None:
         return None
-    user = session.get(User, user_id)
-    if user is None or user.deleted_at is not None:
-        return None
+    user = login[1]
     request.state.user_locale = user.locale  # the answer language when the request names none
     return user
 
@@ -54,21 +68,18 @@ def require_user(user: User | None = Depends(optional_user)) -> User:
 
 def require_user_brief(request: Request) -> User:
     """Load the caller and close SQLite before a long body (Takeout device upload / finish)."""
-    user_id = _user_id_from_request(request)
-    if not user_id:
-        raise ApiError(401, "not_authenticated", "not authenticated")
     factory = request.app.state.session_factory
     session = factory()
     try:
-        user = session.get(User, user_id)
-        if user is None or user.deleted_at is not None:
+        login = current_login(request, session, cache=False)
+        if login is None:
             raise ApiError(401, "not_authenticated", "not authenticated")
+        user = login[1]
         session.expunge(user)
         request.state.user_locale = user.locale
         return user
     finally:
         session.close()
-
 
 def get_library_session(
     request: Request, user: User = Depends(require_user)

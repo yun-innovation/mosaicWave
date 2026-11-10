@@ -2,6 +2,25 @@
   "title": "Settings",
   "loadFailed": "failed to load settings",
   "signInAgain": "{{detail}}. Reload and sign in. If a NAS move just failed, copy library.db back to the default folder before Create admin.",
+  "sessions": {
+    "title": "Signed-in devices",
+    "help": "Browsers and apps signed in to your account. Sign out any you do not use or no longer trust.",
+    "kind": {
+      "browser": "Browser",
+      "app": "App"
+    },
+    "thisDevice": "This device",
+    "lastSeen": "Last used {{when}}",
+    "expires": "Signs out {{when}}",
+    "signOut": "Sign out",
+    "signOutOthers": "Sign out everywhere else",
+    "lifetimeTitle": "How long a sign-in lasts",
+    "lifetimeHelp": "Admin. Applies to new sign-ins and to the next refresh of an app; sessions already signed in keep their date.",
+    "browserDays": "Browser (days)",
+    "appDays": "App (days)",
+    "save": "Save",
+    "saved": "Saved."
+  },
   "language": {
     "label": "Language",
     "help": "Saved to your account, so it follows you to other devices.",

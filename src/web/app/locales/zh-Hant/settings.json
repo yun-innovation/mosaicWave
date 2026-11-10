@@ -2,6 +2,25 @@
   "title": "設定",
   "loadFailed": "無法載入設定",
   "signInAgain": "{{detail}}。請重新整理並登入。如果剛才搬移到 NAS 失敗，請先把 library.db 複製回預設資料夾，再按「建立管理員」。",
+  "sessions": {
+    "title": "已登入的裝置",
+    "help": "登入你帳號的瀏覽器與 App。不再使用或不信任的可以登出。",
+    "kind": {
+      "browser": "瀏覽器",
+      "app": "App"
+    },
+    "thisDevice": "這個裝置",
+    "lastSeen": "上次使用 {{when}}",
+    "expires": "登出時間 {{when}}",
+    "signOut": "登出",
+    "signOutOthers": "登出其他所有裝置",
+    "lifetimeTitle": "登入有效期限",
+    "lifetimeHelp": "管理員設定。套用於新的登入與 App 下次更新；已登入的工作階段保持原本期限。",
+    "browserDays": "瀏覽器（天）",
+    "appDays": "App（天）",
+    "save": "儲存",
+    "saved": "已儲存。"
+  },
   "language": {
     "label": "語言",
     "help": "儲存在你的帳號中，換到其他裝置也會沿用。",

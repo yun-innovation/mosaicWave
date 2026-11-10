@@ -2,6 +2,25 @@
   "title": "设置",
   "loadFailed": "无法加载设置",
   "signInAgain": "{{detail}}。请刷新页面并登录。如果刚才移动到 NAS 失败，请先把 library.db 复制回默认文件夹，再点击“创建管理员”。",
+  "sessions": {
+    "title": "已登录的设备",
+    "help": "登录你账号的浏览器与 App。不再使用或不信任的可以退出。",
+    "kind": {
+      "browser": "浏览器",
+      "app": "App"
+    },
+    "thisDevice": "这个设备",
+    "lastSeen": "上次使用 {{when}}",
+    "expires": "退出时间 {{when}}",
+    "signOut": "退出",
+    "signOutOthers": "退出其他所有设备",
+    "lifetimeTitle": "登录有效期",
+    "lifetimeHelp": "管理员设置。适用于新的登录和 App 下次刷新；已登录的会话保持原有期限。",
+    "browserDays": "浏览器（天）",
+    "appDays": "App（天）",
+    "save": "保存",
+    "saved": "已保存。"
+  },
   "language": {
     "label": "语言",
     "help": "保存在你的账号中，换到其他设备也会沿用。",

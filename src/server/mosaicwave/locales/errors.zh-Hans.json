@@ -108,6 +108,8 @@
   "reads_zips_other": "导入时会直接读取 {{count}} 个 zip 文件，无需解压。放在 zip 文件旁边的大视频会根据附属文件一并导入。",
   "restore_not_staged": "没有等待应用的还原。",
   "restore_pending": "有一份还原正等待应用。请先应用或丢弃它。",
+  "session_days_out_of_range": "登录有效期为 {{min}} 至 {{max}} 天。",
+  "session_not_found": "找不到该登录会话。",
   "setup_not_available": "QNAP 上无法使用本地设置。",
   "sidecar_without_media_other": "有 {{count}} 个照片/视频附属文件找不到对应的媒体文件。",
   "source_not_found": "找不到照片库。",

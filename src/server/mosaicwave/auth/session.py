@@ -5,13 +5,13 @@ import hashlib
 import time
 
 COOKIE_NAME = "mw_session"
-DEFAULT_TTL_SEC = 14 * 24 * 60 * 60  # the browser cookie
-APP_TTL_SEC = 90 * 24 * 60 * 60  # a phone app signs in rarely; `POST /auth/refresh` renews it (doc/mobile.md)
+
+# The subject of a signed value is a user_session id (auth/sessions.py); lifetimes are admin settings.
 
 
-def sign_session(user_id: str, secret: str, *, ttl: int = DEFAULT_TTL_SEC, now: int | None = None) -> str:
+def sign_session(subject: str, secret: str, *, ttl: int, now: int | None = None) -> str:
     exp = int(now if now is not None else time.time()) + int(ttl)
-    payload = f"{user_id}.{exp}"
+    payload = f"{subject}.{exp}"
     sig = hmac.new(secret.encode("utf-8"), payload.encode("utf-8"), hashlib.sha256).hexdigest()
     return f"{payload}.{sig}"
 
@@ -20,10 +20,10 @@ def read_session(token: str, secret: str, *, now: int | None = None) -> str | No
     parts = token.split(".")
     if len(parts) != 3:
         return None
-    user_id, exp_s, sig = parts
-    if not user_id or not exp_s or not sig:
+    subject, exp_s, sig = parts
+    if not subject or not exp_s or not sig:
         return None
-    payload = f"{user_id}.{exp_s}"
+    payload = f"{subject}.{exp_s}"
     expected = hmac.new(secret.encode("utf-8"), payload.encode("utf-8"), hashlib.sha256).hexdigest()
     if not hmac.compare_digest(sig, expected):
         return None
@@ -33,4 +33,4 @@ def read_session(token: str, secret: str, *, now: int | None = None) -> str | No
         return None
     if exp < int(now if now is not None else time.time()):
         return None
-    return user_id
+    return subject
