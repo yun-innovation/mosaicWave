@@ -7,7 +7,7 @@ Design note. No app code and no server code yet: this page settles the technolog
 | Topic | Decision |
 | --- | --- |
 | Technology | **Flutter** (Dart): one codebase for iOS and Android. Chosen over two native apps to keep one team-sized code base; the cost is that background work on iOS goes through plugins ([Upload](#upload-and-the-operating-system)). |
-| Repository | **`mosaicWave-mobile`**, a **private GitHub repository** under `yun-innovation` to begin with (made public later only if the project decides to). Not created yet. The apps never live in this repo: this repo's packaging and CI stay free of Xcode, the Android SDK and Flutter. |
+| Repository | **`mosaicWave-mobile`**, a **private GitHub repository** under `yun-innovation` to begin with (made public later only if the project decides to). Created 2026-11-10 (private, `main` holds a README and `.gitignore`); the working copy sits next to this one at `D:\mosaicWave\mw.mobile` (this repo is `D:\mosaicWave\mw.gh`). The apps never live in this repo: this repo's packaging and CI stay free of Xcode, the Android SDK and Flutter. |
 | Contract | The versioned **`/api/v1`**, the **OpenAPI** schema (`/openapi.json`) and the **Postman collection** published from this repo. An API change here updates them in the same PR ([process.md](process.md)). No generated SDK (the web does not use one either); the app has hand-written Dart models for the endpoints it uses. |
 | Server stays unaware | The server never learns what client it is. No `if mobile` branches: an endpoint added "for the apps" must be a normal endpoint the web could use. |
 | First app features | In the roadmap order: (1) sign in to a server by URL, (2) browse timeline and albums, (3) upload from the phone, (4) offline replica. The user chose browse before upload. |
@@ -40,7 +40,7 @@ Uploading while the app is closed is limited by each OS, not by this repo. Andro
 | Step | Where | What |
 | --- | --- | --- |
 | A | this repo | This design note, roadmap and status updated. |
-| B | this repo | Create the private `mosaicWave-mobile` repository and its README (needs the owner's go-ahead; it is an external action). |
+| B | app repo | **Done:** private `mosaicWave-mobile` created, README and `.gitignore` on `main`. |
 | C | this repo | `openapi.json` published and checked in CI; Postman current. |
 | D | this repo | Bearer header, `token: true` on login, `/auth/refresh`. |
 | E | app repo | Flutter skeleton: sign in, secure storage, language and time zone. |
