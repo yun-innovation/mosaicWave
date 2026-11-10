@@ -20,20 +20,17 @@
   "invalid_locale": "Unsupported language: {{locale}}",
   "invalid_time_zone": "Unknown time zone: {{time_zone}}",
   "time_zone_data_missing": "This server has no time zone data. Ask the administrator to install the tzdata package and restart.",
-
   "data_dir_rejected": "Could not use that folder: {{message}}",
   "data_dir_env_locked": "MOSAICWAVE_DATA_DIR is set, so the folder cannot be changed on the Server page.",
   "data_dir_occupied": "That destination already has a mosaicWave library.",
   "data_dir_job_running": "Cannot move the library while a job is running.",
   "data_dir_moving": "The library is being moved. Try again in a moment.",
-
   "folder_not_found": "Folder not found: {{message}}",
   "folder_forbidden": "No permission to open that folder: {{message}}",
   "folder_unreadable": "Could not read that folder: {{message}}",
   "folder_not_allowed": "That folder belongs to another user's library.",
   "file_not_found": "File not found.",
   "file_forbidden": "No permission to read that file: {{message}}",
-
   "takeout_path_required": "Enter the Takeout folder path.",
   "takeout_not_a_directory": "That path is not a folder.",
   "takeout_no_photos": "No photos found. Pick a folder with takeout-*.zip archives or an extracted Google Photos folder.",
@@ -47,7 +44,6 @@
   "upload_interrupted": "The upload was interrupted.",
   "upload_rejected": "The upload was rejected: {{message}}",
   "upload_failed": "The upload failed: {{message}}",
-
   "source_not_found": "Library not found.",
   "asset_not_found": "Photo or video not found.",
   "not_found": "Not found: {{message}}",
@@ -61,7 +57,6 @@
   "source_read_only": "This library is read-only.",
   "library_exists": "Each user already has one private library.",
   "library_delete_forbidden": "You cannot delete your library.",
-
   "album_not_found": "Album not found.",
   "asset_not_in_album": "That photo is not in this album.",
   "album_stale": "The album changed on the server. Reload and try again.",
@@ -72,7 +67,6 @@
   "album_id_invalid": "The album id must be a UUID.",
   "album_patch_empty": "Change the name or the cover.",
   "album_rejected": "Could not save the album: {{message}}",
-
   "no_takeout_zips": "No takeout-*.zip archives in the selected folder. An extracted tree needs a Google Photos folder inside this path (or date folders / photos here).",
   "no_takeout_zips_hint_nested": "This folder has no takeout-*.zip files. Subfolders that do: {{nested}}. Select that folder.",
   "no_takeout_zips_hint_names": "Found zip files with other names: {{other_names}}. mosaicWave looks for takeout-<timestamp>-<part>.zip.",
@@ -100,7 +94,6 @@
   "export_scope": "Choose all photos, or albums and photos, not both.",
   "export_not_found": "Export not found.",
   "export_empty": "There is nothing to export.",
-
   "job_takeout_started": "Takeout import started: {{path}} → {{dest}}",
   "job_push_started": "Takeout push started (client upload)",
   "job_push_received": "Takeout push received; importing {{path}}",
@@ -141,5 +134,16 @@
   "job_warn_vanished_backup": "{{count}} file(s) disappeared while the backup ran",
   "job_warn_photos_missing": "{{count}} photo(s) were not found and are not in the export",
   "job_warn_removed_folder": "{{count}} photo(s) belong to a removed folder and are not in the export",
-  "job_warn_unreadable": "{{count}} file(s) could not be read and are not in the export"
+  "job_warn_unreadable": "{{count}} file(s) could not be read and are not in the export",
+  "invalid_hash": "The file fingerprint (SHA-256) is not valid.",
+  "upload_empty": "An empty file cannot be uploaded.",
+  "upload_limit": "Too many unfinished uploads (the limit is {{max}}). Finish or cancel some first.",
+  "insufficient_storage": "The server does not have enough free space for this file.",
+  "upload_not_found": "That upload no longer exists. Start it again.",
+  "upload_busy": "This upload is being written by another request.",
+  "upload_offset_mismatch": "The server already has {{offset}} bytes of this upload. Continue from there.",
+  "upload_offset_missing": "The upload position is missing.",
+  "upload_too_long": "More data arrived than the file's declared size.",
+  "upload_incomplete": "The upload is not complete yet.",
+  "upload_hash_mismatch": "The uploaded data does not match its fingerprint. Start the upload again."
 }

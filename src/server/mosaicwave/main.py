@@ -12,6 +12,7 @@ from mosaicwave.api.v1.auth import router as auth_router
 from mosaicwave.api.v1.health import router as health_router
 from mosaicwave.api.v1.fs import router as fs_router
 from mosaicwave.api.v1.library import router as library_router
+from mosaicwave.api.v1.uploads import router as uploads_router
 from mosaicwave.api.v1.backups import router as backups_router
 from mosaicwave.api.v1.exports import router as exports_router
 from mosaicwave.api.v1.mebackups import router as me_backups_router
@@ -21,6 +22,7 @@ from mosaicwave.api.v1.settings import router as settings_router
 from mosaicwave.config import Settings, adopt_legacy_data_folders, consume_restart_flag
 from mosaicwave.datamove import recover_data_dir_move
 from mosaicwave.export import remove_stale_exports
+from mosaicwave.library.uploads import remove_stale_all as remove_stale_uploads
 from mosaicwave.libbackup import recover_library_swaps, remove_stale_user_staging
 from mosaicwave.maintenance import start_from_env
 from mosaicwave.restore import apply_pending
@@ -64,6 +66,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     adopt_legacy_data_folders(settings)
     recover_library_swaps(settings)
     remove_stale_user_staging(settings)
+    remove_stale_uploads(settings)
     remove_stale_exports(settings)
     apply_pending(settings)
     attach_runtime(app, settings, recover=True)
@@ -81,6 +84,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(auth_router, prefix="/api/v1")
     app.include_router(fs_router, prefix="/api/v1")
     app.include_router(library_router, prefix="/api/v1")
+    app.include_router(uploads_router, prefix="/api/v1")
     app.include_router(settings_router, prefix="/api/v1")
     app.include_router(backups_router, prefix="/api/v1")
     app.include_router(me_backups_router, prefix="/api/v1")

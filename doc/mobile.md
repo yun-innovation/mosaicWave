@@ -57,7 +57,7 @@ The verbs and headers follow [tus 1.0](https://tus.io/protocols/resumable-upload
 
 The last byte completes the upload **in the same response**: the server checks the SHA-256 of the whole file against `content_hash` and answers `{state: "done", asset: {…}}` (the usual asset JSON). A mismatch deletes the partial file and answers `422 upload_hash_mismatch`; the app starts that photo over. A `PATCH` that would pass `Upload-Length` is refused (`400 upload_too_long`) and changes nothing.
 
-`content_hash` is the SHA-256 in lower-case hex, the same value the server stores in `asset.content_hash` for Takeout imports, so a photo imported from Takeout earlier is recognised and not uploaded again. Assets found by a folder scan may have no stored hash; the server then compares at finish time and still ends with one asset, never two.
+`content_hash` is the SHA-256 in lower-case hex, the same value the server stores in `asset.content_hash` for Takeout imports, so a photo imported from Takeout earlier is recognised and not uploaded again. An asset found by a folder scan may have **no stored hash**; the server does not read every file to find out, so such a photo is not recognised by `check`, `POST /uploads` or the finish step and the same photo can then be added a second time under `Uploads/{year}/`. Takeout imports and uploads always store the hash, and so does deleting a photo.
 
 ### On the server
 
@@ -99,7 +99,7 @@ What this cannot do: a *different file* of the same scene (re-saved, edited, re-
 | D | this repo | **Done:** bearer header, `token: true` on login, `/auth/refresh` ([architecture.md § App sign-in](architecture.md#app-sign-in-bearer-header)). |
 | E | app repo | Flutter skeleton: sign in, secure storage, language and time zone. |
 | F | app repo | Timeline, scrubber, albums, search, select many. Needs only C and D. |
-| G | this repo, then app repo | Resumable upload: design section (**proposed**, above), then the endpoints, then the app's uploader. |
+| G | this repo, then app repo | Resumable upload: design section (decided, above), the endpoints (**built**, `/api/v1/uploads`), then the app's uploader. |
 | H | both | Offline replica. |
 
 Milestone 14 is marked done only when you say so.
