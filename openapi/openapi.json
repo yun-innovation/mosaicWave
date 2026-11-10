@@ -99,7 +99,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/MeOut"
+                  "$ref": "#/components/schemas/LoginOut"
                 }
               }
             }
@@ -117,9 +117,29 @@
         }
       }
     },
+    "/api/v1/auth/refresh": {
+      "post": {
+        "summary": "Auth Refresh",
+        "description": "A fresh session value for the calling session (bearer header or cookie), with its expiry moved on.\n\nThe session is the same row, so a revoke still ends it. The previous value stays good until its own\nexpiry unless the session is revoked.",
+        "operationId": "auth_refresh_api_v1_auth_refresh_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RefreshOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/auth/logout": {
       "post": {
         "summary": "Auth Logout",
+        "description": "Ends the calling session (cookie or bearer) and clears the cookie.",
         "operationId": "auth_logout_api_v1_auth_logout_post",
         "responses": {
           "200": {
@@ -132,6 +152,152 @@
                   },
                   "type": "object",
                   "title": "Response Auth Logout Api V1 Auth Logout Post"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/sessions": {
+      "get": {
+        "summary": "List My Sessions",
+        "description": "The caller's signed-in browsers and apps that still work, newest first.",
+        "operationId": "list_my_sessions_api_v1_me_sessions_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SessionOut"
+                  },
+                  "type": "array",
+                  "title": "Response List My Sessions Api V1 Me Sessions Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/sessions/revoke-others": {
+      "post": {
+        "summary": "Revoke Other Sessions",
+        "description": "Sign out everywhere except this session.",
+        "operationId": "revoke_other_sessions_api_v1_me_sessions_revoke_others_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "integer"
+                  },
+                  "type": "object",
+                  "title": "Response Revoke Other Sessions Api V1 Me Sessions Revoke Others Post"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/sessions/{session_id}": {
+      "delete": {
+        "summary": "Revoke My Session",
+        "description": "End one of the caller's sessions. Ending the one in use is the same as logging out.",
+        "operationId": "revoke_my_session_api_v1_me_sessions__session_id__delete",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Revoke My Session Api V1 Me Sessions  Session Id  Delete"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/settings/sessions": {
+      "get": {
+        "summary": "Get Session Settings",
+        "description": "How long a new sign-in lasts, in days (**admin**).",
+        "operationId": "get_session_settings_api_v1_settings_sessions_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionSettings"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Put Session Settings",
+        "description": "Set how long a new sign-in lasts (**admin**). Sessions already signed in keep the expiry they have\nuntil they are refreshed.",
+        "operationId": "put_session_settings_api_v1_settings_sessions_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SessionSettings"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionSettings"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -3940,10 +4106,108 @@
               }
             ],
             "title": "Password"
+          },
+          "token": {
+            "type": "boolean",
+            "title": "Token",
+            "default": false
+          },
+          "device_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Device Name"
           }
         },
         "type": "object",
         "title": "LoginIn"
+      },
+      "LoginOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "provider": {
+            "type": "string",
+            "title": "Provider"
+          },
+          "locale": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Locale"
+          },
+          "time_zone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Time Zone"
+          },
+          "use_dst": {
+            "type": "boolean",
+            "title": "Use Dst",
+            "default": false
+          },
+          "session_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Session Token"
+          },
+          "expires_in": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires In"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "username",
+          "display_name",
+          "role",
+          "provider"
+        ],
+        "title": "LoginOut"
       },
       "LooseMediaOut": {
         "properties": {
@@ -4195,6 +4459,24 @@
           "size"
         ],
         "title": "PartOut"
+      },
+      "RefreshOut": {
+        "properties": {
+          "session_token": {
+            "type": "string",
+            "title": "Session Token"
+          },
+          "expires_in": {
+            "type": "integer",
+            "title": "Expires In"
+          }
+        },
+        "type": "object",
+        "required": [
+          "session_token",
+          "expires_in"
+        ],
+        "title": "RefreshOut"
       },
       "RestartOut": {
         "properties": {
@@ -4471,6 +4753,73 @@
         },
         "type": "object",
         "title": "RunningJobResponse"
+      },
+      "SessionOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "device_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Device Name"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "last_seen_at": {
+            "type": "string",
+            "title": "Last Seen At"
+          },
+          "expires_at": {
+            "type": "string",
+            "title": "Expires At"
+          },
+          "current": {
+            "type": "boolean",
+            "title": "Current"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "created_at",
+          "last_seen_at",
+          "expires_at",
+          "current"
+        ],
+        "title": "SessionOut"
+      },
+      "SessionSettings": {
+        "properties": {
+          "browser_days": {
+            "type": "integer",
+            "title": "Browser Days"
+          },
+          "app_days": {
+            "type": "integer",
+            "title": "App Days"
+          }
+        },
+        "type": "object",
+        "required": [
+          "browser_days",
+          "app_days"
+        ],
+        "title": "SessionSettings"
       },
       "SetupIn": {
         "properties": {

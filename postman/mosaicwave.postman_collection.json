@@ -70,6 +70,10 @@
       "value": ""
     },
     {
+      "key": "sessionId",
+      "value": ""
+    },
+    {
       "key": "albumRev",
       "value": ""
     },
@@ -248,6 +252,97 @@
               }
             }
           ]
+        },
+        {
+          "name": "Login as an app (token)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/auth/login",
+            "description": "For the mobile apps: with token true the answer also holds session_token and expires_in and no cookie is set. Send the value as Authorization: Bearer <session_token> (a Bearer header wins over the cookie).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\",\n  \"token\": true,\n  \"device_name\": \"Postman\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Refresh app session",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/auth/refresh",
+            "description": "A fresh session_token (90 days) while the current one, as Bearer header or cookie, is still valid. The old value stays valid until it expires."
+          }
+        },
+        {
+          "name": "My sessions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/me/sessions",
+            "description": "Your live sign-ins (browsers and apps), newest first; current marks the one this request used."
+          }
+        },
+        {
+          "name": "Sign out a session",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/me/sessions/{{sessionId}}",
+            "description": "Revoke one of your sessions at once. 404 session_not_found for an id that is not yours. Revoking the current one is a logout."
+          }
+        },
+        {
+          "name": "Sign out everywhere else",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/me/sessions/revoke-others",
+            "description": "Revoke every live session of yours except the one used for this request. Answers {revoked: n}."
+          }
+        },
+        {
+          "name": "Session lifetimes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/settings/sessions",
+            "description": "Admin. {browser_days, app_days}: how long a new sign-in lasts (defaults 14 and 90)."
+          }
+        },
+        {
+          "name": "Set session lifetimes",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/settings/sessions",
+            "description": "Admin. Each value 1 to 365 days, else 400 session_days_out_of_range. Applies to new sign-ins and to the next refresh.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"browser_days\": 14,\n  \"app_days\": 90\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
         },
         {
           "name": "Me",

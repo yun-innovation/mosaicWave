@@ -131,7 +131,12 @@ Illustrative v1 surface (names can change; behavior should not):
 
 | Method | Path | Role |
 | --- | --- | --- |
-| POST | `/api/v1/auth/login` | Check identity with the **auth provider** (QNAP or local); return mosaicWave session |
+| POST | `/api/v1/auth/login` | Check identity with the **auth provider** (QNAP or local); return mosaicWave session (cookie). `{"token": true, "device_name"}` (apps): no cookie, the answer also holds `session_token` and `expires_in` |
+| POST | `/api/v1/auth/refresh` | A fresh `session_token` for the calling session (bearer or cookie), expiry moved on |
+| GET | `/api/v1/me/sessions` | Your live sign-ins (`id`, `kind`, `device_name`, `created_at`, `last_seen_at`, `expires_at`, `current`) |
+| DELETE | `/api/v1/me/sessions/{id}` | Sign one of your sessions out (`404 session_not_found` for another's) |
+| POST | `/api/v1/me/sessions/revoke-others` | Sign out everywhere except this session |
+| GET/PUT | `/api/v1/settings/sessions` | **Admin.** `{browser_days, app_days}` (1 to 365): how long new sign-ins last |
 | POST | `/api/v1/auth/setup` | First standalone admin (`local_credential`) |
 | GET | `/api/v1/auth/status` | `platform`, `needs_setup`, current `me` if cookied |
 | POST | `/api/v1/auth/logout` | Clear session cookie |
@@ -372,6 +377,15 @@ Publish: `scripts/publish-posix.ps1` (or `.sh`) → `dist/posix/mosaicWave/`. Pa
 | Standalone web / mobile | Same `POST /api/v1/auth/login` against the **local** provider. First-run: `POST /api/v1/auth/setup`. |
 
 **Do not:** copy `/etc/shadow`, skip QNAP auth on a QPKG install, or teach clients to call undocumented CGI as the public API.
+
+### App sign-in (bearer header)
+
+A sign-in is a **stored session** (`user_session`, [schema.md](schema.md#user_session)): a row with its user, kind (`browser` or `app`), device name, last use, expiry and revoked time. The client holds a **signed value** (`session_id.expiry.signature`) that names the row: browsers keep it in the `mw_session` cookie, apps send `Authorization: Bearer <session_token>`. The header wins over the cookie; a bearer that does not verify is **not** rescued by a cookie, and another scheme (`Basic`) is ignored. A request works only while the signature is good **and** the row is not revoked, not expired, and its user exists.
+
+- **Lifetime is an admin setting** (`site_setting`): new browser sessions last 14 days and app sessions 90 by default, each 1 to 365 days (`GET/PUT /settings/sessions`, Settings page). `POST /auth/refresh` moves the calling session's expiry to now plus the current lifetime and returns a fresh value for the same row.
+- **Revocable:** `GET /me/sessions` lists your live sessions (marking the one in use), `DELETE /me/sessions/{id}` ends one, `POST /me/sessions/revoke-others` ends all but this one, and `POST /auth/logout` ends the calling session. A revoked or expired session answers `401 not_authenticated` at once, even for a value whose signature and date are still good.
+- **Device name:** an app sends `device_name` on login; a browser gets its User-Agent (100 characters at most).
+- Changing the server's session secret, or removing the account, also ends sessions. The upgrade to schema 7 ends every older sign-in (people sign in again).
 
 ## Authorization
 

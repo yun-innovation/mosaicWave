@@ -1,4 +1,6 @@
 {
+  "session_not_found": "找不到該登入工作階段。",
+  "session_days_out_of_range": "登入有效期限為 {{min}} 至 {{max}} 天。",
   "not_authenticated": "尚未登入。",
   "admin_only": "只有管理員可以執行此操作。",
   "invalid_username": "使用者名稱只能使用英文字母、數字、點、連字號或底線（最多 64 個字元）。",

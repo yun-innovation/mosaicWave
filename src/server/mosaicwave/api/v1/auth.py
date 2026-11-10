@@ -10,7 +10,8 @@ from sqlalchemy.orm import Session
 
 from mosaicwave.api.errors import ApiError, wrapped
 from mosaicwave.api.v1.maintenance import refuse_non_admin
-from mosaicwave.auth.deps import optional_user, require_admin, require_user
+from mosaicwave.auth import sessions
+from mosaicwave.auth.deps import current_login, optional_user, require_admin, require_user
 from mosaicwave.auth.passwords import hash_password
 from mosaicwave.auth.providers import (
     PROVIDER_LOCAL,
@@ -25,12 +26,12 @@ from mosaicwave.auth.providers import (
     verify_qnap_password,
     verify_qnap_sid,
 )
-from mosaicwave.auth.session import COOKIE_NAME, DEFAULT_TTL_SEC, sign_session
+from mosaicwave.auth.session import COOKIE_NAME
 from mosaicwave.config import Settings
 from mosaicwave.db import get_session
 from mosaicwave.i18n import LOCALES, normalize_locale
 from mosaicwave.library.ownership import ensure_user_library
-from mosaicwave.models import LocalCredential, User, utcnow
+from mosaicwave.models import LocalCredential, User, UserSession, iso_utc, utcnow
 from mosaicwave.timezone import canonical_zone, tzdata_version, zone_choices, zone_data_available
 
 router = APIRouter()
@@ -66,6 +67,18 @@ class AuthStatusOut(BaseModel):
 class LoginIn(BaseModel):
     username: str | None = None
     password: str | None = None
+    token: bool = False  # an app: answer with the session value in the body, set no cookie
+    device_name: str | None = None  # shown in the list of signed-in devices; a browser falls back to its User-Agent
+
+
+class LoginOut(MeOut):
+    session_token: str | None = None  # only when `token` was asked for; send it as `Authorization: Bearer`
+    expires_in: int | None = None  # seconds the token is good for
+
+
+class RefreshOut(BaseModel):
+    session_token: str
+    expires_in: int
 
 
 class SetupIn(BaseModel):
@@ -148,16 +161,18 @@ def _invalid_credentials() -> ApiError:
     return ApiError(401, "invalid_credentials", "invalid credentials")
 
 
-def _set_session_cookie(request: Request, response: Response, user: User) -> None:
-    secret: str = request.app.state.session_secret
-    token = sign_session(user.id, secret, ttl=DEFAULT_TTL_SEC)
+def _start_browser_session(request: Request, response: Response, session: Session, user: User) -> None:
+    """Sign a browser in: a stored session, its signed value in the cookie."""
+    token, ttl = sessions.issue(
+        session, request.app.state.session_secret, user, sessions.BROWSER, request.headers.get("user-agent")
+    )
     response.set_cookie(
         COOKIE_NAME,
         token,
         httponly=True,
         samesite="lax",
         secure=request.url.scheme == "https",
-        max_age=DEFAULT_TTL_SEC,
+        max_age=ttl,
         path="/",
     )
 
@@ -206,17 +221,17 @@ def auth_setup(
         )
     except ValueError as exc:
         raise wrapped(400, "user_rejected", exc) from exc
-    _set_session_cookie(request, response, user)
+    _start_browser_session(request, response, session, user)
     return _me_out(request, user)
 
 
-@router.post("/auth/login", response_model=MeOut)
+@router.post("/auth/login", response_model=LoginOut)
 def auth_login(
     body: LoginIn,
     request: Request,
     response: Response,
     session: Session = Depends(get_session),
-) -> MeOut:
+) -> LoginOut:
     settings = _settings(request)
     user: User | None = None
     if settings.platform == "standalone":
@@ -248,15 +263,143 @@ def auth_login(
         )
     request.state.user_locale = user.locale
     refuse_non_admin(settings, user)
-    _set_session_cookie(request, response, user)
-    return _me_out(request, user)
+    me = LoginOut(**_me_out(request, user).model_dump())
+    if body.token:
+        me.session_token, me.expires_in = sessions.issue(
+            session, request.app.state.session_secret, user, sessions.APP, body.device_name
+        )
+    else:
+        _start_browser_session(request, response, session, user)
+    return me
+
+
+@router.post("/auth/refresh", response_model=RefreshOut)
+def auth_refresh(
+    request: Request,
+    session: Session = Depends(get_session),
+    _user: User = Depends(require_user),
+) -> RefreshOut:
+    """A fresh session value for the calling session (bearer header or cookie), with its expiry moved on.
+
+    The session is the same row, so a revoke still ends it. The previous value stays good until its own
+    expiry unless the session is revoked.
+    """
+    login = current_login(request, session)
+    assert login is not None  # require_user passed
+    token, ttl = sessions.renew(session, request.app.state.session_secret, login[0])
+    return RefreshOut(session_token=token, expires_in=ttl)
 
 
 @router.post("/auth/logout")
-def auth_logout(response: Response) -> dict[str, str]:
+def auth_logout(
+    request: Request, response: Response, session: Session = Depends(get_session)
+) -> dict[str, str]:
+    """Ends the calling session (cookie or bearer) and clears the cookie."""
+    login = current_login(request, session, touch=False)
+    if login is not None:
+        sessions.revoke(session, login[0])
     _clear_session_cookie(response)
     return {"status": "ok"}
 
+
+class SessionOut(BaseModel):
+    id: str
+    kind: str  # "browser" | "app"
+    device_name: str | None = None
+    created_at: str
+    last_seen_at: str
+    expires_at: str
+    current: bool  # the session this request signed in with
+
+
+def _session_out(row: UserSession, current_id: str) -> SessionOut:
+    return SessionOut(
+        id=row.id,
+        kind=row.kind,
+        device_name=row.device_name,
+        created_at=iso_utc(row.created_at) or "",
+        last_seen_at=iso_utc(row.last_seen_at) or "",
+        expires_at=iso_utc(row.expires_at) or "",
+        current=row.id == current_id,
+    )
+
+
+def _own_login(request: Request, session: Session) -> tuple[UserSession, User]:
+    login = current_login(request, session, touch=False)
+    if login is None:
+        raise ApiError(401, "not_authenticated", "not authenticated")
+    return login
+
+
+@router.get("/me/sessions", response_model=list[SessionOut])
+def list_my_sessions(request: Request, session: Session = Depends(get_session)) -> list[SessionOut]:
+    """The caller's signed-in browsers and apps that still work, newest first."""
+    row, user = _own_login(request, session)
+    return [_session_out(item, row.id) for item in sessions.live_sessions(session, user.id)]
+
+
+@router.post("/me/sessions/revoke-others")
+def revoke_other_sessions(request: Request, session: Session = Depends(get_session)) -> dict[str, int]:
+    """Sign out everywhere except this session."""
+    row, user = _own_login(request, session)
+    others = [item for item in sessions.live_sessions(session, user.id) if item.id != row.id]
+    for item in others:
+        sessions.revoke(session, item)
+    return {"revoked": len(others)}
+
+
+@router.delete("/me/sessions/{session_id}")
+def revoke_my_session(
+    session_id: str, request: Request, response: Response, session: Session = Depends(get_session)
+) -> dict[str, str]:
+    """End one of the caller's sessions. Ending the one in use is the same as logging out."""
+    row, user = _own_login(request, session)
+    target = session.get(UserSession, session_id)
+    if target is None or target.user_id != user.id:
+        raise ApiError(404, "session_not_found", "no such session")
+    sessions.revoke(session, target)
+    if target.id == row.id:
+        _clear_session_cookie(response)
+    return {"status": "ok"}
+
+
+class SessionSettings(BaseModel):
+    browser_days: int
+    app_days: int
+
+
+def _check_days(value: int) -> int:
+    if not sessions.MIN_DAYS <= value <= sessions.MAX_DAYS:
+        raise ApiError(
+            400,
+            "session_days_out_of_range",
+            f"a session lifetime is {sessions.MIN_DAYS} to {sessions.MAX_DAYS} days",
+            {"min": sessions.MIN_DAYS, "max": sessions.MAX_DAYS},
+        )
+    return value
+
+
+@router.get("/settings/sessions", response_model=SessionSettings)
+def get_session_settings(
+    session: Session = Depends(get_session), _admin: User = Depends(require_admin)
+) -> SessionSettings:
+    """How long a new sign-in lasts, in days (**admin**)."""
+    return SessionSettings(
+        browser_days=sessions.lifetime_days(session, sessions.BROWSER),
+        app_days=sessions.lifetime_days(session, sessions.APP),
+    )
+
+
+@router.put("/settings/sessions", response_model=SessionSettings)
+def put_session_settings(
+    body: SessionSettings,
+    session: Session = Depends(get_session),
+    _admin: User = Depends(require_admin),
+) -> SessionSettings:
+    """Set how long a new sign-in lasts (**admin**). Sessions already signed in keep the expiry they have
+    until they are refreshed."""
+    sessions.set_lifetime_days(session, browser=_check_days(body.browser_days), app=_check_days(body.app_days))
+    return body
 
 @router.get("/me", response_model=MeOut)
 def get_me(

@@ -13,7 +13,7 @@ Short onboarding snapshot for agents. **Session start:** always read [index.md](
 
 ## Next
 
-Next is **milestone 14** (iOS and Android clients, Flutter, separate private repo `mosaicWave-mobile`; design note [mobile.md](mobile.md) merged #57; published `openapi/openapi.json` built on `feature/openapi-publish`, **waiting for `ship`**). 10 ARM64 QPKG is **frozen** (no ARM hardware) and 11 share links (SaaS) is **deferred**; both are skipped.
+Next is **milestone 14** (iOS and Android clients, Flutter, separate private repo `mosaicWave-mobile`; design note [mobile.md](mobile.md) merged #57, published `openapi/openapi.json` merged #58; app sign-in by bearer header built on `feature/app-token`, **waiting for `ship`**). 10 ARM64 QPKG is **frozen** (no ARM hardware) and 11 share links (SaaS) is **deferred**; both are skipped.
 
 ## Constraints
 

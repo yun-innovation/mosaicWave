@@ -8,6 +8,7 @@ import { ExportPanel } from "./ExportPanel";
 import i18n from "./i18n";
 import { LibraryBackupPanel } from "./LibraryBackupPanel";
 import { LocaleSelect } from "./LocaleSelect";
+import { SessionsPanel } from "./SessionsPanel";
 import { ThemeSelect } from "./ThemeSelect";
 import { TimeZoneSelect } from "./TimeZoneSelect";
 import type { TakeoutImport } from "./useTakeoutImport";
@@ -95,6 +96,7 @@ export function SettingsPanel({ me, importer, onMe }: Props) {
       </div>
       <LibraryBackupPanel importer={importer} isAdmin={me.role === "admin"} />
       <ExportPanel importer={importer} />
+      <SessionsPanel isAdmin={me.role === "admin"} />
       {error && <p className="status fail">{error}</p>}
       {sources === null && !error && <p className="detail">{t("common:loading")}</p>}
       {library && (

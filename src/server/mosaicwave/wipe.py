@@ -29,6 +29,8 @@ EXPECTED_TABLES = frozenset(
         "local_credential",
         "job",
         "job_event",
+        "user_session",
+        "site_setting",
     }
 )
 

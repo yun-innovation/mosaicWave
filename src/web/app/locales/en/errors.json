@@ -1,4 +1,6 @@
 {
+  "session_not_found": "That session was not found.",
+  "session_days_out_of_range": "A sign-in lasts {{min}} to {{max}} days.",
   "not_authenticated": "Not signed in.",
   "admin_only": "Only an admin can do this.",
   "invalid_username": "Usernames use letters, digits, dot, dash, or underscore (up to 64).",

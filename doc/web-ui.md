@@ -80,6 +80,10 @@ Shared types and URL helpers (`thumbSrc`, `stillSrc`, `isVideo`) are in `app/typ
 
 - **Album list.** With two or more albums, the Albums page has a search box that filters the tiles by album name as you type (any case, plain text, in the browser; the list is already loaded, so no API call). An empty match says "No album has that name." Searching the photos inside one album is the search row above.
 
+## Signed-in devices (milestone 14)
+
+Settings has a **Signed-in devices** section: each browser and app signed in to your account (name, kind, last used, when it signs out; this one is marked), with **Sign out** and **Sign out everywhere else**. Signing out the one you are using reloads to the sign-in page. An admin also sees **How long a sign-in lasts** (browser days, app days, 1 to 365; `GET/PUT /settings/sessions`): it applies to new sign-ins and to each app's next refresh, and sessions already signed in keep their date.
+
 ## Timeline scrubber (milestone 9, PR 2)
 
 - A rail down the right edge of the Photos view and of an album stands for the whole timeline, newest at the top, with the years labelled and a dot where the page is now. Press or drag on it to see a month and let go to jump there; Arrow, Page and Home/End keys do the same. It is shown only when there are at least two months (or one month and undated photos) to jump between.

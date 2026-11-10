@@ -109,6 +109,8 @@
   "reads_zips_other": "Import reads {{count}} zip archives in place. You do not need to unzip. Oversized videos next to the zips are attached using their sidecars.",
   "restore_not_staged": "No restore is waiting to be applied.",
   "restore_pending": "A restored copy is waiting to be applied. Apply or discard it first.",
+  "session_days_out_of_range": "A sign-in lasts {{min}} to {{max}} days.",
+  "session_not_found": "That session was not found.",
   "setup_not_available": "Local setup is not available on QNAP.",
   "sidecar_without_media_one": "{{count}} photo/video sidecar has no matching media file.",
   "sidecar_without_media_other": "{{count}} photo/video sidecars have no matching media file.",

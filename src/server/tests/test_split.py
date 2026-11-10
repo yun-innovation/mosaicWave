@@ -25,7 +25,7 @@ from mosaicwave.schema.library import LIBRARY_CURRENT_VERSION
 from mosaicwave.schema.split import REPORT_NAME, SplitError, migrate_site_database, split_site_database
 from mosaicwave.schema.steps import STEPS, _job_text_codes, _user_time_zone, _user_use_dst
 
-SITE_AFTER = {"user", "local_credential", "job", "job_event"}
+SITE_AFTER = {"user", "local_credential", "job", "job_event", "user_session", "site_setting"}  # steps after the split add tables
 
 
 def _settings(tmp_path: Path) -> Settings:

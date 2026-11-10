@@ -48,6 +48,31 @@ class User(Base):
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
+class UserSession(Base):
+    """One sign-in: a browser or an app. The session value a client sends names this row (auth/sessions.py)."""
+
+    __tablename__ = "user_session"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    user_id: Mapped[str] = mapped_column(ForeignKey("user.id"), nullable=False, index=True)
+    kind: Mapped[str] = mapped_column(String(16), nullable=False)  # "browser" | "app"
+    device_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class SiteSetting(Base):
+    """A server-wide setting an admin changes while the server runs (key, text value)."""
+
+    __tablename__ = "site_setting"
+
+    key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    value: Mapped[str] = mapped_column(Text, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 class Source(Base):
     __tablename__ = "source"
     __table_args__ = (
@@ -187,5 +212,5 @@ class AlbumAsset(Base):
 
 # Which database each table lives in (milestone 6, doc/per-library-db.md): the site database
 # holds accounts and jobs; every user's photos and albums are in accounts/{user_id}/library.db.
-SITE_TABLES = frozenset({"user", "local_credential", "job", "job_event"})
+SITE_TABLES = frozenset({"user", "local_credential", "job", "job_event", "user_session", "site_setting"})
 LIBRARY_TABLES = frozenset({"source", "asset", "album", "album_asset"})
