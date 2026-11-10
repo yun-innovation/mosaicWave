@@ -69,6 +69,16 @@ The last byte completes the upload **in the same response**: the server checks t
 - **Time:** all times are UTC ISO 8601 with `Z`, as everywhere ([i18n.md](i18n.md)).
 - **Errors** get codes in all three languages, like the other API errors (`upload_offset_mismatch`, `upload_hash_mismatch`, `upload_too_long`, `upload_busy`, `unsupported_media_type`, `insufficient_storage`).
 
+### How an app learns a photo was removed
+
+The rule is about the **file**, not the device: `removed` is answered by `content_hash`, so it works the same whether or not the device can be traced (the device album above is only a place to put the photo; it plays no part in this). Three things make it hold:
+
+1. **The server keeps a tombstone.** Removing a photo soft-deletes its row (`deleted_at`), and the row keeps its `content_hash`; `check` reports that hash as `removed`. Two gaps to close in the endpoint PR or just before it: (a) **there is no "delete a photo" call today** (only albums and sources can be deleted; a photo is marked deleted only when a rescan finds its file gone), so the PR adds `DELETE /assets/{id}` for the web and apps, soft-deleting and never dropping the hash; (b) assets found by a folder scan may have **no stored hash**, so the delete computes it (reads the file once) before the row is marked deleted. A photo whose file was deleted outside the app has no bytes left to hash; it is only `removed` if it had a hash already.
+2. **Another device sends the same file.** The same hash is `removed` for every device of the same user, so a phone and a tablet holding the same photo both skip it.
+3. **The app keeps its own ledger** of hashes it has uploaded or been told are `known` or `removed`, so it never depends on the server alone and does not re-hash or re-ask for each photo on every run. A new install starts with an empty ledger and one `check` rebuilds it.
+
+What this cannot do: a *different file* of the same scene (re-saved, edited, re-compressed) has a different hash and is uploaded as new. That is intended.
+
 ### What the app does (for its own notes)
 
 - Hash on the phone (streaming, not into memory), call `check` for a batch, create and send the rest in chunks of 8 MiB (the server's `chunk_size` is a hint; any size up to 64 MiB works). The chunk size is small enough for iOS background transfers and Android work-manager tasks to make progress and be retried.

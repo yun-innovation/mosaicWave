@@ -44,4 +44,5 @@ Open items only. Roadmap: ordered milestones in [roadmap.md](roadmap.md). The ea
   - [x] PR 4 (merged [#59](https://github.com/yun-innovation/mosaicWave/pull/59)): bearer header, `token: true` on login, `POST /auth/refresh`, stored sessions (`user_session`, schema 7) the user can list and revoke, admin-set lifetimes (`site_setting`), Settings → Signed-in devices (`tests/test_app_token.py`, `tests/test_sessions.py`); built on `feature/app-token`, waiting for `ship`
   - [x] PR 5: server discovery — merged [#60](https://github.com/yun-innovation/mosaicWave/pull/60)
   - [ ] PR 6: resumable upload design section in `mobile.md` (docs only); built on `docs/upload-design`, waiting for `ship`
-  - [ ] PR 7: resumable upload endpoints (`/uploads`, staging, finish, clean-up, tests; the app itself is built in its own repo)
+  - [ ] PR 7: `DELETE /assets/{id}` (soft delete that keeps and, if missing, computes `content_hash`) so a removed photo is remembered ([mobile.md § How an app learns a photo was removed](mobile.md#how-an-app-learns-a-photo-was-removed))
+  - [ ] PR 8: resumable upload endpoints (`/uploads`, staging, finish, clean-up, tests; the app itself is built in its own repo)
