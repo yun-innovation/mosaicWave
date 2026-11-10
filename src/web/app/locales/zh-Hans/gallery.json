@@ -2,6 +2,8 @@
   "deleteAlbum": "删除相册",
   "generateThumbs": "生成缩略图",
   "select": {
+    "delete": "删除",
+    "deleteConfirm": "要从你的相册库删除已选择的 {{count}} 张照片吗？文件会从服务器删除，无法恢复。",
     "newAlbumPlaceholder": "新相册名称",
     "newAlbum": "创建相册并加入",
     "start": "选择",
@@ -60,6 +62,8 @@
   "emptyLibrary": "照片库是空的。导入 Takeout 文件夹来建立 SQLite 数据库。",
   "loadMore": "加载更多",
   "detail": {
+    "delete": "删除",
+    "deleteConfirm": "要从你的相册库删除 {{name}} 吗？文件会从服务器删除，无法恢复。",
     "download": "下载原始文件",
     "albumLabel": "相册",
     "addToAlbum": "添加到相册",

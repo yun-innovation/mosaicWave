@@ -2,6 +2,8 @@
   "deleteAlbum": "刪除相簿",
   "generateThumbs": "產生縮圖",
   "select": {
+    "delete": "刪除",
+    "deleteConfirm": "要從你的相簿庫刪除已選取的 {{count}} 張相片嗎？檔案會從伺服器刪除，無法復原。",
     "newAlbumPlaceholder": "新相簿名稱",
     "newAlbum": "建立相簿並加入",
     "start": "選取",
@@ -60,6 +62,8 @@
   "emptyLibrary": "相片庫是空的。匯入 Takeout 資料夾來建立 SQLite 資料庫。",
   "loadMore": "載入更多",
   "detail": {
+    "delete": "刪除",
+    "deleteConfirm": "要從你的相簿庫刪除 {{name}} 嗎？檔案會從伺服器刪除，無法復原。",
     "download": "下載原始檔",
     "albumLabel": "相簿",
     "addToAlbum": "加入相簿",

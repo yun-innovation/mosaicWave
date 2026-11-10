@@ -161,6 +161,7 @@ Illustrative v1 surface (names can change; behavior should not):
 | POST | `/api/v1/albums/{id}/assets` | Add members (`asset_ids`). Replica: `base_rev` |
 | DELETE | `/api/v1/albums/{id}/assets/{asset_id}` | Remove a member. Replica: `?base_rev=` |
 | GET | `/api/v1/assets/{id}` | Metadata |
+| DELETE | `/api/v1/assets/{id}` | Delete one photo from your own folder library: the original and its thumbnails are deleted, albums lose it, and the row stays as a tombstone (`deleted_at`) **with its `content_hash`** (computed first if the scan never stored one) so an app can be told it was removed ([mobile.md](mobile.md)). `400 delete_folder_only` for other sources, `409 asset_delete_failed` if the file cannot be deleted (nothing changes), `404` when already gone |
 | GET | `/api/v1/assets/{id}/thumb` | JPEG thumb |
 | GET | `/api/v1/assets/{id}/preview` | JPEG display (HEIC/TIFF/DNG and other originals the browser cannot paint) |
 | GET | `/api/v1/assets/{id}/file` | Original (so the player can skip in time) |

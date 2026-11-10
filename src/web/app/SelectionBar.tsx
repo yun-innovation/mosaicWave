@@ -109,6 +109,27 @@ export function SelectionBar({ ids, shownCount, albums, albumId, onSelectShown, 
     if (removed > 0) onChanged(true);
   }
 
+  async function deleteSelected() {
+    if (none) return;
+    if (!window.confirm(t("gallery:select.deleteConfirm", { count: ids.length }))) return;
+    setBusy(true);
+    setNotice(null);
+    let gone = 0;
+    try {
+      for (const id of ids) {
+        const res = await apiFetch(`/api/v1/assets/${id}`, { method: "DELETE" });
+        if (!res.ok && res.status !== 404) {
+          setNotice({ text: await readDetail(res), ok: false });
+          break;
+        }
+        gone += 1; // a 404 means it was already gone
+      }
+    } finally {
+      setBusy(false);
+    }
+    if (gone > 0) onChanged(true);
+  }
+
   return (
     <div className="selection-bar" role="toolbar" aria-label={t("gallery:select.label")}>
       <div className="button-row">
@@ -157,6 +178,9 @@ export function SelectionBar({ ids, shownCount, albums, albumId, onSelectShown, 
             {t("gallery:detail.removeFromAlbum")}
           </button>
         )}
+        <button type="button" disabled={busy || none} onClick={() => void deleteSelected()}>
+          {t("gallery:select.delete")}
+        </button>
         <button type="button" disabled={busy || none} onClick={() => setExporting((open) => !open)}>
           {t("gallery:select.export")}
         </button>
