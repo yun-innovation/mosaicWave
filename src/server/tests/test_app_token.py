@@ -88,3 +88,12 @@ def test_a_token_for_a_removed_account_stops_working(tmp_path: Path) -> None:
     secret = web.app.state.session_secret
     ghost = sign_session("no-such-user", secret, ttl=APP_TTL_SEC)
     assert _app_client(web).get("/api/v1/me", headers={"Authorization": f"Bearer {ghost}"}).status_code == 401
+
+
+def test_status_tells_an_app_what_server_it_reached(tmp_path: Path) -> None:
+    from mosaicwave import API_VERSION, MIN_APP_VERSION, __version__
+
+    status = TestClient(_server(tmp_path).app).get("/api/v1/auth/status").json()  # no session needed
+    assert status["server_version"] == __version__
+    assert status["api_version"] == API_VERSION == "v1"
+    assert status["min_app_version"] == MIN_APP_VERSION
