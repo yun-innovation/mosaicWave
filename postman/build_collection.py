@@ -293,7 +293,7 @@ OpenAPI at `{{baseUrl}}/docs` stays the living spec; this collection is a snapsh
                     "Auth status",
                     "GET",
                     "/api/v1/auth/status",
-                    description="platform, needs_setup, me if cookied, locales (languages the server answers and saves in).",
+                    description="platform, needs_setup, me if signed in, locales (languages the server answers and saves in), server_version, api_version and min_app_version (an app older than that asks its user to update). Needs no session.",
                 ),
                 req(
                     "First-run setup",

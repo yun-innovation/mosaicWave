@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from mosaicwave import API_VERSION, MIN_APP_VERSION, __version__
 from mosaicwave.api.errors import ApiError, wrapped
 from mosaicwave.api.v1.maintenance import refuse_non_admin
 from mosaicwave.auth import sessions
@@ -62,6 +63,9 @@ class AuthStatusOut(BaseModel):
     needs_setup: bool
     me: MeOut | None = None
     locales: list[str] = list(LOCALES)  # the languages this server can answer and save in
+    server_version: str = __version__  # this mosaicWave release
+    api_version: str = API_VERSION  # the URL prefix the API lives under (/api/v1)
+    min_app_version: str = MIN_APP_VERSION  # an app older than this should ask its user to update
 
 
 class LoginIn(BaseModel):

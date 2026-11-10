@@ -3174,6 +3174,21 @@
               "zh-Hant",
               "zh-Hans"
             ]
+          },
+          "server_version": {
+            "type": "string",
+            "title": "Server Version",
+            "default": "0.1.1"
+          },
+          "api_version": {
+            "type": "string",
+            "title": "Api Version",
+            "default": "v1"
+          },
+          "min_app_version": {
+            "type": "string",
+            "title": "Min App Version",
+            "default": "0.1.0"
           }
         },
         "type": "object",

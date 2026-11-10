@@ -138,7 +138,7 @@ Illustrative v1 surface (names can change; behavior should not):
 | POST | `/api/v1/me/sessions/revoke-others` | Sign out everywhere except this session |
 | GET/PUT | `/api/v1/settings/sessions` | **Admin.** `{browser_days, app_days}` (1 to 365): how long new sign-ins last |
 | POST | `/api/v1/auth/setup` | First standalone admin (`local_credential`) |
-| GET | `/api/v1/auth/status` | `platform`, `needs_setup`, current `me` if cookied |
+| GET | `/api/v1/auth/status` | `platform`, `needs_setup`, `locales`, `server_version`, `api_version` (`v1`), `min_app_version` (an older app asks to update), current `me` if signed in (cookie or bearer) |
 | POST | `/api/v1/auth/logout` | Clear session cookie |
 | GET | `/api/v1/me` | Current user, role, private library id, `locale` |
 | GET | `/api/v1/time-zones` | The IANA zone names a user can pick (`{version, zones}`), from the server's own `tzdata` ([i18n.md](i18n.md#api-language-milestone-8)) |
