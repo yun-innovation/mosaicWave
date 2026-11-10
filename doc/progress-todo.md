@@ -42,5 +42,6 @@ Open items only. Roadmap: ordered milestones in [roadmap.md](roadmap.md). The ea
   - [x] Step B: private `yun-innovation/mosaicWave-mobile` created, working copy `D:\mosaicWave\mw.mobile` (README and `.gitignore` only)
   - [x] PR 3: `openapi/openapi.json` published and checked in CI (`openapi_export.py`, `tests/test_openapi_file.py`) — merged [#58](https://github.com/yun-innovation/mosaicWave/pull/58)
   - [x] PR 4 (merged [#59](https://github.com/yun-innovation/mosaicWave/pull/59)): bearer header, `token: true` on login, `POST /auth/refresh`, stored sessions (`user_session`, schema 7) the user can list and revoke, admin-set lifetimes (`site_setting`), Settings → Signed-in devices (`tests/test_app_token.py`, `tests/test_sessions.py`); built on `feature/app-token`, waiting for `ship`
-  - [ ] PR 5: server discovery: `server_version`, `api_version`, `min_app_version` on `GET /auth/status`; built on `feature/server-info`, waiting for `ship`
-  - [ ] PR 6: resumable upload design and endpoint (the app itself is built in its own repo)
+  - [x] PR 5: server discovery — merged [#60](https://github.com/yun-innovation/mosaicWave/pull/60)
+  - [ ] PR 6: resumable upload design section in `mobile.md` (docs only); built on `docs/upload-design`, waiting for `ship`
+  - [ ] PR 7: resumable upload endpoints (`/uploads`, staging, finish, clean-up, tests; the app itself is built in its own repo)

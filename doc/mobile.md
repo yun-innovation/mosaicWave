@@ -35,6 +35,49 @@ Not needed from this repo: push notifications, share links (milestone 11), a mob
 
 Uploading while the app is closed is limited by each OS, not by this repo. Android can run a long task through its work manager; iOS only gives short background windows and a system-managed background transfer. So the upload endpoint must be **resumable and idempotent** (a killed transfer picks up at the byte it reached; sending a photo twice never makes two). What the app does on each OS belongs in the app repo's own notes.
 
+## Upload design (step G)
+
+**Status: proposed.** Nothing below is built; the endpoint is the PR after this one. It replaces nothing: the Takeout push session (`/import/takeout/push`) stays for dumps.
+
+### Why a new endpoint
+
+The Takeout push is one job per dump that ends in a Takeout ingest (sidecars, album folders). A phone sends single photos and videos, over networks that drop, from an OS that may kill the app. It needs: skip what the server already has, resume at the byte reached, verify the bytes, and finish one file into the library, all without a job per photo.
+
+### The protocol (tus-shaped, not tus)
+
+The verbs and headers follow [tus 1.0](https://tus.io/protocols/resumable-upload) (`Upload-Offset`, `Upload-Length`, `HEAD` to resume, `PATCH` to append) so a client can use a tus library or write the few calls by hand. It is **not claimed to be tus-compliant**: bodies are JSON, errors are the usual `{detail, code, params}`, and auth is the usual bearer header. All paths are under `/api/v1`, all need a session, all act only on the caller's own uploads.
+
+| Call | What it does |
+| --- | --- |
+| `POST /uploads/check` | `{items: [{content_hash, size}]}` (at most 500) answers `{known: [hash…], removed: [hash…]}`: hashes the library already has, and hashes of photos the user deleted on purpose. The app skips both; one request replaces hundreds of attempts. |
+| `POST /uploads` | `{filename, size, content_hash, taken_at?, mime?}` starts an upload and answers `201 {id, offset: 0, chunk_size, expires_at}`. **Idempotent** per `(user, content_hash)`: if one is already open it answers `200` with the same `id` and the offset it has reached, so an app that lost its state resumes without a list call. If the library already has the hash: `200 {state: "exists", asset_id}` and nothing is uploaded. |
+| `HEAD /uploads/{id}` | Headers `Upload-Offset` and `Upload-Length`: where to continue. `404` once finished, aborted or expired. |
+| `PATCH /uploads/{id}` | Raw bytes (`Content-Type: application/offset+octet-stream`) with `Upload-Offset: <n>`. Appends when `n` equals the server's offset, else `409 upload_offset_mismatch` with the true `offset` in `params`. Answers the new offset. A small file is `POST` + one `PATCH`. |
+| `DELETE /uploads/{id}` | Abort and delete the partial file. |
+
+The last byte completes the upload **in the same response**: the server checks the SHA-256 of the whole file against `content_hash` and answers `{state: "done", asset: {…}}` (the usual asset JSON). A mismatch deletes the partial file and answers `422 upload_hash_mismatch`; the app starts that photo over. A `PATCH` that would pass `Upload-Length` is refused (`400 upload_too_long`) and changes nothing.
+
+`content_hash` is the SHA-256 in lower-case hex, the same value the server stores in `asset.content_hash` for Takeout imports, so a photo imported from Takeout earlier is recognised and not uploaded again. Assets found by a folder scan may have no stored hash; the server then compares at finish time and still ends with one asset, never two.
+
+### On the server
+
+- **Staging:** `{data_dir}/tmp/uploads/{user_id}/{id}.part` with a small `{id}.json` beside it (filename, size, hash, `taken_at`, created, last touched). No database table, so no schema step. Open uploads survive a restart; those untouched for 7 days are deleted at start-up and whenever a new upload starts.
+- **Finishing a file:** the same steps as one Takeout file, minus sidecars: read the capture time (EXIF, then video metadata, then the app's `taken_at`, then the file time), pick a free name (`unused_relative`), move the file into the user's library folder, add the asset with its hash, queue the thumbnail. Stored under `Uploads/{year}/{filename}` so it is easy to find in the folder tree and by name search; the year is the capture year in UTC.
+- **Limits (settings, not constants in the app):** a file at most 64 GiB; at most 100 open uploads per user; free space on the data folder is checked when an upload starts (`507 insufficient_storage`); only photo and video types the library already accepts (`415 unsupported_media_type`, judged by file name, then confirmed when the metadata is read).
+- **Safety:** `filename` is reduced to a plain name (no folders, no reserved names); a second `PATCH` to the same upload while one runs is refused (`409 upload_busy`); another user's upload id is `404`; maintenance mode blocks uploads like every other write.
+- **Time:** all times are UTC ISO 8601 with `Z`, as everywhere ([i18n.md](i18n.md)).
+- **Errors** get codes in all three languages, like the other API errors (`upload_offset_mismatch`, `upload_hash_mismatch`, `upload_too_long`, `upload_busy`, `unsupported_media_type`, `insufficient_storage`).
+
+### What the app does (for its own notes)
+
+- Hash on the phone (streaming, not into memory), call `check` for a batch, create and send the rest in chunks of 8 MiB (the server's `chunk_size` is a hint; any size up to 64 MiB works). The chunk size is small enough for iOS background transfers and Android work-manager tasks to make progress and be retried.
+- After a failure: `HEAD`, continue at `Upload-Offset`. After losing all state: `POST /uploads` again with the same hash gets the same upload back.
+- A photo the user deleted on the server is in `removed` and is not uploaded again. Whether the app offers "upload anyway" is the app's choice; the server accepts a fresh upload of a removed hash, and finishing it restores nothing: it is a new asset.
+
+### Pull requests for this
+
+1. This section (docs only).
+2. The endpoints, staging, finish and clean-up, with tests (resume, wrong offset, hash mismatch, duplicate by hash, two users, restart, limits), `openapi.json`, Postman, docs.
 ## Order of work
 
 | Step | Where | What |
@@ -45,12 +88,13 @@ Uploading while the app is closed is limited by each OS, not by this repo. Andro
 | D | this repo | **Done:** bearer header, `token: true` on login, `/auth/refresh` ([architecture.md § App sign-in](architecture.md#app-sign-in-bearer-header)). |
 | E | app repo | Flutter skeleton: sign in, secure storage, language and time zone. |
 | F | app repo | Timeline, scrubber, albums, search, select many. Needs only C and D. |
-| G | this repo, then app repo | Resumable upload design section, endpoint, then the app's uploader. |
+| G | this repo, then app repo | Resumable upload: design section (**proposed**, above), then the endpoints, then the app's uploader. |
 | H | both | Offline replica. |
 
 Milestone 14 is marked done only when you say so.
 
 ## Open questions
 
-- Whether the upload endpoint also accepts a whole file in one request for small photos (probably yes, as chunk 0 of 1).
+- Upload: whether a photo the user deleted on the server should ever come back through the app without asking (the design says no: it is reported in `removed`).
+- Upload: whether finished photos should go into an album per device, not only `Uploads/{year}`.
 - Distribution: TestFlight and Play internal testing first; store listing is a later decision.
