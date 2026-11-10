@@ -13,7 +13,7 @@ Short onboarding snapshot for agents. **Session start:** always read [index.md](
 
 ## Next
 
-Next is **milestone 14** (iOS and Android clients, Flutter, separate private repo `mosaicWave-mobile`; design note [mobile.md](mobile.md) #57, `openapi/openapi.json` #58, app sign-in with stored sessions #59, server discovery #60, upload design #61; `DELETE /assets/{id}` built on `feature/delete-photo`, **waiting for `ship`**, then the `/uploads` endpoints). 10 ARM64 QPKG is **frozen** (no ARM hardware) and 11 share links (SaaS) is **deferred**; both are skipped.
+Next is **milestone 14** (iOS and Android clients, Flutter, separate private repo `mosaicWave-mobile`; design note [mobile.md](mobile.md) #57, `openapi/openapi.json` #58, app sign-in with stored sessions #59, server discovery #60, upload design #61; `DELETE /assets/{id}` #62; the `/uploads` endpoints built on `feature/uploads`, **waiting for `ship`**, then the Flutter apps in `mosaicWave-mobile`). 10 ARM64 QPKG is **frozen** (no ARM hardware) and 11 share links (SaaS) is **deferred**; both are skipped.
 
 ## Constraints
 

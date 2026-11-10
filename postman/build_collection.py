@@ -127,6 +127,13 @@ SAVE_ASSET = [
     "}",
 ]
 
+SAVE_UPLOAD = [
+    "if (pm.response.code === 200 || pm.response.code === 201) {",
+    "  const b = pm.response.json();",
+    "  if (b.id) { pm.collectionVariables.set('uploadId', b.id); }",
+    "}",
+]
+
 SAVE_ALBUM = [
     "if (pm.response.code === 200) {",
     "  const b = pm.response.json();",
@@ -252,6 +259,7 @@ OpenAPI at `{{baseUrl}}/docs` stays the living spec; this collection is a snapsh
         {"key": "userId", "value": ""},
         {"key": "sourceId", "value": ""},
         {"key": "assetId", "value": ""},
+        {"key": "uploadId", "value": ""},
         {"key": "assetCursor", "value": ""},
         {"key": "jobId", "value": ""},
         {"key": "backupName", "value": ""},
@@ -980,6 +988,55 @@ OpenAPI at `{{baseUrl}}/docs` stays the living spec; this collection is a snapsh
                     "DELETE",
                     "/api/v1/backups/restore",
                     description="Admin only. Throws a staged restore away and forgets the last result.",
+                ),
+            ],
+        ),
+        folder(
+            "Upload (mobile apps)",
+            [
+                req(
+                    "Check hashes",
+                    "POST",
+                    "/api/v1/uploads/check",
+                    description="Body {items: [{content_hash, size}]} (up to 500). known = the library has it, removed = you deleted it on the server (do not send again). Everything else is new.",
+                    body="{\n  \"items\": [\n    {\"content_hash\": \"0000000000000000000000000000000000000000000000000000000000000000\", \"size\": 1}\n  ]\n}",
+                ),
+                req(
+                    "Start upload",
+                    "POST",
+                    "/api/v1/uploads",
+                    description="Body {filename, size, content_hash (SHA-256 hex of the whole file), taken_at?, mime?}. 201 new, 200 the same upload again (offset says where it stands) or {state: exists, asset_id} when the library has the file. 415 unsupported_media_type, 413 upload_too_large, 429 upload_limit, 507 insufficient_storage. Saves {{uploadId}}.",
+                    body="{\n  \"filename\": \"IMG_0001.jpg\",\n  \"size\": 1234,\n  \"content_hash\": \"0000000000000000000000000000000000000000000000000000000000000000\",\n  \"taken_at\": \"2026-01-02T03:04:05Z\"\n}",
+                    tests=SAVE_UPLOAD,
+                ),
+                req(
+                    "Upload state",
+                    "HEAD",
+                    "/api/v1/uploads/{{uploadId}}",
+                    description="Headers Upload-Offset and Upload-Length: where to continue after a break. 404 upload_not_found.",
+                ),
+                req(
+                    "Upload state (JSON)",
+                    "GET",
+                    "/api/v1/uploads/{{uploadId}}",
+                    description="Same as HEAD with a JSON body: offset, size, chunk_size, expires_at.",
+                ),
+                req(
+                    "Send bytes",
+                    "PATCH",
+                    "/api/v1/uploads/{{uploadId}}",
+                    description="Raw bytes (Send and Select File), headers Upload-Offset (must equal the server's offset, else 409 upload_offset_mismatch with the true offset) and Content-Type application/offset+octet-stream. More bytes than declared: 400 upload_too_long. The last byte verifies the SHA-256 (422 upload_hash_mismatch deletes the upload) and answers {state: done, asset} with the photo filed under Uploads/<year>/. 409 upload_busy if another request is writing.",
+                    file_body=True,
+                    headers=[
+                        {"key": "Upload-Offset", "value": "0"},
+                        {"key": "Content-Type", "value": "application/offset+octet-stream"},
+                    ],
+                ),
+                req(
+                    "Cancel upload",
+                    "DELETE",
+                    "/api/v1/uploads/{{uploadId}}",
+                    description="Throws the bytes sent so far away.",
                 ),
             ],
         ),

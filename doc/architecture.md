@@ -165,6 +165,11 @@ Illustrative v1 surface (names can change; behavior should not):
 | GET | `/api/v1/assets/{id}/thumb` | JPEG thumb |
 | GET | `/api/v1/assets/{id}/preview` | JPEG display (HEIC/TIFF/DNG and other originals the browser cannot paint) |
 | GET | `/api/v1/assets/{id}/file` | Original (so the player can skip in time) |
+| POST | `/api/v1/uploads/check` | Body `{items: [{content_hash, size}]}` (≤ 500) → `{known, removed}`: hashes the library has, and hashes of photos the user deleted on the server (an app does not send those again) |
+| POST | `/api/v1/uploads` | Start a resumable upload `{filename, size, content_hash, taken_at?, mime?}`: `201` new, `200` the same open upload again, `200 {state: "exists", asset_id}` when the library already has the hash. `415 unsupported_media_type`, `413 upload_too_large` (64 GiB), `429 upload_limit` (100 open), `507 insufficient_storage` |
+| HEAD, GET | `/api/v1/uploads/{id}` | Where it stands: `Upload-Offset` / `Upload-Length` headers (HEAD) or JSON `offset`, `size`, `chunk_size`, `expires_at` (GET) |
+| PATCH | `/api/v1/uploads/{id}` | Raw bytes (`application/offset+octet-stream`) at header `Upload-Offset`; `409 upload_offset_mismatch` carries the true offset, `400 upload_too_long` changes nothing, `409 upload_busy` for a concurrent writer. The last byte verifies SHA-256 (`422 upload_hash_mismatch` deletes the upload) and answers `{state: "done", asset}` with the file under `Uploads/{year}/` of the user's library |
+| DELETE | `/api/v1/uploads/{id}` | Abort and delete the bytes sent so far |
 | POST | `/api/v1/thumbs/generate` | Start `thumb_batch` job (one in-process job at a time) |
 | POST | `/api/v1/assets` | Upload into the caller's library |
 | GET | `/api/v1/fs/list` | Host folder picker. `kind=backup` (admin only) lists any `.zip` file for choosing a backup to restore. Other users' `{data_dir}/libraries/{id}` and `backups/users/{id}` dirs are hidden. Optional `warning` when this process cannot list a folder (does not retry as the Mac GUI user). `smb://` and UNC: [smb-paths.md](smb-paths.md) |

@@ -20,20 +20,17 @@
   "invalid_locale": "不支持的语言：{{locale}}",
   "invalid_time_zone": "未知的时区：{{time_zone}}",
   "time_zone_data_missing": "此服务器没有时区数据。请管理员安装 tzdata 包后重新启动。",
-
   "data_dir_rejected": "无法使用该文件夹：{{message}}",
   "data_dir_env_locked": "已设置 MOSAICWAVE_DATA_DIR，因此无法在“服务器”页更改文件夹。",
   "data_dir_occupied": "该目标已经有 mosaicWave 照片库。",
   "data_dir_job_running": "有任务正在运行时无法移动照片库。",
   "data_dir_moving": "照片库正在移动，请稍后再试。",
-
   "folder_not_found": "找不到文件夹：{{message}}",
   "folder_forbidden": "没有权限打开该文件夹：{{message}}",
   "folder_unreadable": "无法读取该文件夹：{{message}}",
   "folder_not_allowed": "该文件夹属于其他用户的照片库。",
   "file_not_found": "找不到文件。",
   "file_forbidden": "没有权限读取该文件：{{message}}",
-
   "takeout_path_required": "请输入 Takeout 文件夹路径。",
   "takeout_not_a_directory": "该路径不是文件夹。",
   "takeout_no_photos": "找不到照片。请选择包含 takeout-*.zip 的文件夹，或已解压的 Google 相册文件夹。",
@@ -47,7 +44,6 @@
   "upload_interrupted": "上传已中断。",
   "upload_rejected": "上传被拒绝：{{message}}",
   "upload_failed": "上传失败：{{message}}",
-
   "source_not_found": "找不到照片库。",
   "asset_not_found": "找不到照片或视频。",
   "not_found": "找不到：{{message}}",
@@ -61,7 +57,6 @@
   "source_read_only": "此照片库为只读。",
   "library_exists": "每位用户已经有一个私人照片库。",
   "library_delete_forbidden": "无法删除你的照片库。",
-
   "album_not_found": "找不到相册。",
   "asset_not_in_album": "这张照片不在此相册中。",
   "album_stale": "相册已在服务器上更改，请刷新后重试。",
@@ -72,7 +67,6 @@
   "album_id_invalid": "相册 ID 必须是 UUID。",
   "album_patch_empty": "请更改名称或封面。",
   "album_rejected": "无法保存相册：{{message}}",
-
   "no_takeout_zips": "所选文件夹中没有 takeout-*.zip。已解压的文件夹需要在此路径内包含 Google 相册文件夹（或在这里直接放日期文件夹或照片）。",
   "no_takeout_zips_hint_nested": "此文件夹没有 takeout-*.zip，但以下子文件夹有：{{nested}}。请改选该文件夹。",
   "no_takeout_zips_hint_names": "找到其他名称的 zip 文件：{{other_names}}。mosaicWave 只会查找 takeout-<时间>-<编号>.zip。",
@@ -98,7 +92,6 @@
   "export_scope": "请选择全部照片，或选择单个相册与照片，不要两者并用。",
   "export_not_found": "找不到这份导出。",
   "export_empty": "没有可导出的内容。",
-
   "job_takeout_started": "已开始导入 Takeout：{{path}} → {{dest}}",
   "job_push_started": "已开始 Takeout 上传（设备端上传）",
   "job_push_received": "已收到 Takeout 上传，正在导入 {{path}}",
@@ -139,5 +132,16 @@
   "job_warn_vanished_backup": "备份进行中有 {{count}} 个文件消失了",
   "job_warn_photos_missing": "有 {{count}} 张照片找不到，未包含在导出中",
   "job_warn_removed_folder": "有 {{count}} 张照片属于已移除的文件夹，未包含在导出中",
-  "job_warn_unreadable": "有 {{count}} 个文件无法读取，未包含在导出中"
+  "job_warn_unreadable": "有 {{count}} 个文件无法读取，未包含在导出中",
+  "invalid_hash": "文件指纹（SHA-256）无效。",
+  "upload_empty": "无法上传空文件。",
+  "upload_limit": "未完成的上传过多（上限为 {{max}}）。请先完成或取消一些。",
+  "insufficient_storage": "服务器没有足够的可用空间存放这个文件。",
+  "upload_not_found": "这个上传已不存在，请重新开始。",
+  "upload_busy": "这个上传正被另一个请求写入。",
+  "upload_offset_mismatch": "服务器已收到这个上传的 {{offset}} 字节，请从该处继续。",
+  "upload_offset_missing": "缺少上传位置。",
+  "upload_too_long": "收到的数据多于文件声明的大小。",
+  "upload_incomplete": "上传尚未完成。",
+  "upload_hash_mismatch": "上传的数据与文件指纹不符，请重新开始上传。"
 }
