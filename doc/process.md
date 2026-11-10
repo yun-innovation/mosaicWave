@@ -79,6 +79,7 @@ flowchart LR
 | --- | --- |
 | Python | pytest for API, **storage module**, and indexer (virtual paths, jail, EXIF fallbacks, pagination) |
 | Web | Manual browser pass on changed flows; add component tests when UI stabilizes |
+| API contract | `openapi/openapi.json` (generated; `cd src/server; python -m mosaicwave.openapi_export` after any route, parameter or model change; CI fails when stale) |
 | API (manual) | Postman: import `postman/mosaicwave.postman_collection.json` |
 | QPKG | Install, start, stop, restart on at least one QTS/QuTS box; web UI loads; API health |
 | Standalone | Same API/UI checks on Windows (and later Linux) with a local data dir |
