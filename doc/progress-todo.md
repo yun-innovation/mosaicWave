@@ -37,4 +37,9 @@ Open items only. Roadmap: ordered milestones in [roadmap.md](roadmap.md). The ea
   - [x] PR 2: timeline scrubber (jump by month and year; `GET /assets/months` grouped in the display zone, `GET /assets?before=`) — merged [#53](https://github.com/yun-innovation/mosaicWave/pull/53); the same PR carries the UTC audit (`Z` on every API time, `ziptime.py`, `test_utc_contract.py`) and the EXIF fixes (Exif sub-IFD, recorded UTC offset)
   - [x] PR 3: search by filename and date (`GET /assets?q=&taken_from=&taken_to=`, search row in Photos and albums, album name filter) — merged [#54](https://github.com/yun-innovation/mosaicWave/pull/54)
   - [x] PR 4: select many (select mode, add to / remove from album, create album from the selection, export by ids; no new API) — merged [#55](https://github.com/yun-innovation/mosaicWave/pull/55)
-- [ ] iOS and Android clients in a separate repo (`mosaicWave-mobile`); this repo publishes the OpenAPI schema and the endpoints the apps need (**milestone 14**, planned after 9)
+- [ ] iOS and Android clients in a separate repo (`mosaicWave-mobile`); this repo publishes the OpenAPI schema and the endpoints the apps need (**milestone 14**, Flutter; design in [mobile.md](mobile.md)), one PR each in this order:
+  - [ ] PR 1: design note ([mobile.md](mobile.md)); built on `feature/mobile-api`, waiting for `ship`
+  - [x] Step B: private `yun-innovation/mosaicWave-mobile` created, working copy `D:\mosaicWave\mw.mobile` (README and `.gitignore` only)
+  - [ ] PR 3: `openapi.json` published and checked in CI; Postman current
+  - [ ] PR 4: bearer header, `token: true` on login, `/auth/refresh`
+  - [ ] PR 5: resumable upload design and endpoint (the app itself is built in its own repo)
