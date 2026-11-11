@@ -37,7 +37,7 @@ Uploading while the app is closed is limited by each OS, not by this repo. Andro
 
 ## Upload design (step G)
 
-**Status: decided, not built.** The open points were settled on 2026-11-10 (the `removed` rule; no device album, files go to `Uploads/{year}`). Nothing below is built; the endpoint is the PR after this one. It replaces nothing: the Takeout push session (`/import/takeout/push`) stays for dumps.
+**Status: server side built** (`/api/v1/uploads`, merged in #63); the app's uploader is not. The open points were settled on 2026-11-10 (the `removed` rule; no device album, files go to `Uploads/{year}`). It replaces nothing: the Takeout push session (`/import/takeout/push`) stays for dumps.
 
 ### Why a new endpoint
 
