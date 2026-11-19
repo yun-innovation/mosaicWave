@@ -1,4 +1,5 @@
 from pathlib import Path
+import os
 import sys
 
 from fastapi import Depends, FastAPI, HTTPException
@@ -32,6 +33,15 @@ DEV_ORIGINS = (
     "http://127.0.0.1:3000",
     "http://localhost:3000",
 )
+
+# Debug scripts set MOSAICWAVE_DEV_HOST when the dev servers are meant to be reached from another device
+# (a phone on the same Wi-Fi): then the Next dev page opened at http://<LAN address>:3000 may call this API
+# across origins. Only private-network addresses on port 3000, and only when that variable is set.
+DEV_LAN_ORIGIN_REGEX = r"^http://(192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}):3000$"
+
+
+def _dev_lan_origin_regex() -> str | None:
+    return DEV_LAN_ORIGIN_REGEX if (os.environ.get("MOSAICWAVE_DEV_HOST") or "").strip() not in ("", "127.0.0.1") else None
 
 
 def _mount_web(app: FastAPI, web_root: Path) -> None:
@@ -75,6 +85,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=list(DEV_ORIGINS),
+        allow_origin_regex=_dev_lan_origin_regex(),
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

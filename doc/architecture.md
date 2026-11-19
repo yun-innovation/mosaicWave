@@ -223,7 +223,7 @@ FastAPI generates **OpenAPI** (`/docs`, `/openapi.json`) as the living spec. The
 | QNAP QPKG | FastAPI mounts exported `out/` at `/` (or `/mosaicWave/`) | FastAPI `/api/v1` |
 | Standalone | Same: FastAPI serves export + `/api/v1` | Same origin |
 
-CORS is only needed if the web origin and API origin differ (local `next dev`). Packaged hosts share origin.
+CORS is only needed if the web origin and API origin differ (local `next dev`). Packaged hosts share origin. The API allows `http://127.0.0.1:3000` and `http://localhost:3000`; when the debug scripts set `MOSAICWAVE_DEV_HOST` (to test from a phone) it also allows private-network origins (`192.168.x.x`, `10.x.x.x`, `172.16-31.x.x`) on port 3000. The native apps send no `Origin` and need no CORS.
 
 ## Database
 
