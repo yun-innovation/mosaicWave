@@ -3,9 +3,18 @@
 $script:ScriptsDir = $PSScriptRoot
 $script:RepoRoot = Split-Path -Parent $PSScriptRoot
 $script:ServerDir = Join-Path $script:RepoRoot "src\server"
-# Address the debug API binds to. Default is this PC only. Set MOSAICWAVE_DEV_HOST to the LAN address
-# (for example a phone on the same Wi-Fi) so the API does not listen on VPN or other adapters.
-$script:DevHost = if ($env:MOSAICWAVE_DEV_HOST) { $env:MOSAICWAVE_DEV_HOST.Trim() } else { "127.0.0.1" }
+# Address the debug API binds to. Default is this PC only. For a phone on the same Wi-Fi set it to the LAN
+# address (or 0.0.0.0) in the MOSAICWAVE_DEV_HOST environment variable, or put it on the first line of the
+# git-ignored file scripts\dev-host.local, which also works when a shortcut starts the script.
+$script:DevHost = "127.0.0.1"
+$devHostFile = Join-Path $PSScriptRoot "dev-host.local"
+if ($env:MOSAICWAVE_DEV_HOST) {
+    $script:DevHost = $env:MOSAICWAVE_DEV_HOST.Trim()
+} elseif (Test-Path -LiteralPath $devHostFile) {
+    $first = Get-Content -LiteralPath $devHostFile | Where-Object { $_.Trim() -and -not $_.Trim().StartsWith("#") } | Select-Object -First 1
+    if ($first) { $script:DevHost = $first.Trim() }
+}
+$env:MOSAICWAVE_DEV_HOST = $script:DevHost  # the web dev proxy follows it (next.config.ts)
 if ($script:DevHost -in @("0.0.0.0", "::")) {
     Write-Host "Warning: $($script:DevHost) listens on every adapter, VPNs included. Prefer one LAN address." -ForegroundColor Yellow
 }

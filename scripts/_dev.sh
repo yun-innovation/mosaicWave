@@ -3,9 +3,15 @@
 
 REPO_ROOT=$(CDPATH= cd -- "${SCRIPTS_DIR}/.." && pwd)
 SERVER_DIR="${REPO_ROOT}/src/server"
-# Address the debug API binds to. Default is this machine only. Set MOSAICWAVE_DEV_HOST to the LAN
-# address (for example a phone on the same Wi-Fi) so the API does not listen on VPN or other adapters.
-DEV_HOST="${MOSAICWAVE_DEV_HOST:-127.0.0.1}"
+# Address the debug API binds to. Default is this machine only. For a phone on the same Wi-Fi set it to the
+# LAN address (or 0.0.0.0) in MOSAICWAVE_DEV_HOST, or on the first line of the git-ignored file
+# scripts/dev-host.local (works when a launcher starts the script without your environment).
+DEV_HOST="${MOSAICWAVE_DEV_HOST:-}"
+if [ -z "${DEV_HOST}" ] && [ -f "${REPO_ROOT}/scripts/dev-host.local" ]; then
+    DEV_HOST=$(grep -v '^[[:space:]]*\(#\|$\)' "${REPO_ROOT}/scripts/dev-host.local" | head -n 1 | tr -d '[:space:]')
+fi
+DEV_HOST="${DEV_HOST:-127.0.0.1}"
+export MOSAICWAVE_DEV_HOST="${DEV_HOST}"
 case "${DEV_HOST}" in
     0.0.0.0|::) echo "Warning: ${DEV_HOST} listens on every interface, VPNs included. Prefer one LAN address." >&2 ;;
 esac

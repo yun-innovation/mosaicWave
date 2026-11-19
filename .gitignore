@@ -33,3 +33,6 @@ google photos/
 # WiX extensions (fetched by the build) and pasted tracebacks
 .wix/
 exception.rtf
+
+# Local dev bind address for the debug scripts (see doc/README.md)
+scripts/dev-host.local
