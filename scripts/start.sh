@@ -31,7 +31,7 @@ ensure_web
 stop_existing_dev_servers api web
 
 echo "API  http://${DEV_HOST}:8000/docs"
-echo "Web  http://127.0.0.1:3000"
+echo "Web  http://${DEV_HOST}:3000"
 if [ "$(uname -s 2>/dev/null)" = Darwin ]; then
     echo "Mac debug API is root (SMB /Volumes). Ctrl+C stops both."
     if [ -f /Library/LaunchDaemons/com.mosaicwave.app.plist ]; then
@@ -46,7 +46,7 @@ trap cleanup INT TERM EXIT
 start_debug_api
 (
     cd "${WEB_DIR}" || exit 1
-    exec_as_invoker npm run dev
+    exec_as_invoker npm run dev -- --hostname "${DEV_HOST}"
 ) &
 WEB_PID=$!
 set +e

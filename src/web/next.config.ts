@@ -13,7 +13,7 @@ const nextConfig: NextConfig = {
   ...(isProd ? { output: "export" as const } : {}),
   images: { unoptimized: true },
   // next dev is bound to 127.0.0.1 only (package.json), so it is never offered on a VPN or LAN address; the browser often opens http://127.0.0.1:3000
-  allowedDevOrigins: ["127.0.0.1"],
+  allowedDevOrigins: ["127.0.0.1", ...(devApiHost === "127.0.0.1" ? [] : [devApiHost])],
 };
 
 if (!isProd) {

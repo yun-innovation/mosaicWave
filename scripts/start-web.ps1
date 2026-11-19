@@ -6,8 +6,8 @@ try {
     Ensure-Web
     Stop-ExistingDevServers -Web
     Set-Location $script:WebDir
-    Write-Host "Web  http://127.0.0.1:3000"
-    npm run dev
+    Write-Host "Web  http://$($script:DevHost):3000"
+    npm run dev -- --hostname $script:DevHost
 } catch {
     Write-Host $_ -ForegroundColor Red
 } finally {

@@ -10,7 +10,7 @@ try {
     Stop-ExistingDevServers -Api -Web
 
     Write-Host "API  http://$($script:DevHost):8000/docs"
-    Write-Host "Web  http://127.0.0.1:3000"
+    Write-Host "Web  http://$($script:DevHost):3000"
     Write-Host "Ctrl+C stops both."
     Write-Host ""
 
@@ -22,7 +22,7 @@ try {
     ) -WorkingDirectory $script:ServerDir -PassThru -NoNewWindow
 
     $npm = (Get-Command npm.cmd -ErrorAction Stop).Source
-    $web = Start-Process -FilePath $npm -ArgumentList @("run", "dev") -WorkingDirectory $script:WebDir -PassThru -NoNewWindow
+    $web = Start-Process -FilePath $npm -ArgumentList @("run", "dev", "--", "--hostname", $script:DevHost) -WorkingDirectory $script:WebDir -PassThru -NoNewWindow
     $flag = Join-Path $(if ($env:PROGRAMDATA) { $env:PROGRAMDATA } else { "C:\ProgramData" }) "mosaicWave-dev\restart.flag"
     while ($true) {
         if ($web.HasExited) { break }
