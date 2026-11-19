@@ -9,7 +9,7 @@ try {
     Ensure-Web
     Stop-ExistingDevServers -Api -Web
 
-    Write-Host "API  http://127.0.0.1:8000/docs"
+    Write-Host "API  http://$($script:DevHost):8000/docs"
     Write-Host "Web  http://127.0.0.1:3000"
     Write-Host "Ctrl+C stops both."
     Write-Host ""
@@ -17,7 +17,7 @@ try {
     $api = Start-Process -FilePath $script:Uvicorn -ArgumentList @(
         "mosaicwave.main:app",
         "--reload",
-        "--host", "127.0.0.1",
+        "--host", $script:DevHost,
         "--port", "8000"
     ) -WorkingDirectory $script:ServerDir -PassThru -NoNewWindow
 
@@ -33,7 +33,7 @@ try {
                 $api = Start-Process -FilePath $script:Uvicorn -ArgumentList @(
                     "mosaicwave.main:app",
                     "--reload",
-                    "--host", "127.0.0.1",
+                    "--host", $script:DevHost,
                     "--port", "8000"
                 ) -WorkingDirectory $script:ServerDir -PassThru -NoNewWindow
                 continue

@@ -22,7 +22,7 @@ cleanup() {
 
 ensure_api
 stop_existing_dev_servers api ""
-echo "API  http://127.0.0.1:8000/docs"
+echo "API  http://${DEV_HOST}:8000/docs"
 
 trap cleanup INT TERM EXIT
 while :; do

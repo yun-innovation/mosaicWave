@@ -3,6 +3,12 @@
 
 REPO_ROOT=$(CDPATH= cd -- "${SCRIPTS_DIR}/.." && pwd)
 SERVER_DIR="${REPO_ROOT}/src/server"
+# Address the debug API binds to. Default is this machine only. Set MOSAICWAVE_DEV_HOST to the LAN
+# address (for example a phone on the same Wi-Fi) so the API does not listen on VPN or other adapters.
+DEV_HOST="${MOSAICWAVE_DEV_HOST:-127.0.0.1}"
+case "${DEV_HOST}" in
+    0.0.0.0|::) echo "Warning: ${DEV_HOST} listens on every interface, VPNs included. Prefer one LAN address." >&2 ;;
+esac
 WEB_DIR="${REPO_ROOT}/src/web"
 VENV_DIR="${SERVER_DIR}/.venv"
 UVICORN="${VENV_DIR}/bin/uvicorn"
@@ -205,7 +211,7 @@ dev_data_dir() {
 start_debug_api() {
     (
         cd "${SERVER_DIR}" || exit 1
-        exec "${UVICORN}" mosaicwave.main:app --reload --host 127.0.0.1 --port 8000
+        exec "${UVICORN}" mosaicwave.main:app --reload --host "${DEV_HOST}" --port 8000
     ) &
     API_PID=$!
 }

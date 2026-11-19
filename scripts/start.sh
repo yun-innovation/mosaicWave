@@ -30,7 +30,7 @@ ensure_api
 ensure_web
 stop_existing_dev_servers api web
 
-echo "API  http://127.0.0.1:8000/docs"
+echo "API  http://${DEV_HOST}:8000/docs"
 echo "Web  http://127.0.0.1:3000"
 if [ "$(uname -s 2>/dev/null)" = Darwin ]; then
     echo "Mac debug API is root (SMB /Volumes). Ctrl+C stops both."

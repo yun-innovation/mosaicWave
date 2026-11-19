@@ -3,6 +3,12 @@
 $script:ScriptsDir = $PSScriptRoot
 $script:RepoRoot = Split-Path -Parent $PSScriptRoot
 $script:ServerDir = Join-Path $script:RepoRoot "src\server"
+# Address the debug API binds to. Default is this PC only. Set MOSAICWAVE_DEV_HOST to the LAN address
+# (for example a phone on the same Wi-Fi) so the API does not listen on VPN or other adapters.
+$script:DevHost = if ($env:MOSAICWAVE_DEV_HOST) { $env:MOSAICWAVE_DEV_HOST.Trim() } else { "127.0.0.1" }
+if ($script:DevHost -in @("0.0.0.0", "::")) {
+    Write-Host "Warning: $($script:DevHost) listens on every adapter, VPNs included. Prefer one LAN address." -ForegroundColor Yellow
+}
 $script:WebDir = Join-Path $script:RepoRoot "src\web"
 $script:VenvDir = Join-Path $script:ServerDir ".venv"
 $script:Uvicorn = Join-Path $script:VenvDir "Scripts\uvicorn.exe"

@@ -1,13 +1,18 @@
 import type { NextConfig } from "next";
 
 const isProd = process.env.NODE_ENV === "production";
+// Where the debug API listens (scripts/start*.ps1|sh set it through MOSAICWAVE_DEV_HOST).
+const devApiHost = (() => {
+  const host = (process.env.MOSAICWAVE_DEV_HOST ?? "").trim();
+  return host && host !== "0.0.0.0" && host !== "::" ? host : "127.0.0.1";
+})();
 
 const nextConfig: NextConfig = {
   // Static export only for production builds. `next dev` keeps rewrites working
   // without the "rewrites will not work with output: export" warning.
   ...(isProd ? { output: "export" as const } : {}),
   images: { unoptimized: true },
-  // next dev binds as localhost; the browser often opens http://127.0.0.1:3000
+  // next dev is bound to 127.0.0.1 only (package.json), so it is never offered on a VPN or LAN address; the browser often opens http://127.0.0.1:3000
   allowedDevOrigins: ["127.0.0.1"],
 };
 
@@ -21,7 +26,7 @@ if (!isProd) {
   nextConfig.rewrites = async () => [
     {
       source: "/api/:path*",
-      destination: "http://127.0.0.1:8000/api/:path*",
+      destination: `http://${devApiHost}:8000/api/:path*`,
     },
   ];
 }

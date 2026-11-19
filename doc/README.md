@@ -49,7 +49,7 @@ From the repo root, **`scripts\start.cmd`** (Windows) or **`sh scripts/start.sh`
 | Script | What |
 | --- | --- |
 | `scripts\start.cmd` / `scripts/start.sh` | Both in this window (`start.command` on a Mac) |
-| `scripts\start-api.cmd` / `scripts/start-api.sh` | FastAPI — http://127.0.0.1:8000/docs |
+| `scripts\start-api.cmd` / `scripts/start-api.sh` | FastAPI — http://127.0.0.1:8000/docs (set `MOSAICWAVE_DEV_HOST` to bind another address, see below) |
 | `scripts\start-web.cmd` / `scripts/start-web.sh` | Next.js — http://127.0.0.1:3000 (`/api` → FastAPI) |
 | `scripts\stop.cmd` / `scripts/stop.sh` | Stop API + web (`stop.command` on a Mac) |
 | `scripts\stop-api.cmd` / `scripts/stop-api.sh` | Stop FastAPI (port 8000) |
@@ -59,6 +59,8 @@ From the repo root, **`scripts\start.cmd`** (Windows) or **`sh scripts/start.sh`
 | `scripts\wipe.cmd` / `scripts/wipe.sh` | Wipe this app's own data folder — no `--data-dir`. No flags: wipes both (DB + `libraries/`+`blobs/`); `--db` or `--storage` alone wipes just that one. Packaged: `wipe.cmd` (MSI) / `wipe.sh` or `mosaicWave.sh wipe` (posix tarball, QPKG) |
 | `scripts\publish.cmd` | Stage all packages, or one: `msi` / `qpkg` / `posix` |
 | `scripts\pack.cmd` | Pack all, or one (`pack.cmd qpkg x86_64`). Same as `pack-msi` / `pack-qpkg` / `pack-posix` |
+
+**Reaching the debug API from a phone or another PC:** by default the API listens on `127.0.0.1` only and the Next dev server on `127.0.0.1:3000` only, so neither is offered on a VPN adapter. To test from a device on the same network, set `MOSAICWAVE_DEV_HOST` to this machine's LAN address before starting (`$env:MOSAICWAVE_DEV_HOST = "192.168.50.11"; scripts\start.cmd`, or `MOSAICWAVE_DEV_HOST=192.168.x.x sh scripts/start.sh`); the API then binds that address and the web dev proxy follows it. `0.0.0.0` works but listens on every adapter (a warning is printed). The device uses `http://<that address>:8000` (a debug build of the app allows plain HTTP) and the firewall must allow TCP 8000 on that network profile.
 
 Same names as `.ps1` if you already have a PowerShell prompt (`.\scripts\start-api.ps1`). First run creates the Python venv and runs `npm install` if needed. Packaged macOS (`/Applications/mosaicWave.app`, port **8090**) is separate; these debug scripts only touch **8000** / **3000**.
 
