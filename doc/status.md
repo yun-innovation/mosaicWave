@@ -13,7 +13,7 @@ Short onboarding snapshot for agents. **Session start:** always read [index.md](
 
 ## Next
 
-Next is **milestone 14** (iOS and Android clients, Flutter, separate private repo `mosaicWave-mobile`; design note [mobile.md](mobile.md) #57, `openapi/openapi.json` #58, app sign-in with stored sessions #59, server discovery #60, upload design #61; `DELETE /assets/{id}` #62; the `/uploads` endpoints #63; next the Flutter skeleton and apps in `mosaicWave-mobile`, needs your go-ahead). 10 ARM64 QPKG is **frozen** (no ARM hardware) and 11 share links (SaaS) is **deferred**; both are skipped.
+Next is **milestone 14** (iOS and Android clients, Flutter, separate private repo `mosaicWave-mobile`; design note [mobile.md](mobile.md) #57, `openapi/openapi.json` #58, app sign-in with stored sessions #59, server discovery #60, upload design #61; `DELETE /assets/{id}` #62; the `/uploads` endpoints #63; the Flutter skeleton is built in `mosaicWave-mobile` (branch `feature/app-skeleton`, not shipped); dev scripts can bind the API and web to a LAN address for phone tests via `scripts/dev-host.local` (branch `feature/dev-bind-host`, waiting for `ship`); next: try the app on a phone against the dev API (needs the Windows Firewall rule for TCP 8000, Private profile), then browse in the app). 10 ARM64 QPKG is **frozen** (no ARM hardware) and 11 share links (SaaS) is **deferred**; both are skipped.
 
 ## Constraints
 
