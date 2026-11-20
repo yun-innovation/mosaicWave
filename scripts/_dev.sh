@@ -7,6 +7,24 @@ WEB_DIR="${REPO_ROOT}/src/web"
 VENV_DIR="${SERVER_DIR}/.venv"
 UVICORN="${VENV_DIR}/bin/uvicorn"
 VENV_PYTHON="${VENV_DIR}/bin/python"
+# Address the Next dev server (web, :3000) binds to. It follows the API: the first non-loopback address the
+# API will listen on (the admin Server page setting, or MOSAICWAVE_HOST if you set it), else 127.0.0.1.
+# MOSAICWAVE_DEV_HOST overrides it. The API (:8000) is started by mosaicwave.serve with no --host
+# (doc/qpkg.md, Bind address).
+DEV_HOST_PINNED="${MOSAICWAVE_DEV_HOST:-}"  # set by the user before starting: never re-derived
+resolve_dev_host() {
+    DEV_HOST="${DEV_HOST_PINNED}"
+    if [ -z "${DEV_HOST}" ] && [ -x "${VENV_PYTHON}" ]; then
+        DEV_HOST=$(MOSAICWAVE_PROFILE=dev "${VENV_PYTHON}" -m mosaicwave.serve --print-hosts 2>/dev/null \
+            | tr ',' '\n' | grep -v '^127\.0\.0\.1$' | head -n 1)
+    fi
+    DEV_HOST="${DEV_HOST:-127.0.0.1}"
+    export MOSAICWAVE_DEV_HOST="${DEV_HOST}"
+    case "${DEV_HOST}" in
+        0.0.0.0|::) echo "Warning: the web dev server listens on every interface (${DEV_HOST}), VPNs included." >&2 ;;
+    esac
+}
+resolve_dev_host
 
 # Mac debug Save folder mounts /Volumes/… (same as LaunchDaemon). That needs root.
 # Re-exec with sudo; keep the caller PATH/HOME so python and npm still resolve.
@@ -205,7 +223,8 @@ dev_data_dir() {
 start_debug_api() {
     (
         cd "${SERVER_DIR}" || exit 1
-        exec "${UVICORN}" mosaicwave.main:app --reload --host 127.0.0.1 --port 8000
+        # No --host: that would be an explicit startup choice and override the admin Server page.
+        exec "${VENV_PYTHON}" -m mosaicwave.serve --reload --port 8000
     ) &
     API_PID=$!
 }

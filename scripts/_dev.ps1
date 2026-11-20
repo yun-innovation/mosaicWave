@@ -6,6 +6,37 @@ $script:ServerDir = Join-Path $script:RepoRoot "src\server"
 $script:WebDir = Join-Path $script:RepoRoot "src\web"
 $script:VenvDir = Join-Path $script:ServerDir ".venv"
 $script:Uvicorn = Join-Path $script:VenvDir "Scripts\uvicorn.exe"
+$script:VenvPython = Join-Path $script:VenvDir "Scripts\python.exe"
+# Address the Next dev server (web, :3000) binds to. It follows the API: the first non-loopback address the
+# API will listen on (the admin Server page setting, or MOSAICWAVE_HOST if you set it), else 127.0.0.1.
+# MOSAICWAVE_DEV_HOST overrides it. The API (:8000) is started by mosaicwave.serve with no --host
+# (doc/qpkg.md, Bind address).
+$script:DevHostPinned = [bool]$env:MOSAICWAVE_DEV_HOST  # set by the user before starting: never re-derived
+$script:DevHost = $env:MOSAICWAVE_DEV_HOST
+function Resolve-DevHost {
+    $script:DevHost = "127.0.0.1"
+    $script:DevHostSource = "default"
+    if ($script:DevHostPinned) {
+        $script:DevHost = $env:MOSAICWAVE_DEV_HOST.Trim()
+        $script:DevHostSource = "MOSAICWAVE_DEV_HOST"
+    } elseif (Test-Path -LiteralPath $script:VenvPython) {
+        $env:MOSAICWAVE_PROFILE = "dev"
+        $apiHosts = (& $script:VenvPython -m mosaicwave.serve --print-hosts 2>$null | Out-String).Trim() -split ","
+        $extra = @($apiHosts | Where-Object { $_ -and $_ -ne "127.0.0.1" })
+        if ($extra.Count -gt 0) { $script:DevHost = $extra[0]; $script:DevHostSource = "follows the API" }
+    }
+    $env:MOSAICWAVE_DEV_HOST = $script:DevHost  # the web dev proxy follows it (next.config.ts)
+    if ($script:DevHost -in @("0.0.0.0", "::")) {
+        Write-Host "Warning: the web dev server listens on every adapter ($($script:DevHost)), VPNs included." -ForegroundColor Yellow
+    }
+}
+Resolve-DevHost
+
+# Arguments that start the debug API through mosaicwave.serve (the one startup path, bind rules included).
+# No --host: that would be an explicit startup choice and override the admin Server page.
+function Get-ApiArgs {
+    return @("-m", "mosaicwave.serve", "--reload", "--port", "8000")
+}
 
 function Find-Python {
     $local = Join-Path $env:LOCALAPPDATA "Programs\Python\Python312\python.exe"
@@ -115,7 +146,7 @@ function Stop-MosaicApi {
     param([switch] $QuietIfNone)
     $ids = @()
     $ids += Get-ListenPids 8000
-    $ids += Get-PidsMatchingCommand "^(python|uvicorn)\.exe$" "mosaicwave\.main:app"
+    $ids += Get-PidsMatchingCommand "^(python|uvicorn)\.exe$" "mosaicwave\.(main:app|serve)"
     $venvExe = [regex]::Escape($script:VenvDir)
     $ids += Get-PidsMatchingCommand "^(python|uvicorn)\.exe$" $venvExe
     Stop-Pids $ids "API" -QuietIfNone:$QuietIfNone

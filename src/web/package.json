@@ -4,7 +4,7 @@
   "version": "0.1.1",
   "license": "SEE LICENSE IN ../../LICENSE",
   "scripts": {
-    "dev": "next dev --port 3000",
+    "dev": "next dev --port 3000 --hostname 127.0.0.1",
     "i18n-check": "node scripts/i18n-check.mjs",
     "sync-locales": "node scripts/sync-server-locales.mjs",
     "prebuild": "node scripts/i18n-check.mjs",

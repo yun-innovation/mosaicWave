@@ -31,6 +31,7 @@ _SKIP_RELOCATE = {
     "session.key",
     "mnt",
     "restart.flag",
+    "bind-failure.json",
     "nsmb.conf",
     "tmp",
 }
@@ -811,12 +812,23 @@ def write_data_dir_config(
         dest = data_dir.resolve()
     except OSError:
         dest = data_dir
-    payload: dict[str, str] = {"data_dir": str(dest)}
+    payload: dict[str, object] = {"data_dir": str(dest)}
     url = smb_url or smb_url_for_host_path(os.fspath(data_dir))
     if url:
         payload["data_dir_smb"] = url
         if mount_point and mount_point.strip():
             payload["data_dir_mount"] = mount_point.strip()
+    # Other settings kept in config.json (the bind address and port) survive a Move library.
+    old = _read_config_dict(bootstrap) or {}
+    for key in ("web_bind", "web_port"):
+        if old.get(key) is not None:
+            payload[key] = old[key]
+    write_config_dict(bootstrap, payload)
+
+
+def write_config_dict(bootstrap: Path, payload: dict) -> None:
+    """Write ``config.json`` atomically."""
+    bootstrap.mkdir(parents=True, exist_ok=True)
     tmp = bootstrap / "config.json.tmp"
     tmp.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
     tmp.replace(bootstrap / _CONFIG_NAME)
@@ -1032,12 +1044,14 @@ class Settings:
         source = os.environ.get("MOSAICWAVE_SOURCE_DIR")
         web = (os.environ.get("MOSAICWAVE_WEB_ROOT") or "").strip()
         web_root = Path(web).expanduser() if web else _bundled_web_root()
-        host = (os.environ.get("MOSAICWAVE_HOST") or "127.0.0.1").strip() or "127.0.0.1"
-        port_raw = (os.environ.get("MOSAICWAVE_PORT") or "8000").strip()
-        try:
-            port = int(port_raw)
-        except ValueError:
-            port = 8000
+        from mosaicwave.bind import bound_hosts
+
+        # ``serve`` records what it really bound; a plain uvicorn start falls back to the env value.
+        host = (bound_hosts() or [(os.environ.get("MOSAICWAVE_HOST") or "").split(",")[0].strip() or "127.0.0.1"])[0]
+        from mosaicwave.bind import bound_info, resolve_port
+
+        info = bound_info() or {}
+        port = info["port"] if isinstance(info.get("port"), int) else resolve_port(boot)[0]
         recover_library_db_to_bootstrap(boot, data_dir)
         return cls(
             data_dir=data_dir,

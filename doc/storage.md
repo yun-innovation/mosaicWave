@@ -137,7 +137,7 @@ Data dir layout:
 
 ```
 {bootstrap}/              # Windows MSI %PROGRAMDATA%\mosaicWave; debug %PROGRAMDATA%\mosaicWave-dev; Linux ~/.local/share/mosaicWave (debug mosaicWave-dev); macOS packaged /Library/Application Support/mosaicWave; macOS debug /Library/Application Support/mosaicWave-dev
-  config.json             # optional {"data_dir": "...", "data_dir_smb": "smb://host/share/folder", "data_dir_mount": "/Volumes/mosaicWave-host-share"} — stays here when the library moves
+  config.json             # optional {"data_dir": "...", "data_dir_smb": "smb://host/share/folder", "data_dir_mount": "/Volumes/mosaicWave-host-share", "web_bind": {"mode": "list", "addresses": ["192.0.2.10"]}, "web_port": 8090} — stays here when the library moves
   session.key             # cookie HMAC; stays here so a failed NAS move does not invalidate login
   library.db              # SQLite metadata; stays here (not on SMB) unless MOSAICWAVE_DATA_DIR is set
   runtime/                # packaged venv; not moved when Settings changes {data_dir} (NAS chmod/symlinks)

@@ -92,10 +92,27 @@ next_free_port() {
 }
 
 # Keep qpkg.conf Web_Port in sync with a free TCP port (QTS desktop iframe uses this).
+# Ask mosaicwave.serve (the one place that resolves the port): $1 is the offered port (qpkg.conf Web_Port),
+# the rest are its arguments. Fails quietly before the venv exists.
+serve_cli() {
+    offer=$1
+    shift
+    [ -x "${QPKG_ROOT}/venv/bin/python" ] || return 1
+    MOSAICWAVE_PLATFORM=qnap PYTHONPATH="${QPKG_ROOT}/server" MOSAICWAVE_PORT_DEFAULT="${offer}" \
+        "${QPKG_ROOT}/venv/bin/python" -m mosaicwave.serve "$@"
+}
+
 assign_listen_port() {
+    PORT_FALLBACK=0
     want=$(get_web_port)
     case "${want}" in
         *[!0-9]*|"") want=${DEFAULT_PORT} ;;
+    esac
+    # The port saved on the admin Server page (config.json) wins over qpkg.conf, which is only the offer.
+    saved=$(serve_cli "${want}" --print-port 2>/dev/null) || saved=""
+    case "${saved}" in
+        ""|*[!0-9]*) ;;
+        *) want=${saved} ;;
     esac
     if port_busy "${want}"; then
         free=$(next_free_port "${want}") || {
@@ -104,6 +121,7 @@ assign_listen_port() {
         }
         if [ "${free}" != "${want}" ]; then
             mw_log "port ${want} in use; using ${free}"
+            PORT_FALLBACK=1  # start passes it as an explicit MOSAICWAVE_PORT for this run only
             set_web_port "${free}"
             if [ -x /usr/local/sbin/notify ]; then
                 /usr/local/sbin/notify send -A A039 -C C001 -M 46 -l info -t 3 "[{0}] {1} web port is {2} (previous port was busy)." "App Center" "${QPKG_NAME}" "${free}"
@@ -146,6 +164,8 @@ cmd_port() {
         return 1
     fi
     set_web_port "$1"
+    # Also save it as the port (config.json, the same one the admin Server page edits).
+    serve_cli "$1" --set-port "$1" >/dev/null 2>&1 || true
     echo "Web_Port=$1. Restart mosaicWave (App Center Disable/Enable or $0 restart)."
 }
 
@@ -239,10 +259,13 @@ ensure_venv() {
     return 0
 }
 
+# The server may listen on any address (loopback, one LAN address, all interfaces), so a connect to
+# 127.0.0.1 proves nothing. Ask whether the port is listening. mosaicwave.serve retries a bind for up to
+# 30 s before it falls back, so allow a little longer than that.
 wait_listen() {
     i=0
-    while [ "${i}" -lt 30 ]; do
-        if "${QPKG_ROOT}/venv/bin/python" -c "import socket; s=socket.create_connection(('127.0.0.1', int('${WEB_PORT}')), 1); s.close()" 2>/dev/null; then
+    while [ "${i}" -lt 45 ]; do
+        if is_running && port_busy "${WEB_PORT}"; then
             return 0
         fi
         i=$((i + 1))
@@ -293,14 +316,21 @@ start_qpkg() {
     export MOSAICWAVE_PLATFORM=qnap
     export MOSAICWAVE_DATA_DIR="${DATA_DIR}"
     export MOSAICWAVE_WEB_ROOT="${QPKG_ROOT}/web"
-    export MOSAICWAVE_HOST=0.0.0.0
-    export MOSAICWAVE_PORT="${WEB_PORT}"
+    # No MOSAICWAVE_HOST and no --host here: QNAP's default (all interfaces) lives in mosaicwave.serve, so the
+    # address saved on the admin Server page wins. Leave MOSAICWAVE_HOST unset in the NAS environment.
+    # Port: Web_Port is only the offer. MOSAICWAVE_PORT (explicit, so the Server page cannot change it) is set only
+    # for a run where the wanted port was busy and the next free one was taken.
+    if [ "${PORT_FALLBACK}" = 1 ]; then
+        export MOSAICWAVE_PORT="${WEB_PORT}"
+    else
+        export MOSAICWAVE_PORT_DEFAULT="${WEB_PORT}"
+    fi
     export PYTHONPATH="${QPKG_ROOT}/server"
     cd "${QPKG_ROOT}/server" || exit 1
     # QTS init PATH has no nohup. Ignore HUP so App Center can exit without killing uvicorn.
     (
         trap '' HUP
-        exec "${PY}" -m uvicorn mosaicwave.main:app --host 0.0.0.0 --port "${WEB_PORT}"
+        exec "${PY}" -m mosaicwave.serve
     ) >> "${LOG_FILE}" 2>&1 &
     echo $! > "${PID_FILE}"
     if ! wait_listen; then

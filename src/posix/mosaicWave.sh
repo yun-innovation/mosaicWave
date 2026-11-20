@@ -98,18 +98,12 @@ web_port() {
     esac
 }
 
-# uvicorn --host. Default loopback. Set MOSAICWAVE_HOST=0.0.0.0 for all interfaces
+# Explicit bind choice (address or comma list). Set MOSAICWAVE_HOST=0.0.0.0 for all interfaces
 # (prefer a reverse proxy + TLS on a public host — see doc/qpkg.md).
 bind_host() {
-    h=$(printf '%s' "${MOSAICWAVE_HOST:-127.0.0.1}" | tr -d ' \t\r\n')
-    case "${h}" in
-        "")
-            echo "127.0.0.1"
-            ;;
-        *)
-            echo "${h}"
-            ;;
-    esac
+    # Only an explicit startup choice. Without one, mosaicwave.serve uses the address saved on the admin
+    # Server page, then 127.0.0.1 (doc/qpkg.md, Bind address). The script never picks a default itself.
+    printf '%s' "${MOSAICWAVE_HOST:-}" | tr -d ' \t\r\n'
 }
 
 # URL shown in start messages (0.0.0.0 is not a browser address).
@@ -117,7 +111,10 @@ listen_url() {
     h=$(bind_host)
     p=$(web_port)
     case "${h}" in
-        0.0.0.0|::|"[::]")
+        "")
+            echo "http://127.0.0.1:${p}/ (or the address saved on the Server page)"
+            ;;
+        0.0.0.0|::|"[::]"|*,*)
             echo "http://<this-host>:${p}/ (bound ${h})"
             ;;
         *)
@@ -281,8 +278,16 @@ export_app_env() {
     export MOSAICWAVE_PLATFORM=standalone
     export MOSAICWAVE_WEB_ROOT="${ROOT}/web"
     export PYTHONPATH="${ROOT}/server${PYTHONPATH:+:${PYTHONPATH}}"
-    MOSAICWAVE_PORT=$(web_port)
-    export MOSAICWAVE_PORT
+    # web.port (written by the server, `port`, install.sh) is only the port offered when none is saved or given.
+    # mosaicwave.serve picks: MOSAICWAVE_PORT if set (explicit), the port saved on the admin Server page, this offer.
+    if [ -z "${MOSAICWAVE_PORT}" ]; then
+        MOSAICWAVE_PORT_DEFAULT=$(web_port)
+        export MOSAICWAVE_PORT_DEFAULT
+    fi
+    PORT_NOW=$("${VENV}/bin/python" -m mosaicwave.serve --print-port 2>/dev/null) || PORT_NOW=""
+    case "${PORT_NOW}" in
+        ""|*[!0-9]*) PORT_NOW=$(web_port) ;;
+    esac
     # Do not export MOSAICWAVE_DATA_DIR unless the user already set it.
 }
 
@@ -291,9 +296,9 @@ cmd_run() {
     ensure_venv || exit 1
     export_app_env
     mkdir -p "${BOOT}"
-    echo "${MOSAICWAVE_PORT}" > "${PORT_FILE}"
+    echo "${PORT_NOW}" > "${PORT_FILE}"
     if port_in_use; then
-        mw_log "port ${MOSAICWAVE_PORT} already in use; not starting a second copy"
+        mw_log "port ${PORT_NOW} already in use; not starting a second copy"
         exit 0
     fi
     if [ "${uname_s}" = Darwin ] && [ -f "${BOOT}/config.json" ] && grep -q data_dir_smb "${BOOT}/config.json" 2>/dev/null; then
@@ -302,7 +307,8 @@ cmd_run() {
     fi
     echo $$ > "${PID_FILE}"
     cd "${ROOT}/server"
-    exec "${VENV}/bin/python" -m uvicorn mosaicwave.main:app --host "$(bind_host)" --port "${MOSAICWAVE_PORT}"
+    # No --host, no --port: serve reads MOSAICWAVE_HOST / MOSAICWAVE_PORT itself (explicit), then the saved setting.
+    exec "${VENV}/bin/python" -m mosaicwave.serve
 }
 
 cmd_start() {
@@ -314,7 +320,7 @@ cmd_start() {
         need_boot_write
         ensure_venv || exit 1
         export_app_env
-        echo "${MOSAICWAVE_PORT}" > "${PORT_FILE}"
+        echo "${PORT_NOW}" > "${PORT_FILE}"
         launchctl bootout "system/${LAUNCHD_LABEL}" >/dev/null 2>&1 || true
         kill_port_holders
         sleep 1
@@ -332,9 +338,9 @@ cmd_start() {
     ensure_venv || exit 1
     export_app_env
     mkdir -p "${BOOT}"
-    echo "${MOSAICWAVE_PORT}" > "${PORT_FILE}"
+    echo "${PORT_NOW}" > "${PORT_FILE}"
     cd "${ROOT}/server"
-    nohup "${VENV}/bin/python" -m uvicorn mosaicwave.main:app --host "$(bind_host)" --port "${MOSAICWAVE_PORT}" \
+    nohup "${VENV}/bin/python" -m mosaicwave.serve \
         >> "${LOG_FILE}" 2>&1 &
     echo $! > "${PID_FILE}"
     echo "${NAME} started on $(listen_url) (pid $(cat "${PID_FILE}"))"
@@ -381,9 +387,17 @@ cmd_status() {
     return 1
 }
 
+# The python the server runs with, ready to ask mosaicwave.serve about the port (it may not exist before the
+# first start; then web.port alone is the offered port).
+serve_cli() {
+    [ -x "${VENV}/bin/python" ] || return 1
+    PYTHONPATH="${ROOT}/server${PYTHONPATH:+:${PYTHONPATH}}" MOSAICWAVE_PORT_DEFAULT="$(web_port)" \
+        "${VENV}/bin/python" -m mosaicwave.serve "$@"
+}
+
 cmd_port() {
     if [ -z "$1" ]; then
-        echo "$(web_port)"
+        serve_cli --print-port 2>/dev/null || web_port
         return 0
     fi
     case "$1" in
@@ -398,6 +412,8 @@ cmd_port() {
     fi
     need_boot_write
     echo "$1" > "${PORT_FILE}"
+    # Also save it as the port (config.json, the same one the admin Server page edits) once the app is installed.
+    serve_cli --set-port "$1" >/dev/null 2>&1 || true
     echo "port $1 (restart to apply)"
 }
 

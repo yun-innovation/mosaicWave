@@ -30,8 +30,8 @@ ensure_api
 ensure_web
 stop_existing_dev_servers api web
 
-echo "API  http://127.0.0.1:8000/docs"
-echo "Web  http://127.0.0.1:3000"
+echo "API  port 8000 (address from the admin Server page, default 127.0.0.1; see the 'bind' line below)"
+echo "Web  http://${DEV_HOST}:3000"
 if [ "$(uname -s 2>/dev/null)" = Darwin ]; then
     echo "Mac debug API is root (SMB /Volumes). Ctrl+C stops both."
     if [ -f /Library/LaunchDaemons/com.mosaicwave.app.plist ]; then
@@ -46,7 +46,7 @@ trap cleanup INT TERM EXIT
 start_debug_api
 (
     cd "${WEB_DIR}" || exit 1
-    exec_as_invoker npm run dev
+    exec_as_invoker npm run dev -- --hostname "${DEV_HOST}"
 ) &
 WEB_PID=$!
 set +e
@@ -60,6 +60,21 @@ while :; do
             stop_mosaic_api quiet
             wait_port_free 8000 || true
             start_debug_api
+            # The API address may have changed (admin Network page): move the web dev server with it.
+            OLD_HOST="${DEV_HOST}"
+            resolve_dev_host
+            if [ "${DEV_HOST}" != "${OLD_HOST}" ]; then
+                echo "Web  moving to http://${DEV_HOST}:3000"
+                pkill -P "${WEB_PID}" 2>/dev/null || true
+                kill "${WEB_PID}" 2>/dev/null || true
+                stop_mosaic_web quiet
+                wait_port_free 3000 || true
+                (
+                    cd "${WEB_DIR}" || exit 1
+                    exec_as_invoker npm run dev -- --hostname "${DEV_HOST}"
+                ) &
+                WEB_PID=$!
+            fi
             continue
         fi
         break

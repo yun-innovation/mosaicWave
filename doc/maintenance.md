@@ -46,6 +46,8 @@ Switching it on twice replaces the message and keeps `since`. The message is pla
 
 ## Move library under maintenance (milestone 13)
 
+**Bind address** (Server page, `PUT /api/v1/settings/network`) is also allowed only while maintenance is `on` (`409 maintenance_required`): it ends with a server restart, so nobody should be working. Rules: [qpkg.md § Bind address](qpkg.md#bind-address).
+
 **Move library** (Server page, `PUT /api/v1/settings`) used to run in one long request while users kept working: the library was detached for the whole copy, requests in between failed, a crash mid-copy could leave the files split, and a multi-hundred-GB copy could outlast the HTTP request. It is now protected in five ways.
 
 1. **Maintenance gate.** The move is refused unless maintenance is `on` (`409 maintenance_required`; while `draining`, a staged restore or a running job it is `409 data_dir_job_running`; `409 data_dir_env_locked` when `MOSAICWAVE_DATA_DIR` is set). This covers saving the same folder too. The Server page is available during maintenance (it is in the admin's short menu), disables the form until the state is `on`, and links to the Maintenance page. The checks that need no copying run first and answer `400 data_dir_rejected`: absolute path, writable, not inside the current folder (or the reverse), enough free space; `409 data_dir_occupied` when the destination holds another library.

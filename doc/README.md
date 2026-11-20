@@ -49,7 +49,7 @@ From the repo root, **`scripts\start.cmd`** (Windows) or **`sh scripts/start.sh`
 | Script | What |
 | --- | --- |
 | `scripts\start.cmd` / `scripts/start.sh` | Both in this window (`start.command` on a Mac) |
-| `scripts\start-api.cmd` / `scripts/start-api.sh` | FastAPI — http://127.0.0.1:8000/docs |
+| `scripts\start-api.cmd` / `scripts/start-api.sh` | FastAPI — http://127.0.0.1:8000/docs (set `MOSAICWAVE_DEV_HOST` to bind another address, see below) |
 | `scripts\start-web.cmd` / `scripts/start-web.sh` | Next.js — http://127.0.0.1:3000 (`/api` → FastAPI) |
 | `scripts\stop.cmd` / `scripts/stop.sh` | Stop API + web (`stop.command` on a Mac) |
 | `scripts\stop-api.cmd` / `scripts/stop-api.sh` | Stop FastAPI (port 8000) |
@@ -59,6 +59,8 @@ From the repo root, **`scripts\start.cmd`** (Windows) or **`sh scripts/start.sh`
 | `scripts\wipe.cmd` / `scripts/wipe.sh` | Wipe this app's own data folder — no `--data-dir`. No flags: wipes both (DB + `libraries/`+`blobs/`); `--db` or `--storage` alone wipes just that one. Packaged: `wipe.cmd` (MSI) / `wipe.sh` or `mosaicWave.sh wipe` (posix tarball, QPKG) |
 | `scripts\publish.cmd` | Stage all packages, or one: `msi` / `qpkg` / `posix` |
 | `scripts\pack.cmd` | Pack all, or one (`pack.cmd qpkg x86_64`). Same as `pack-msi` / `pack-qpkg` / `pack-posix` |
+
+**Reaching the debug API from a phone or another PC:** by default the API (`:8000`) and the Next dev server (`:3000`) both listen on `127.0.0.1` only, so neither is offered on a VPN adapter. The API is started by `python -m mosaicwave.serve` with no `--host`, so it listens on the address saved on the admin Server page of the debug profile (maintenance mode, Network), else `127.0.0.1`; set `MOSAICWAVE_HOST` yourself before starting to force it at startup ([qpkg.md § Bind address](qpkg.md#bind-address)). The Next dev server follows the API: it listens on the first non-loopback address the API listens on (else `127.0.0.1`), and the start script prints both with where each came from. To test from a device on the same network, turn maintenance mode on, open the admin Server page, and set Network to this machine's LAN address (or All interfaces); the server restarts on it, and the next `start.ps1` / `start.sh` puts the web dev server on the same address. `MOSAICWAVE_DEV_HOST` overrides the web address (`$env:MOSAICWAVE_DEV_HOST = "192.168.50.11"; scripts\start.cmd`, or `MOSAICWAVE_DEV_HOST=192.168.x.x sh scripts/start.sh`); the old `scripts/dev-host.local` file is no longer read. Its proxy follows the web address. `next.config.ts` lists this machine's addresses in `allowedDevOrigins` so hot reload also works from another device (with `0.0.0.0`, every IPv4 address of the machine, VPN adapters included), and the API then also accepts cross-origin calls from a dev page at a private-network address on port 3000 (`tests/test_dev_cors.py`). `0.0.0.0` works but listens on every adapter (a warning is printed). The device uses `http://<that address>:8000` (a debug build of the app allows plain HTTP) and the firewall must allow TCP 8000 on that network profile.
 
 Same names as `.ps1` if you already have a PowerShell prompt (`.\scripts\start-api.ps1`). First run creates the Python venv and runs `npm install` if needed. Packaged macOS (`/Applications/mosaicWave.app`, port **8090**) is separate; these debug scripts only touch **8000** / **3000**.
 

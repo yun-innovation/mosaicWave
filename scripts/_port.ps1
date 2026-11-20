@@ -34,7 +34,8 @@ Listen port: $Port  ($From)
 This is not always 8090. mosaicWave picks the first that applies:
   1. Argument to this script          (port-who.cmd 8100)
   2. MOSAICWAVE_PORT
-  3. web.port in the data folder      (start scripts write it)
+  3. web.port in the app folder       (the server writes the port it really uses on every start,
+                                       including a port saved on the admin Server page)
   4. Windows installer PORT           (HKLM\SOFTWARE\mosaicWave)
   5. QPKG Web_Port                    (mosaicWave.sh port)
   6. Packaged default                 8090

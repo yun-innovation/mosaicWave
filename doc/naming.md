@@ -23,7 +23,7 @@ Do not invent `MosaicWave`, `mosaic-wave`, or `Mosaic Wave` as identifiers.
 | Linux | `~/.local/share/mosaicWave` | `~/.local/share/mosaicWave-dev` |
 | macOS | `/Library/Application Support/mosaicWave` | `/Library/Application Support/mosaicWave-dev` |
 
-Env override: `MOSAICWAVE_DATA_DIR` wins over Settings / `config.json`.
+Env override: `MOSAICWAVE_DATA_DIR` wins over Settings / `config.json`. The bind address is the other way round: the saved `web_bind` wins unless `MOSAICWAVE_HOST` / `--host` is given at startup.
 
 ## macOS SMB mount examples (fictional)
 
@@ -33,8 +33,8 @@ Env override: `MOSAICWAVE_DATA_DIR` wins over Settings / `config.json`.
 
 ## Env and config keys
 
-- Env: `MOSAICWAVE_DATA_DIR`, `MOSAICWAVE_PROFILE` (`dev` / `prod`), `MOSAICWAVE_PORT`, `MOSAICWAVE_HOST` (posix bind; default `127.0.0.1`), `MOSAICWAVE_WEB_ROOT`
-- `config.json` (examples): `data_dir_smb`, `data_dir_mount`, `web.port` — see Settings / [smb-paths.md](smb-paths.md)
+- Env: `MOSAICWAVE_DATA_DIR`, `MOSAICWAVE_PROFILE` (`dev` / `prod`), `MOSAICWAVE_PORT` (explicit startup port; unset = saved `web_port`, then the launcher's `MOSAICWAVE_PORT_DEFAULT`, then 8000), `MOSAICWAVE_HOST` (explicit startup bind choice, address or comma list; unset = saved `web_bind`, then platform default; see [qpkg.md](qpkg.md#bind-address)), `MOSAICWAVE_WEB_ROOT`
+- `config.json` (examples): `data_dir_smb`, `data_dir_mount`, `web_bind` (`mode`, `addresses`), `web_port` (number; the file `web.port` beside it is only the port the server last used) — see Settings / [smb-paths.md](smb-paths.md)
 
 ## Locales and translation keys
 

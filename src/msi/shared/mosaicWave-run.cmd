@@ -13,9 +13,12 @@ set "MOSAICWAVE_WEB_ROOT=%ROOT%\web"
 set "PYTHONPATH=%ROOT%\server"
 rem Do not set MOSAICWAVE_DATA_DIR. Prod default is %%PROGRAMDATA%%\mosaicWave (survives MSI uninstall).
 rem Local scripts\\start.cmd uses MOSAICWAVE_PROFILE=dev → %%PROGRAMDATA%%\mosaicWave-dev.
-set "MOSAICWAVE_PORT=8090"
-for /f "tokens=2,*" %%A in ('reg query "HKLM\SOFTWARE\mosaicWave" /v Port 2^>nul') do set "MOSAICWAVE_PORT=%%B"
-if not defined MOSAICWAVE_PORT set "MOSAICWAVE_PORT=8090"
+rem The installer's PORT page value is only the port offered at first start. mosaicwave.serve picks the port:
+rem MOSAICWAVE_PORT if set (explicit), else the port saved on the admin Server page, else this offer.
+set "MOSAICWAVE_PORT_DEFAULT=8090"
+for /f "tokens=2,*" %%A in ('reg query "HKLM\SOFTWARE\mosaicWave" /v Port 2^>nul') do set "MOSAICWAVE_PORT_DEFAULT=%%B"
 cd /d "%ROOT%\server"
-"%VENV%\Scripts\python.exe" -m uvicorn mosaicwave.main:app --host 127.0.0.1 --port %MOSAICWAVE_PORT%
+rem No --host and no --port: mosaicwave.serve reads MOSAICWAVE_HOST / MOSAICWAVE_PORT itself (explicit), then the
+rem address and port saved on the admin Server page, then the defaults (doc\qpkg.md, Bind address).
+"%VENV%\Scripts\python.exe" -m mosaicwave.serve
 exit /b %ERRORLEVEL%

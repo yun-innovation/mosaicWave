@@ -87,6 +87,36 @@
     "passwordLabel": "NAS 密碼",
     "passwordPlaceholder": "第一次儲存資料夾時必填"
   },
+  "network": {
+    "title": "網路",
+    "help": "伺服器監聽的位址。變更後伺服器會重新啟動。",
+    "mode": {
+      "local": "無其他位址（僅此電腦）",
+      "all": "所有網路介面（0.0.0.0）",
+      "list": "這些位址"
+    },
+    "loopbackFixed": "127.0.0.1（一律開啟，必要）",
+    "listLabel": "額外的 IP 位址，每行一個或以逗號分隔",
+    "warnAll": "「所有網路介面」也會讓 VPN 與其他網路卡連到伺服器。請使用防火牆，或在前面加上支援 TLS 的反向代理。",
+    "effective": "目前監聽 {{addresses}}，連接埠 {{port}}（{{source}}）。",
+    "portLabel": "連接埠（1024 至 65535）",
+    "portStartupLocked": "連接埠是在啟動時指定的（MOSAICWAVE_PORT 或 --port），因此無法在此變更。移除後重新啟動伺服器，即可使用此設定。",
+    "source": {
+      "startup": "啟動時指定",
+      "saved": "已儲存的設定",
+      "default": "預設值"
+    },
+    "startupLocked": "位址是在啟動時指定的（MOSAICWAVE_HOST 或 --host），因此無法在此變更。移除後重新啟動伺服器，即可使用此設定。",
+    "needsMaintenance": "變更位址會重新啟動伺服器，因此需要先開啟維護模式。",
+    "failure": "上次啟動時伺服器無法監聽 {{failed}}，因此改用 {{bound}}。",
+    "confirm": "要儲存位址並立即重新啟動伺服器嗎？重新啟動後，請以新的位址開啟伺服器。",
+    "save": "儲存位址",
+    "restarting": "正在重新啟動伺服器…",
+    "saved": "已儲存。伺服器正在監聽新的位址。",
+    "savedNoRestart": "已儲存。請重新啟動伺服器以套用。",
+    "moved": "伺服器已在 {{addresses}}、連接埠 {{port}} 重新啟動。請以該位址開啟。",
+    "failed": "無法儲存位址。"
+  },
   "save": {
     "moving": "正在搬移相片庫，進度顯示在狀態列。",
     "cancelled": "搬移已取消，相片庫仍在原資料夾。",

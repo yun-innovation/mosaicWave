@@ -146,6 +146,8 @@ Illustrative v1 surface (names can change; behavior should not):
 | GET | `/api/v1/users` | List app users (any signed-in user; for share picker). Create members is still **admin** `PUT` |
 | PUT | `/api/v1/users` | Create/update local user or role (**admin**) |
 | GET | `/api/v1/settings` | Host **App folder** (`app_dir`) and **Library folder** (`data_dir`) (**admin**). `backup_dir` is where site backups are written. `data_dir_smb` is the durable `smb://` URL when the library is on a NAS. `data_dir_mount` is the macOS share-root dest. `env_override` is true when `MOSAICWAVE_DATA_DIR` is set |
+| GET | `/api/v1/settings/network` | **Admin.** Bind address and port: saved `{mode, addresses}`, the `effective` addresses and their `source` (`startup`, `saved`, `default`), `startup_locked` (an explicit startup address is in force); `port` (saved, else offered), `effective_port`, `port_source`, `port_startup_locked`; and the last bind `failure` from `bind-failure.json` (or null). Rules and failure handling: [qpkg.md § Bind address](qpkg.md#bind-address) |
+| PUT | `/api/v1/settings/network` | **Admin.** Body `{mode?: "local"\|"all"\|"list", addresses?, port?}`; send only what changes. Saves `web_bind` and `web_port` in the bootstrap `config.json` and restarts the API (`restarting: true`). **409** `maintenance_required` (maintenance mode must be on), `bind_startup_locked`, `port_startup_locked`; **400** `bind_invalid`, `bind_not_local`, `port_invalid`, `port_in_use` |
 | PUT | `/api/v1/settings` | Move libraries + blobs + backups + exports (**admin**; the databases stay in the app folder). Starts a cancellable `data_dir_move` job and returns it; follow with `GET /jobs/{id}` (`restarting`, `notice` in the result). App folder (`app_dir`) keeps `session.key` / `config.json`. Returning to `app_dir` replaces leftover library files. Pointer in bootstrap `config.json` (`data_dir` plus `data_dir_smb` / `data_dir_mount` when on a share — remounted at process start). Optional `mount_point` with `smb://`. `smb://` / UNC: [smb-paths.md](smb-paths.md). NAS save keeps the live mount (`restarting` false). A local-folder save ends with `restarting: true` on the job and the API process exits. **409** if env is set, maintenance mode is not on (`maintenance_required`), a job is running, or dest already has a library (not when dest is the app folder). While it runs, library requests answer `503 data_dir_moving` ([maintenance.md](maintenance.md)) |
 | GET | `/api/v1/sources` | Own library first (`owned=true`, `perm=write`), then libraries shared with the caller |
 | POST | `/api/v1/sources` | **409** — each user already has one library |
@@ -223,7 +225,7 @@ FastAPI generates **OpenAPI** (`/docs`, `/openapi.json`) as the living spec. The
 | QNAP QPKG | FastAPI mounts exported `out/` at `/` (or `/mosaicWave/`) | FastAPI `/api/v1` |
 | Standalone | Same: FastAPI serves export + `/api/v1` | Same origin |
 
-CORS is only needed if the web origin and API origin differ (local `next dev`). Packaged hosts share origin.
+CORS is only needed if the web origin and API origin differ (local `next dev`). Packaged hosts share origin. The API allows `http://127.0.0.1:3000` and `http://localhost:3000`; when the debug scripts set `MOSAICWAVE_DEV_HOST` (to test from a phone) it also allows private-network origins (`192.168.x.x`, `10.x.x.x`, `172.16-31.x.x`) on port 3000. The native apps send no `Origin` and need no CORS.
 
 ## Database
 
