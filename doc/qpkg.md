@@ -14,8 +14,9 @@ Same API as the QPKG. Default `MOSAICWAVE_PLATFORM=standalone` (local hashed use
 | `MOSAICWAVE_PROFILE` | Bootstrap folder. Windows: `dev` → `mosaicWave-dev`, `prod` → `mosaicWave`. macOS: `dev` → `/Library/Application Support/mosaicWave-dev`, `prod` → `/Library/Application Support/mosaicWave`. Linux: `dev` → `~/.local/share/mosaicWave-dev`, otherwise `~/.local/share/mosaicWave`. MSI / LaunchDaemon set `prod`. Unset: packaged install is prod, otherwise `dev` | unset |
 | `MOSAICWAVE_PLATFORM` | `standalone` or `qnap` | `standalone` |
 | `MOSAICWAVE_WEB_ROOT` | Directory of `next build` export (`out/`) | unset (API only; use `next dev` in development) |
-| `MOSAICWAVE_HOST` | Bind address | `127.0.0.1` |
-| `MOSAICWAVE_PORT` | Bind port | `8000` |
+| `MOSAICWAVE_HOST` | **Explicit startup bind choice**: one address or a comma-separated list (`127.0.0.1`, `localhost`, `0.0.0.0`, `192.0.2.10,192.0.2.11`). Beats the saved setting; see [Bind address](#bind-address) | unset (saved setting, then platform default) |
+| `MOSAICWAVE_PORT` | **Explicit startup port.** Beats the saved port; see [Bind address](#bind-address) | unset |
+| `MOSAICWAVE_PORT_DEFAULT` | Port the launcher offers when no port was saved or given: MSI registry `Port`, QPKG `Web_Port`, posix `web.port`. Launchers set it; you normally don't | `8000` (debug), `8090` (packaged launchers) |
 | `MOSAICWAVE_SECRET` | Session HMAC | `{data_dir}/session.key` if unset |
 | `MOSAICWAVE_TAKEOUT_DIR` | Default Takeout inspect/import path | unset |
 
@@ -26,8 +27,10 @@ Same API as the QPKG. Default `MOSAICWAVE_PLATFORM=standalone` (local hashed use
 ```text
 set MOSAICWAVE_WEB_ROOT=<repo>\src\web\out
 cd src\server
-.venv\Scripts\uvicorn mosaicwave.main:app --host 127.0.0.1 --port 8000
+.venv\Scripts\python -m mosaicwave.serve --port 8000
 ```
+
+`mosaicwave.serve` is the startup path every launcher uses ([Bind address](#bind-address)). A plain `uvicorn mosaicwave.main:app --host 127.0.0.1 --port 8000` still works, but it ignores the saved bind setting and has no bind-failure handling.
 
 Open http://127.0.0.1:8000/ — UI and `/api/v1` on the same origin. First visit: **Create admin**. Each user gets one private library. Import Takeout into it.
 
@@ -94,13 +97,13 @@ sh install.sh
 
 First `mosaicWave start` creates the venv and `pip install`s (needs HTTPS to PyPI). Log: `~/.local/share/mosaicWave/mosaicWave.log` (Linux) or `/Library/Application Support/mosaicWave/mosaicWave.log` (macOS packaged). If the log says the venv has no pip, install the host packages above, `rm -rf` that data dir’s `runtime/venv`, and start again.
 
-Bind defaults to **127.0.0.1**. To listen on all interfaces: `MOSAICWAVE_HOST=0.0.0.0 mosaicWave start` (or export it in the shell / systemd unit). Prefer nginx/Caddy + TLS in front of a public host; do not expose plain HTTP on a public IP without a firewall plan.
+Bind defaults to **127.0.0.1** unless an admin saved another address ([Bind address](#bind-address)). To listen on all interfaces without the admin page: `MOSAICWAVE_HOST=0.0.0.0 mosaicWave start` (or export it in the shell / systemd unit). Prefer nginx/Caddy + TLS in front of a public host; do not expose plain HTTP on a public IP without a firewall plan.
 
 **macOS** (like the Windows MSI): app in `/Applications/mosaicWave.app`, library in `/Library/Application Support/mosaicWave` (machine-wide, same role as `%PROGRAMDATA%`). Local debug (`sudo sh scripts/start.sh`) uses `/Library/Application Support/mosaicWave-dev` (same parent, `-dev` suffix) with the API as **root** so Save folder can mount `/Volumes`. First debug start creates that data folder (`root:admin` `2775`). `sudo sh install.sh` installs a **LaunchDaemon** (disable with `--no-launchd`). After install, open http://127.0.0.1:8090/ — do not run `mosaicWave.sh start` as a normal user (that folder is root-owned). Manual start: `sudo /Applications/mosaicWave.app/mosaicWave.sh start`. If you already had a library under `~/Library/Application Support/mosaicWave`, that first sudo install copies it into the machine-wide folder. Python **3.10+** on PATH. Uninstall does **not** delete the library: `sudo sh /Applications/mosaicWave.app/uninstall.sh`. Settings and Browse `smb://` / UNC: [smb-paths.md](smb-paths.md). The service mounts its own `/Volumes/mosaicWave-…` (a second SMB session). First Save folder: `//user:pass@HOST/share` (escaped) → nsmb.conf `[HOST]` + System keychain → remount `//HOST/share` → write-probe the library folder. Store `smb://server/share/folder` with no `user@`.
 
 **Linux** default is still per-user (`~/.local/lib/mosaicWave`, data `~/.local/share/mosaicWave`): `sh install.sh` then `mosaicWave start`. `scripts/start.sh` uses `~/.local/share/mosaicWave-dev`. Optional `sh install.sh --systemd`. `sh install.sh --prefix /opt/mosaicWave` needs write access.
 
-Default listen **127.0.0.1:8090**. The port is **not fixed**: `MOSAICWAVE_PORT`, `{data_dir}/web.port` (written on start), the MSI **PORT** page (`HKLM\SOFTWARE\mosaicWave`), QPKG `Web_Port`, or an argument to the helpers below. Posix bind host: `MOSAICWAVE_HOST` (default `127.0.0.1`; use `0.0.0.0` for all interfaces). Local debug `scripts\start.cmd` uses **8000**.
+Default listen **127.0.0.1:8090**. The port is **not fixed**: `MOSAICWAVE_PORT`, the port saved on the admin Server page (`web_port` in `config.json`), or the value the installer or launcher offers (the MSI **PORT** page in `HKLM\SOFTWARE\mosaicWave`, QPKG `Web_Port`, posix `web.port`); the helpers below also take an argument. The server writes the port it really uses to `web.port` in the app folder on every start, so the helpers find it ([Bind address](#bind-address)). Bind address (all hosts, debug and packaged): [Bind address](#bind-address). Local debug `scripts\start.cmd` uses **8000**.
 
 Show or free the listener (repo, or next to `mosaicWave.sh` after install):
 
@@ -132,6 +135,37 @@ mosaicWave.sh wipe --storage
 ```
 
 `wipe.cmd` is next to `mosaicWave-run.cmd` in the installed MSI folder. The posix tarball and QPKG also ship a standalone `wipe.sh` next to `mosaicWave.sh` — `./wipe.sh [--db] [--storage]` is the same as `./mosaicWave.sh wipe [--db] [--storage]`. No flags: wipes both (`library.db` **and** `libraries/`+`blobs/`), then an empty schema — stop the service first. One flag alone wipes just that: `--db` (DB only) or `--storage` (originals + thumbs only). There is no `--data-dir`; it always targets this install's own data folder. Debug equivalent: `scripts\wipe.cmd` / `scripts/wipe.sh` ([schema.md](schema.md)).
+
+## Bind address
+
+One rule for every instance (QPKG, Windows MSI, Linux, macOS, local debug). The launchers (`mosaicWave-run.cmd`, `mosaicWave.sh`, QPKG `mosaicWave.sh`, `scripts/start*`) all run `python -m mosaicwave.serve`; none of them picks an address itself. `serve` chooses, highest first:
+
+1. **Explicit startup choice.** `MOSAICWAVE_HOST` in the environment, or `--host` on `serve`. No launcher passes one itself, the debug scripts included: The Next dev server follows the API's saved address (`--print-hosts`); `MOSAICWAVE_DEV_HOST` overrides only the web address, never the API. Set `MOSAICWAVE_HOST` yourself before starting to force the API's address.
+2. **Saved setting.** `web_bind` in the bootstrap `config.json` (app folder, so the debug profile has its own): `{"mode": "local" | "all" | "list", "addresses": [...]}`. Set on the admin Server page, **Network** (maintenance mode only; the server restarts after the admin confirms). `local` is `127.0.0.1` (`localhost`), `all` is `0.0.0.0`, `list` is the typed IPv4/IPv6 addresses.
+3. **Platform default.** `127.0.0.1`; QNAP (`MOSAICWAVE_PLATFORM=qnap`) `0.0.0.0`. Kept in Python, never in the scripts.
+
+`serve` logs the winner and its source (`bind 0.0.0.0 (saved setting)`). 
+
+**The port follows the same rule**, highest first:
+
+1. **Explicit startup port.** `MOSAICWAVE_PORT` in the environment, or `--port` on `serve`. The debug scripts pass `--port 8000` (their stop scripts and the web dev proxy assume it), so the port is fixed there. On QPKG the launcher passes `MOSAICWAVE_PORT` only for a run where the wanted port was busy and it picked the next free one.
+2. **Saved port.** `web_port` in the bootstrap `config.json`, set on the admin Server page with the address (same maintenance-mode rules).
+3. **Launcher seed** `MOSAICWAVE_PORT_DEFAULT`: the MSI registry `Port`, QPKG `Web_Port`, or posix `web.port`. Installers keep writing these, so they only decide the first start.
+4. **Default** `8000`.
+
+`python -m mosaicwave.serve --print-port` prints the port it would use (the QPKG and posix launchers ask this before checking whether the port is free). After it binds, `serve` writes the port to `{app folder}/web.port`. QPKG then also writes `Web_Port`, which the QTS desktop link follows. A port that is busy at startup is a bind failure like an address: a saved or default one exits, since moving to another port silently would break every link to the server.
+
+**When binding fails** (address not on this machine, adapter not up yet, port busy), `serve` retries for 30 seconds, then:
+
+| Chosen by | Result |
+| --- | --- |
+| Saved setting or platform default | Falls back to `127.0.0.1`, writes `bind-failure.json` (app folder: wanted addresses, error, time) and logs it; the admin Server page shows a banner. If only some addresses of a list fail, the working ones stay up and the failed ones are reported the same way |
+| Explicit startup choice | Exits with an error naming the address and the cause. No fallback: it was asked for on purpose |
+| Even `127.0.0.1` fails | Exits (port in use); the launcher reports it as before |
+
+`bind-failure.json` is removed by the next start that binds everything it asked for. `--reload` (debug scripts) binds the same full list: `serve` hands its sockets to uvicorn's reloader.
+
+**Changing it on the Server page.** `GET`/`PUT /api/v1/settings/network` (admin). `PUT` needs maintenance mode on (`409 maintenance_required`). The address part is refused while an explicit startup address is in force (`409 bind_startup_locked`) and the port part while an explicit startup port is (`409 port_startup_locked`); each is sent only if it changes. `127.0.0.1` is always bound and is not a choice: Local only is just it, All interfaces (`0.0.0.0`) includes it, and a list holds the *extra* addresses (the server adds `127.0.0.1`, drops a typed one, and a list with nothing else is `400 bind_invalid`). Only the extras are saved. Every address must be valid (`400 bind_invalid`) and bindable on this machine (`400 bind_not_local`). Because loopback stays up, the admin cannot lock themselves out and there is no lockout check. An explicit `MOSAICWAVE_HOST` / `--host` is used exactly as given. A port must be 1024 to 65535 (`400 port_invalid`) and free (`400 port_in_use`). After the admin confirms, the server saves and restarts (the existing restart mechanism); the page waits and shows the new URL.
 
 ## QPKG
 
@@ -269,5 +303,5 @@ The server talks to QTS `authLogin.cgi` on **localhost** using the System web po
 mosaicWave binds **HTTP** (QPKG default `0.0.0.0:8090`, Windows MSI `127.0.0.1:8090`, local debug `127.0.0.1:8000`). It does not terminate TLS.
 
 - **QTS:** Use the NAS certificate via Force SSL / stunnel on the QTS web port, or a reverse proxy QPKG (e.g. nginx, Caddy) that forwards to mosaicWave’s `Web_Port`.
-- **Standalone:** Put Caddy or nginx in front if the API is on the LAN. `MOSAICWAVE_HOST=0.0.0.0` only after that (or firewall) is in place.
+- **Standalone:** Put Caddy or nginx in front if the API is on the LAN. `MOSAICWAVE_HOST=0.0.0.0` (or **All interfaces** on the admin Server page) only after that (or firewall) is in place.
 

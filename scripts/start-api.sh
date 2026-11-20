@@ -22,7 +22,7 @@ cleanup() {
 
 ensure_api
 stop_existing_dev_servers api ""
-echo "API  http://${DEV_HOST}:8000/docs"
+echo "API  port 8000 (address from the admin Server page, default 127.0.0.1; see the 'bind' line below)"
 
 trap cleanup INT TERM EXIT
 while :; do

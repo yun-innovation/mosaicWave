@@ -19,6 +19,7 @@ from mosaicwave.api.v1.exports import router as exports_router
 from mosaicwave.api.v1.mebackups import router as me_backups_router
 from mosaicwave.api.v1.maintenance import maintenance_guard, router as maintenance_router
 from mosaicwave.api.v1.moving import moving_guard
+from mosaicwave.api.v1.network import router as network_router
 from mosaicwave.api.v1.settings import router as settings_router
 from mosaicwave.config import Settings, adopt_legacy_data_folders, consume_restart_flag
 from mosaicwave.datamove import recover_data_dir_move
@@ -96,6 +97,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(fs_router, prefix="/api/v1")
     app.include_router(library_router, prefix="/api/v1")
     app.include_router(uploads_router, prefix="/api/v1")
+    app.include_router(network_router, prefix="/api/v1")
     app.include_router(settings_router, prefix="/api/v1")
     app.include_router(backups_router, prefix="/api/v1")
     app.include_router(me_backups_router, prefix="/api/v1")

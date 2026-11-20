@@ -88,6 +88,36 @@
     "passwordLabel": "NAS password",
     "passwordPlaceholder": "required on first Save folder"
   },
+  "network": {
+    "title": "Network",
+    "help": "Which addresses the server listens on. Changing it restarts the server.",
+    "mode": {
+      "local": "127.0.0.1 only",
+      "all": "All interfaces (0.0.0.0)",
+      "list": "These addresses"
+    },
+    "loopbackFixed": "127.0.0.1 (always on, required)",
+    "listLabel": "Extra IP addresses, one per line or separated by commas",
+    "warnAll": "All interfaces also offers the server on VPN and other adapters. Use a firewall, or a reverse proxy with TLS.",
+    "effective": "Listening on {{addresses}}, port {{port}} ({{source}}).",
+    "portLabel": "Port (1024 to 65535)",
+    "portStartupLocked": "The port was given at startup (MOSAICWAVE_PORT or --port), so it cannot be changed here. Remove it and restart the server to use this setting.",
+    "source": {
+      "startup": "set at startup",
+      "saved": "saved setting",
+      "default": "default"
+    },
+    "startupLocked": "The address was given at startup (MOSAICWAVE_HOST or --host), so it cannot be changed here. Remove it and restart the server to use this setting.",
+    "needsMaintenance": "Changing the address restarts the server, so it needs maintenance mode.",
+    "failure": "At the last start the server could not listen on {{failed}}, so it is using {{bound}} instead.",
+    "confirm": "Save the address and restart the server now? Afterwards, open the server at the new address.",
+    "save": "Save address",
+    "restarting": "Restarting the server...",
+    "saved": "Saved. The server is listening on the new address.",
+    "savedNoRestart": "Saved. Restart the server to use it.",
+    "moved": "The server restarted on {{addresses}}, port {{port}}. Open it at that address.",
+    "failed": "Could not save the address."
+  },
   "save": {
     "moving": "Moving the library. Progress is shown in the status bar.",
     "cancelled": "The move was cancelled. The library is still in its original folder.",

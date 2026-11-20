@@ -54,6 +54,21 @@ export type HostSettings = {
   notice?: string | null;
 };
 
+/** `GET /api/v1/settings/network`: the saved bind address and what the server really listens on. */
+export type NetworkSettings = {
+  mode: "local" | "all" | "list";
+  addresses: string[];
+  effective: string[];
+  source: "startup" | "saved" | "default";
+  startup_locked: boolean;
+  port: number;
+  effective_port: number;
+  port_source: "startup" | "saved" | "default";
+  port_startup_locked: boolean;
+  failure?: { wanted: string[]; failed: Record<string, string>; bound: string[]; time?: string | null } | null;
+  restarting?: boolean;
+};
+
 /** Fired when any API call answers `503 maintenance`, so the page can look at the status at once. */
 export const MAINTENANCE_EVENT = "mosaicwave:maintenance";
 

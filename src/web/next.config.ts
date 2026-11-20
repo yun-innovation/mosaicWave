@@ -31,7 +31,7 @@ const nextConfig: NextConfig = {
   // without the "rewrites will not work with output: export" warning.
   ...(isProd ? { output: "export" as const } : {}),
   images: { unoptimized: true },
-  // next dev is bound to 127.0.0.1 only (package.json), so it is never offered on a VPN or LAN address; the browser often opens http://127.0.0.1:3000
+  // next dev listens where scripts/start* put it (MOSAICWAVE_DEV_HOST; it follows the API's saved address, default 127.0.0.1).
   allowedDevOrigins: devOrigins,
 };
 

@@ -9,17 +9,13 @@ try {
     Ensure-Web
     Stop-ExistingDevServers -Api -Web
 
-    Write-Host "API  http://$($script:DevHost):8000/docs"
-    Write-Host "Web  http://$($script:DevHost):3000"
+    $apiPlan = (& $script:VenvPython -m mosaicwave.serve --describe --port 8000 2>&1 | Out-String).Trim()
+    Write-Host "API  $apiPlan"
+    Write-Host "Web  $($script:DevHost):3000 ($($script:DevHostSource))"
     Write-Host "Ctrl+C stops both."
     Write-Host ""
 
-    $api = Start-Process -FilePath $script:Uvicorn -ArgumentList @(
-        "mosaicwave.main:app",
-        "--reload",
-        "--host", $script:DevHost,
-        "--port", "8000"
-    ) -WorkingDirectory $script:ServerDir -PassThru -NoNewWindow
+    $api = Start-Process -FilePath $script:VenvPython -ArgumentList (Get-ApiArgs) -WorkingDirectory $script:ServerDir -PassThru -NoNewWindow
 
     $npm = (Get-Command npm.cmd -ErrorAction Stop).Source
     $web = Start-Process -FilePath $npm -ArgumentList @("run", "dev", "--", "--hostname", $script:DevHost) -WorkingDirectory $script:WebDir -PassThru -NoNewWindow
@@ -30,12 +26,17 @@ try {
             if (Test-Path -LiteralPath $flag) {
                 Remove-Item -LiteralPath $flag -Force -ErrorAction SilentlyContinue
                 Write-Host "Restarting API after Save folder..."
-                $api = Start-Process -FilePath $script:Uvicorn -ArgumentList @(
-                    "mosaicwave.main:app",
-                    "--reload",
-                    "--host", $script:DevHost,
-                    "--port", "8000"
-                ) -WorkingDirectory $script:ServerDir -PassThru -NoNewWindow
+                $api = Start-Process -FilePath $script:VenvPython -ArgumentList (Get-ApiArgs) -WorkingDirectory $script:ServerDir -PassThru -NoNewWindow
+                # The API address may have changed (admin Network page): move the web dev server with it.
+                $oldHost = $script:DevHost
+                Resolve-DevHost
+                if ($script:DevHost -ne $oldHost) {
+                    Write-Host "Web  moving to $($script:DevHost):3000 ($($script:DevHostSource))"
+                    Stop-ProcessTree $web.Id
+                    Stop-MosaicWeb -QuietIfNone
+                    Wait-PortFree 3000
+                    $web = Start-Process -FilePath $npm -ArgumentList @("run", "dev", "--", "--hostname", $script:DevHost) -WorkingDirectory $script:WebDir -PassThru -NoNewWindow
+                }
                 continue
             }
             break

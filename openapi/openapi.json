@@ -2278,6 +2278,61 @@
         }
       }
     },
+    "/api/v1/settings/network": {
+      "get": {
+        "summary": "Get Network",
+        "operationId": "get_network_api_v1_settings_network_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NetworkOut"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Put Network",
+        "description": "Save the bind address and/or port and restart. Needs maintenance mode; see ``doc/qpkg.md``.",
+        "operationId": "put_network_api_v1_settings_network_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NetworkIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NetworkOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/settings": {
       "get": {
         "summary": "Get Settings",
@@ -3597,6 +3652,49 @@
         ],
         "title": "BackupOut"
       },
+      "BindFailureOut": {
+        "properties": {
+          "wanted": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Wanted"
+          },
+          "failed": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Failed"
+          },
+          "bound": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Bound"
+          },
+          "time": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Time"
+          }
+        },
+        "type": "object",
+        "required": [
+          "wanted",
+          "failed",
+          "bound"
+        ],
+        "title": "BindFailureOut"
+      },
       "Body_post_asset_api_v1_assets_post": {
         "properties": {
           "source_id": {
@@ -4802,6 +4900,137 @@
           "months"
         ],
         "title": "MonthsOut"
+      },
+      "NetworkIn": {
+        "properties": {
+          "mode": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "local",
+                  "all",
+                  "list"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mode"
+          },
+          "addresses": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Addresses",
+            "default": []
+          },
+          "port": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Port"
+          }
+        },
+        "type": "object",
+        "title": "NetworkIn",
+        "description": "Send only what changes: ``mode`` (with ``addresses`` for ``list``) and/or ``port``."
+      },
+      "NetworkOut": {
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "local",
+              "all",
+              "list"
+            ],
+            "title": "Mode"
+          },
+          "addresses": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Addresses"
+          },
+          "effective": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Effective"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "startup",
+              "saved",
+              "default"
+            ],
+            "title": "Source"
+          },
+          "startup_locked": {
+            "type": "boolean",
+            "title": "Startup Locked"
+          },
+          "port": {
+            "type": "integer",
+            "title": "Port"
+          },
+          "effective_port": {
+            "type": "integer",
+            "title": "Effective Port"
+          },
+          "port_source": {
+            "type": "string",
+            "enum": [
+              "startup",
+              "saved",
+              "default"
+            ],
+            "title": "Port Source"
+          },
+          "port_startup_locked": {
+            "type": "boolean",
+            "title": "Port Startup Locked"
+          },
+          "failure": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BindFailureOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "restarting": {
+            "type": "boolean",
+            "title": "Restarting",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "mode",
+          "addresses",
+          "effective",
+          "source",
+          "startup_locked",
+          "port",
+          "effective_port",
+          "port_source",
+          "port_startup_locked"
+        ],
+        "title": "NetworkOut"
       },
       "PartOut": {
         "properties": {

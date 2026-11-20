@@ -87,6 +87,36 @@
     "passwordLabel": "NAS 密码",
     "passwordPlaceholder": "第一次保存文件夹时必填"
   },
+  "network": {
+    "title": "网络",
+    "help": "服务器监听的地址。更改后服务器会重新启动。",
+    "mode": {
+      "local": "无其他地址（仅此计算机）",
+      "all": "所有网络接口（0.0.0.0）",
+      "list": "这些地址"
+    },
+    "loopbackFixed": "127.0.0.1（始终开启，必需）",
+    "listLabel": "额外的 IP 地址，每行一个或用逗号分隔",
+    "warnAll": "“所有网络接口”也会让 VPN 和其他网卡连到服务器。请使用防火墙，或在前面加上支持 TLS 的反向代理。",
+    "effective": "当前监听 {{addresses}}，端口 {{port}}（{{source}}）。",
+    "portLabel": "端口（1024 至 65535）",
+    "portStartupLocked": "端口是在启动时指定的（MOSAICWAVE_PORT 或 --port），因此无法在此更改。移除后重新启动服务器，即可使用此设置。",
+    "source": {
+      "startup": "启动时指定",
+      "saved": "已保存的设置",
+      "default": "默认值"
+    },
+    "startupLocked": "地址是在启动时指定的（MOSAICWAVE_HOST 或 --host），因此无法在此更改。移除后重新启动服务器，即可使用此设置。",
+    "needsMaintenance": "更改地址会重新启动服务器，因此需要先开启维护模式。",
+    "failure": "上次启动时服务器无法监听 {{failed}}，因此改用 {{bound}}。",
+    "confirm": "要保存地址并立即重新启动服务器吗？重新启动后，请用新的地址打开服务器。",
+    "save": "保存地址",
+    "restarting": "正在重新启动服务器…",
+    "saved": "已保存。服务器正在监听新的地址。",
+    "savedNoRestart": "已保存。请重新启动服务器以应用。",
+    "moved": "服务器已在 {{addresses}}、端口 {{port}} 重新启动。请用该地址打开。",
+    "failed": "无法保存地址。"
+  },
   "save": {
     "moving": "正在移动照片库，进度显示在状态栏。",
     "cancelled": "移动已取消，照片库仍在原文件夹。",
