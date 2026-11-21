@@ -89,6 +89,72 @@ What this cannot do: a *different file* of the same scene (re-saved, edited, re-
 
 1. This section (docs only).
 2. The endpoints, staging, finish and clean-up, with tests (resume, wrong offset, hash mismatch, duplicate by hash, two users, restart, limits), `openapi.json`, Postman, docs.
+## Server identity (proposal)
+
+**Status: proposal, not built.** Raised by the app repo (`mosaicWave-mobile`) once it kept several servers: the app has to tell "the same library at a new address" from "a different server", and "a copy of a library" from "the library itself".
+
+### The problem
+
+An app identifies a server by the address the user typed. That breaks in three ways:
+
+1. **The address changes** (a new IP from DHCP, a new host name, a reverse proxy added). The app sees a new server: a new sign-in, a separate cache, and the offline replica ([schema.md](schema.md#client-replica-web--mobile)) is thrown away or, worse, kept next to stale copies.
+2. **One library, several processes or addresses.** A library moved to another host, or reachable by two names (LAN and a proxy), looks like two servers.
+3. **A restored or copied database** answers as if it were the original. If the original is still running, the app merges two libraries whose `rev` counters have drifted apart.
+
+What an app caches (asset ids, `rev`, replica, upload ledger) is only valid for one **database**, so the identity must belong to the database, not to the process or the address.
+
+### Two ids, two questions
+
+| Id | Lives with | Answers | Used by the app as |
+| --- | --- | --- | --- |
+| `server_id` (the **site id**) | The site database, a UUID created once, survives moves, backups and restores unless the admin says otherwise | "Is this the same library data?" | The key for saved servers, sessions and caches. Several addresses can map to one `server_id` |
+| `instance_id` | The running install, a UUID stored beside `session.key` in the app folder (never in the database, never in an archive) | "Which process answered?" | Display and diagnostics only, never a key. Two processes on one database report the same `server_id` and different `instance_id`s |
+
+Plus one counter:
+
+| Field | Lives with | Meaning |
+| --- | --- | --- |
+| `data_epoch` | Site database, an integer | Raised by every restore (site or offline) and every id reset. When an app sees it change for a `server_id` it holds, it drops that server's replica and caches and refetches |
+
+All three are public values. They identify a library, they are **not** secrets and never replace authentication. (They let someone recognise one server across addresses; that is the point.)
+
+### Contract (additive inside `v1`)
+
+`GET /auth/status`, which already answers without a session, gains `server_id`, `instance_id` and `data_epoch`. Older apps ignore unknown fields, so `min_app_version` does not change. `openapi/openapi.json` and the Postman collection change in the same PR ([process.md](process.md)). No new endpoint is needed for the apps; the server stays unaware of the client type.
+
+### On the server
+
+- **Creation:** a numbered schema step ([schema.md § Schema versions](schema.md#schema-versions)) writes `server_id` (UUID v4) and `data_epoch = 1` into the site database (the `site_setting` table that already holds the admin-set session lifetimes) on first start after the upgrade. A fresh install creates them at setup. `instance_id` is created at first start next to `session.key`.
+- **Backups:** the site archive carries the site database, so it carries `server_id` and `data_epoch`. A per-user backup never touches them.
+- **Restore asks which case it is.** The server cannot tell a recovery from a copy, so the admin chooses, on the Backup page and with a flag on `python -m mosaicwave.restore`:
+  - **This replaces the original** (recovery, moving to new hardware, the original will not be used again): keep the archive's `server_id`.
+  - **This runs next to the original** (a test copy, a clone): generate a new `server_id`.
+
+  **Default: a new id.** Choosing wrongly that way costs an app one new sign-in and a resync. Choosing wrongly the other way, keeping the id on a copy, makes apps silently merge two libraries. The offline command needs the explicit flag (`--keep-site-id`) to keep the id.
+- **Every restore raises `data_epoch`**, whichever id choice was made. The existing `rev` shift ([backup.md](backup.md#per-user-backup-and-restore-any-signed-in-user-settings)) moves restored rows above what the live library had, so clients pull everything again; on a server with no live library there is nothing to shift against, so the epoch is what tells a client holding a newer replica to refetch. To confirm in the implementation PR with a test.
+- **Admin reset:** a **Make this a new server** action on the admin Server page (admin only, `POST /api/v1/site/id/reset`, proposed name) generates a new `server_id` and raises `data_epoch`. It is for a database that was copied by hand (file copy, VM clone) rather than restored.
+- **Sessions** are stored rows (`user_session`) plus a value signed with `session.key`. Another server restored from an archive has a different `session.key` (it is never archived), so app sessions stop working there and users sign in once more. That is correct and needs no code.
+
+### Farms
+
+True multi-process serving of one database is **not** planned: the database is SQLite inside the app ([process.md](process.md) rule 6; [architecture.md § Database](architecture.md#database)). The ids are chosen so that it would work without any app change if that decision ever changes: processes sharing a database report the same `server_id` and different `instance_id`s, and the app treats them as one server. Such a setup would also need the same `session.key` on every member. Today the realistic cases are a changed address, a moved data folder and a restore.
+
+### What the app does (for its own notes)
+
+- A saved server is a `server_id` plus the addresses it has answered from; sessions and caches are keyed by `server_id` and the per-user library id (`me`).
+- A new address whose `/auth/status` returns a known `server_id` is added to that server and reuses its session.
+- The same address with a different `server_id`, or the same `server_id` with a changed `data_epoch`: tell the user the server was replaced or restored, drop that server's caches, and sign in again if the session no longer works.
+
+### Pull requests for this
+
+1. This section (docs only).
+2. The schema step, `/auth/status` fields, the restore choice (page and command), the admin reset, strings in all three languages, `openapi.json`, Postman and tests (new id on a fresh install, upgrade adds ids, restore keeps or replaces the id, epoch rises, reset changes the id, archive and per-user backup behaviour).
+
+### Open questions
+
+- Whether `data_epoch` should also appear in `GET /me` (per user) or stay on `/auth/status` only.
+- Whether the default of a new id on restore is acceptable for the QPKG (a NAS restoring its own backup after a failed disk is the "replaces the original" case and would need one extra click).
+
 ## Order of work
 
 | Step | Where | What |
@@ -101,6 +167,7 @@ What this cannot do: a *different file* of the same scene (re-saved, edited, re-
 | F | app repo | Timeline, scrubber, albums, search, select many. Needs only C and D. |
 | G | this repo, then app repo | Resumable upload: design section (decided, above), the endpoints (**built**, `/api/v1/uploads`), then the app's uploader. |
 | H | both | Offline replica. |
+| (any time before H) | this repo, then app repo | [Server identity](#server-identity-proposal): `server_id`, `instance_id`, `data_epoch` in `/auth/status`, the restore choice. Needed before the app keeps caches per server (F onward), so it is best done before F. |
 
 Milestone 14 is marked done only when you say so.
 
