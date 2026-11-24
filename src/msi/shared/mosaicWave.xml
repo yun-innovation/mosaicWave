@@ -7,7 +7,9 @@
   <arguments>/c ""%BASE%\mosaicWave-run.cmd""</arguments>
   <workingdirectory>%BASE%</workingdirectory>
   <log mode="roll"></log>
-  <stopparentprocessfirst>true</stopparentprocessfirst>
+  <!-- Children first (the WinSW default). With stopparentprocessfirst=true, WinSW 2.12 kills cmd.exe, then asks the
+       dead process for its children and crashes ("The handle is invalid"), which leaves python behind. -->
+  <stopparentprocessfirst>false</stopparentprocessfirst>
   <stoptimeout>15 sec</stoptimeout>
   <onfailure action="restart" delay="10 sec" />
 </service>
