@@ -19,7 +19,7 @@
     <Property Id="INSTALLSERVICE" Value="1">
       <RegistrySearch Id="FindService" Root="HKLM" Key="Software\mosaicWave" Name="InstallService" Type="raw" />
     </Property>
-    <MajorUpgrade DowngradeErrorMessage="A newer version of mosaicWave is already installed." />
+    <MajorUpgrade AllowSameVersionUpgrades="yes" DowngradeErrorMessage="A newer version of mosaicWave is already installed." />
     <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
 
     <StandardDirectory Id="ProgramFiles64Folder">

@@ -156,7 +156,10 @@ ensure_venv() {
         "${HOST_PY}" -m venv "${VENV}" || return 1
     fi
     VPY="${VENV}/bin/python"
-    if ! "${VPY}" -c "import uvicorn" 2>/dev/null; then
+    # Install again when requirements.txt changed since the last good install (an upgrade keeps the venv).
+    REQ_STAMP="${VENV}/.requirements.cksum"
+    REQ_NOW=$(cksum < "${ROOT}/requirements.txt" 2>/dev/null)
+    if ! "${VPY}" -c "import uvicorn" 2>/dev/null || [ "$(cat "${REQ_STAMP}" 2>/dev/null)" != "${REQ_NOW}" ]; then
         mw_log "Installing Python deps (pip)"
         # Debian/Ubuntu venvs often lack pip until ensurepip runs (same as QPKG start).
         "${VPY}" -m ensurepip --upgrade >> "${LOG_FILE}" 2>&1 || true
@@ -170,6 +173,7 @@ ensure_venv() {
             mw_log "pip install failed (need HTTPS to PyPI). See ${LOG_FILE}"
             return 1
         }
+        echo "${REQ_NOW}" > "${REQ_STAMP}"
     fi
 }
 

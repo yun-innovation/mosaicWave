@@ -238,7 +238,10 @@ ensure_venv() {
         }
     fi
     VPY="${QPKG_ROOT}/venv/bin/python"
-    if ! "${VPY}" -c "import uvicorn" 2>/dev/null; then
+    # Install again when requirements.txt changed since the last good install (an upgrade keeps the venv).
+    REQ_STAMP="${QPKG_ROOT}/venv/.requirements.cksum"
+    REQ_NOW=$(cksum < "${QPKG_ROOT}/requirements.txt" 2>/dev/null)
+    if ! "${VPY}" -c "import uvicorn" 2>/dev/null || [ "$(cat "${REQ_STAMP}" 2>/dev/null)" != "${REQ_NOW}" ]; then
         mw_log "Installing Python deps (pip; cache on data volume, not /tmp)"
         pip_env
         "${VPY}" -m ensurepip --upgrade >> "${LOG_FILE}" 2>&1 || true
@@ -251,6 +254,7 @@ ensure_venv() {
             mw_log "pip install failed (need HTTPS to PyPI). See ${LOG_FILE}"
             return 1
         }
+        echo "${REQ_NOW}" > "${REQ_STAMP}"
     fi
     "${VPY}" -c "import uvicorn" 2>/dev/null || {
         mw_log "uvicorn missing after pip"
