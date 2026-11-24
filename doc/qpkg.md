@@ -173,6 +173,8 @@ Templates live in `src/qpkg/`. The start script sets `MOSAICWAVE_PLATFORM=qnap` 
 
 Python is **not bundled**. App Center **requires** the **Python 3** QPKG (or **QPython312**) **before** mosaicWave will install. That interpreter must be **3.10+** (official QNAP Python 3.12 is at `$Python3/opt/python3/bin/python3`).
 
+**Upgrades and the venv.** An upgrade keeps the venv, so a dependency added to `requirements.txt` after the first install would never arrive. Every package therefore remembers the `requirements.txt` of its last good `pip install` (QPKG and posix: `venv/.requirements.cksum`; MSI: a copy, `venv\requirements.installed.txt`) and runs pip again at the next start when the file differs or the note is missing (an install from before this check runs pip once). On Windows the update runs through the venv's own Python (the service account may have no `py` on PATH), and a failed pip run (no internet) only prints a warning and starts the service with the packages already installed; the next start tries again. A QNAP that showed only `UTC` in the time zone picker had this problem (no `tzdata`). `tests/test_requirements_sync.py` keeps `requirements.txt` and `pyproject.toml` in step.
+
 Install order: Python 3 → mosaicWave. **Install** (not Enable) creates the venv and `pip install`s wheels onto the **data volume** (`$QPKG_ROOT/tmp`, not QTS `/tmp`). If pip cannot reach PyPI, install **fails** with a message pointing at `mosaicWave.log`. Enable then only starts uvicorn (no `nohup`; waits until the configured port listens). Default port is **8090** (`QPKG_WEB_PORT` / `Web_Port` in `/etc/config/qpkg.conf`). If that port is taken, install/start picks the next free port and records it (QTS desktop iframe follows `Web_Port`). To set it yourself:
 
 ```sh

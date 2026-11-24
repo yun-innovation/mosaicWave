@@ -22,6 +22,15 @@ Do **not** push or open a PR after every edit. That is noisy.
 
 `bulk ship` means the same as `ship`: one push + one PR covering the whole branch, not one PR per commit.
 
+## Commit messages, PR titles and PR bodies
+
+Say what changed and why, in plain words, so a reviewer understands it without opening `doc/`. Start the PR title with the branch type (`docs:`, `build:`, `feature:`, `fix:`).
+
+- Never use the user's shortcut words in them: `mosaic`, `mosaic done`, `push`, `ship`, `PR`, `merge`, `go`, `replan`. They are instructions to the agent, not history.
+- Never use internal labels that need the docs to decode: `milestone 14`, `PR 2`, `step E`. Describe the thing itself (for example "address screen and sign-in", not "step E").
+- Do not mention that other PRs were merged; the PR list already shows that. Do not add a "not changed" list or a test plan the change does not need.
+- Fix a bad title or body with `gh pr edit`. Reword an unmerged commit with `git commit --amend` plus `git push --force-with-lease` on the topic branch only, never on `main`.
+
 ## Status edits (`mosaic done`, `milestone N done`)
 
 Wrap-up and milestone-done edits (status, the status rule, progress, archive, roadmap) must not each get their own PR.

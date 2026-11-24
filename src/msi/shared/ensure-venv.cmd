@@ -9,7 +9,22 @@ set "VENV=%RUNTIME%\venv"
 
 if exist "%VENV%\Scripts\python.exe" (
   "%VENV%\Scripts\python.exe" -c "import uvicorn" 2>nul
-  if not errorlevel 1 exit /b 0
+  if not errorlevel 1 (
+    rem Same requirements.txt as the last good install? An upgrade keeps the venv, so compare the saved copy.
+    fc /b "%ROOT%\requirements.txt" "%VENV%\requirements.installed.txt" >nul 2>&1
+    if not errorlevel 1 exit /b 0
+    rem The venv works but requirements.txt changed (an upgrade). Install through the venv's own Python: the
+    rem service account often has no py or python on PATH. A failed install (offline PC) must not stop the
+    rem service, so warn and start with the venv as it is; the next start tries again.
+    echo requirements.txt changed; updating the Python packages
+    "%VENV%\Scripts\python.exe" -m pip install --prefer-binary -r "%ROOT%\requirements.txt"
+    if errorlevel 1 (
+      echo pip install failed ^(needs HTTPS to pypi.org^); starting with the packages already installed.
+      exit /b 0
+    )
+    copy /y "%ROOT%\requirements.txt" "%VENV%\requirements.installed.txt" >nul
+    exit /b 0
+  )
 )
 
 if not exist "%RUNTIME%" mkdir "%RUNTIME%" 2>nul
@@ -47,4 +62,5 @@ if errorlevel 1 (
   echo pip install failed. The PC needs HTTPS to pypi.org.
   exit /b 1
 )
+copy /y "%ROOT%\requirements.txt" "%VENV%\requirements.installed.txt" >nul
 exit /b 0
