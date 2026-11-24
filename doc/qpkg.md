@@ -74,6 +74,8 @@ Upgrade: install the new `.msi` over the old one (`MajorUpgrade`). Photos stay i
 
 First service start creates a venv in `%PROGRAMDATA%\mosaicWave\runtime` (not Program Files) and `pip install`s (needs Python 3.10+ and PyPI). That can take a few minutes. Do not run `mosaicWave-run.cmd` from Program Files as a normal user — start the **mosaicWave** service, or use the Start Menu shortcut after the service is running. Uninstall leaves ProgramData (library **and** `runtime`); that is not a photo wipe.
 
+**Reinstall and upgrade.** The MSI has a fixed `UpgradeCode` and `MajorUpgrade AllowSameVersionUpgrades="yes"`: installing any newer MSI, or another build of the **same** version, removes the previous install first, so Installed apps keeps one mosaicWave entry. An older version is refused. (Without that attribute Windows Installer treats a same-version MSI with a new product code as neither an upgrade nor a repair, and two entries can result.) Windows Installer reads only the first three version fields, so `0.1.1.5` is still `0.1.1`. Entries created by earlier builds are not merged; uninstall the extra ones once.
+
 ### Linux and macOS (`publish-posix` / `pack-posix`)
 
 Same one-process app as the MSI: static web + uvicorn, `platform=standalone`. Python **3.10+** is a host dependency (venv under the data dir `runtime/`, not inside the app prefix). On Debian/Ubuntu also install **`python3-venv`** and **`python3-pip`** so the first start can bootstrap pip (`ensurepip`). Uninstall does **not** delete the library.
