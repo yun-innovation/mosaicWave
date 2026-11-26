@@ -258,7 +258,8 @@ Milestone 5. Code: `src/server/mosaicwave/schema/` (runner in `__init__.py`, ste
 | 4 | Adds `job.error_code/error_params/current_code/current_params` and `job_event.code/params` (milestone 8) |
 | 5 | Adds `user.time_zone` (milestone 8) |
 | 6 | Adds `user.use_dst` (milestone 8) |
-| 7 | Adds `user_session` and `site_setting` (milestone 14). Current. Sign-ins from before this step (signed values with no row) stop working once |
+| 7 | Adds `user_session` and `site_setting` (milestone 14). Sign-ins from before this step (signed values with no row) stop working once |
+| 8 | Writes `server_id` and `data_epoch` into `site_setting` (server identity, [mobile.md](mobile.md#server-identity)). Current. A new database gets them when it is created |
 
 The number is SQLite's `PRAGMA user_version`. Each change also adds a row to `schema_history`:
 

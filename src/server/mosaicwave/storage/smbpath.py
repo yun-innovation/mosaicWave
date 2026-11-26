@@ -352,6 +352,7 @@ _MOSAICWAVE_LEFTOVER_NAMES = frozenset(
         "config.json",
         "library.db",
         "session.key",
+        "instance.id",
         "nsmb.conf",
         "smb.auth",
     }

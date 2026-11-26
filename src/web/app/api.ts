@@ -50,6 +50,9 @@ export type HostSettings = {
   smb_user?: string | null;
   env_override: boolean;
   schema_version: number;
+  server_id: string;
+  data_epoch: number;
+  instance_id: string;
   restarting?: boolean;
   notice?: string | null;
 };

@@ -5,11 +5,13 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
 
-from mosaicwave import maintenance
+from mosaicwave import identity, maintenance
 from mosaicwave.api.errors import ApiError, wrapped
 from mosaicwave.api.v1.library import ImportOut, _job_out
 from mosaicwave.auth.deps import require_admin
+from mosaicwave.db import get_session
 from mosaicwave.config import (
     data_dir_env_override,
     data_dir_occupied,
@@ -46,8 +48,16 @@ class HostSettingsOut(BaseModel):
     smb_user: str | None = None
     env_override: bool
     schema_version: int
+    server_id: str
+    data_epoch: int
+    instance_id: str
     restarting: bool = False
     notice: str | None = None
+
+
+class SiteIdOut(BaseModel):
+    server_id: str
+    data_epoch: int
 
 
 class HostSettingsIn(BaseModel):
@@ -85,7 +95,12 @@ def _out(
         raise ApiError(503, "data_dir_moving", "the library is being moved; try again shortly")
     with engine.connect() as conn:
         schema_version = int(conn.exec_driver_sql("PRAGMA user_version").scalar_one())
+    with request.app.state.session_factory() as db:
+        server_id, data_epoch = identity.ensure(db)
     return HostSettingsOut(
+        server_id=server_id,
+        data_epoch=data_epoch,
+        instance_id=request.app.state.instance_id,
         data_dir=str(settings.data_dir.expanduser().resolve()),
         default_data_dir=boot,
         app_dir=boot,
@@ -103,6 +118,19 @@ def _out(
 @router.get("/settings", response_model=HostSettingsOut)
 def get_settings(request: Request, _admin: User = Depends(require_admin)) -> HostSettingsOut:
     return _out(request)
+
+
+@router.post("/site/id/reset", response_model=SiteIdOut)
+def reset_site_id(
+    _admin: User = Depends(require_admin), session: Session = Depends(get_session)
+) -> SiteIdOut:
+    """Make this a new server: a new ``server_id`` and a higher ``data_epoch``.
+
+    For a database copied by hand (file copy, VM clone) that must not be taken for the original. Apps
+    that knew the old id see a different server and sign in again.
+    """
+    server_id, data_epoch = identity.reset(session)
+    return SiteIdOut(server_id=server_id, data_epoch=data_epoch)
 
 
 @router.put("/settings", response_model=ImportOut)

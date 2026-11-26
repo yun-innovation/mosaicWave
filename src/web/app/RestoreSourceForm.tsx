@@ -19,6 +19,8 @@ type Props = {
   maintenanceOn: boolean;
   /** Something else is running (a job, a pending restart), so nothing can start. */
   blocked: boolean;
+  /** Site restore only: keep the backup's server id (this replaces the original). Default: a new id. */
+  keepSiteId?: boolean;
   /** Called once the server accepted the job (or an upload finished), so the page can reload. */
   onStarted: () => void;
   onNotice: (notice: Notice | null) => void;
@@ -36,6 +38,7 @@ export function RestoreSourceForm({
   serverEnabled = true,
   maintenanceOn,
   blocked,
+  keepSiteId = false,
   onStarted,
   onNotice,
 }: Props) {
@@ -67,7 +70,7 @@ export function RestoreSourceForm({
   }
 
   async function fromServer() {
-    const failure = await postRestore(urls.path, { path: path.trim() });
+    const failure = await postRestore(urls.path, library ? { path: path.trim() } : { path: path.trim(), keep_site_id: keepSiteId });
     if (failure) onNotice({ text: failure, ok: false });
     else onStarted();
   }
@@ -103,7 +106,8 @@ export function RestoreSourceForm({
       setSent(null);
     }
     // It is in the archive list now, whatever happens next.
-    const failure = await postRestore(`${urls.byName}/${encodeURIComponent(name)}/restore`);
+    const query = !library && keepSiteId ? "?keep_site_id=true" : "";
+    const failure = await postRestore(`${urls.byName}/${encodeURIComponent(name)}/restore${query}`);
     if (failure) {
       onNotice({ text: i18n.t("backup:restore.source.uploadedKept", { message: failure }), ok: false });
     }

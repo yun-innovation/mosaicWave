@@ -89,9 +89,9 @@ What this cannot do: a *different file* of the same scene (re-saved, edited, re-
 
 1. This section (docs only).
 2. The endpoints, staging, finish and clean-up, with tests (resume, wrong offset, hash mismatch, duplicate by hash, two users, restart, limits), `openapi.json`, Postman, docs.
-## Server identity (proposal)
+## Server identity
 
-**Status: proposal, not built.** Raised by the app repo (`mosaicWave-mobile`) once it kept several servers: the app has to tell "the same library at a new address" from "a different server", and "a copy of a library" from "the library itself".
+**Status: built** (schema step 8, `mosaicwave/identity.py`). Raised by the app repo (`mosaicWave-mobile`) once it kept several servers: the app has to tell "the same library at a new address" from "a different server", and "a copy of a library" from "the library itself".
 
 ### The problem
 
@@ -145,15 +145,18 @@ True multi-process serving of one database is **not** planned: the database is S
 - A new address whose `/auth/status` returns a known `server_id` is added to that server and reuses its session.
 - The same address with a different `server_id`, or the same `server_id` with a changed `data_epoch`: tell the user the server was replaced or restored, drop that server's caches, and sign in again if the session no longer works.
 
-### Pull requests for this
+### As built
 
-1. This section (docs only).
-2. The schema step, `/auth/status` fields, the restore choice (page and command), the admin reset, strings in all three languages, `openapi.json`, Postman and tests (new id on a fresh install, upgrade adds ids, restore keeps or replaces the id, epoch rises, reset changes the id, archive and per-user backup behaviour).
+- **Schema step 8** adds `server_id` and `data_epoch = 1` to `site_setting` on upgrade (existing values are kept). A new database gets them when it is created. `instance_id` is the file `instance.id` beside `session.key` (never moved with the library, never archived).
+- **`GET /auth/status`** returns `server_id`, `instance_id` and `data_epoch`. The admin `GET /settings` shows the same three on the Server page.
+- **Restore:** `keep_site_id` (query on `POST /backups/{name}/restore`, body field on `POST /backups/restore`; remembered in the staged restore and shown as `pending.keep_site_id`) and `--keep-site-id` on `python -m mosaicwave.restore`. Without it the restored server gets a new `server_id`. Either way `data_epoch` becomes one more than the larger of the live server's and the archive's. A backup made before step 8 has no id to keep, so it gets a new one.
+- **Reset:** `POST /site/id/reset` (admin), the **Make this a new server** button on the Server page.
+- Per-user backup and restore never touch the ids.
 
-### Open questions
+### Decisions
 
-- Whether `data_epoch` should also appear in `GET /me` (per user) or stay on `/auth/status` only.
-- Whether the default of a new id on restore is acceptable for the QPKG (a NAS restoring its own backup after a failed disk is the "replaces the original" case and would need one extra click).
+- `data_epoch` stays on `/auth/status` only; it is not repeated in `GET /me`.
+- The default on restore is a new id. A NAS recovering from a failed disk chooses **replaces the original** (one extra click on the Backup page, or `--keep-site-id`).
 
 ## Order of work
 
@@ -167,7 +170,7 @@ True multi-process serving of one database is **not** planned: the database is S
 | F | app repo | Timeline, scrubber, albums, search, select many. Needs only C and D. |
 | G | this repo, then app repo | Resumable upload: design section (decided, above), the endpoints (**built**, `/api/v1/uploads`), then the app's uploader. |
 | H | both | Offline replica. |
-| (any time before H) | this repo, then app repo | [Server identity](#server-identity-proposal): `server_id`, `instance_id`, `data_epoch` in `/auth/status`, the restore choice. Needed before the app keeps caches per server (F onward), so it is best done before F. |
+| (any time before H) | this repo, then app repo | [Server identity](#server-identity): `server_id`, `instance_id`, `data_epoch` in `/auth/status`, the restore choice (**built**; the app side is still to do). Needed before the app keeps caches per server (F onward), so it is best done before F. |
 
 Milestone 14 is marked done only when you say so.
 

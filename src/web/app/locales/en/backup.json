@@ -42,11 +42,18 @@
     "needsMaintenance": "Restoring needs maintenance mode, so nobody changes the data meanwhile.",
     "turnOn": "Turn on maintenance mode",
     "idle": "Restore a backup listed above (Restore…), or choose one on the server or on this device. It is unpacked and checked first; nothing is replaced until you apply it.",
+    "siteId": {
+      "title": "After restoring, this server…",
+      "new": "is a copy that runs next to the original (new server id, the default)",
+      "keep": "replaces the original: recovery or new hardware (keep the backup's server id)"
+    },
     "pending": {
       "title": "Ready to apply",
       "summary": "{{archive}}: {{summary}}.",
       "warn": "Applying restarts the server and replaces all data on it with this backup. Anything changed since the backup is gone from the server. Your current data is deleted once the restore succeeds, so make a backup first if you want to keep it.",
       "upgrade": "This backup is from an older mosaicWave; its databases are upgraded when the server starts.",
+      "siteIdNew": "The restored server gets a new server id. Apps that knew this server ask their users to sign in again.",
+      "siteIdKept": "The restored server keeps the backup's server id. Apps that knew it load the library again.",
       "apply": "Restart and apply",
       "discard": "Discard"
     },
@@ -69,7 +76,8 @@
       "title": "From the command line",
       "help": "A restore can also run offline with the API stopped. Stop mosaicWave, then run this on the host:",
       "check": "Add --check to only validate the archive; nothing is changed.",
-      "keep": "Your current data is kept beside it as *.before-restore-<time> until you delete it."
+      "keep": "Your current data is kept beside it as *.before-restore-<time> until you delete it.",
+      "siteId": "The restored server gets a new server id. Add --keep-site-id when it replaces the original (recovery or new hardware) so apps keep recognising it."
     },
     "source": {
       "server": "On the server",

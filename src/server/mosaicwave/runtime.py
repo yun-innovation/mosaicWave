@@ -19,6 +19,7 @@ from mosaicwave.config import (
 )
 from mosaicwave.datamove import clear_journal, write_journal
 from mosaicwave.db import make_engine
+from mosaicwave.identity import instance_id_for
 from mosaicwave.library.dbs import LibraryDbs
 from mosaicwave.library.importjob import ImportJobRunner, recover_interrupted_jobs
 from mosaicwave.storage.blobstore import LocalBlobStore
@@ -37,6 +38,7 @@ def attach_runtime(app: FastAPI, settings: Settings, *, recover: bool = False) -
         settings.session_secret,
         data_dir=settings.data_dir,
     )
+    app.state.instance_id = instance_id_for(Path(settings.bootstrap_dir or settings.data_dir))
     app.state.engine = engine
     app.state.session_factory = factory
     app.state.blob_store = blobs

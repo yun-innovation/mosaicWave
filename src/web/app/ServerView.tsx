@@ -7,6 +7,7 @@ import { apiFetch, AppUser, HostSettings, Me, readDetail } from "./api";
 import { FolderPicker } from "./FolderPicker";
 import { routeHash } from "./hashRoute";
 import { NetworkSection } from "./NetworkSection";
+import { ServerIdSection } from "./ServerIdSection";
 import i18n from "./i18n";
 import type { ImportJob, MaintenanceStatus } from "./types";
 
@@ -593,6 +594,7 @@ export function ServerView({ me, platform, maintenance }: Props) {
         </div>
       )}
       <NetworkSection maintenance={maintenance} waitForRestart={waitForApiAfterRestart} />
+      <ServerIdSection />
       {platform === "qnap" ? (
         <p className="detail">{t("settings:users.qnap")}</p>
       ) : (
