@@ -156,7 +156,7 @@
             "method": "GET",
             "header": [],
             "url": "{{baseUrl}}/api/v1/auth/status",
-            "description": "platform, needs_setup, me if signed in, locales (languages the server answers and saves in), server_version, api_version and min_app_version (an app older than that asks its user to update). Needs no session."
+            "description": "platform, needs_setup, me if signed in, locales (languages the server answers and saves in), server_version, api_version and min_app_version (an app older than that asks its user to update), server_id (identity of the library data; an app keys saved servers, sessions and caches by it), instance_id (the running install; display only) and data_epoch (raised by every restore and id reset; a change means drop what was cached for that server). Needs no session."
           }
         },
         {
@@ -584,7 +584,16 @@
             "method": "GET",
             "header": [],
             "url": "{{baseUrl}}/api/v1/settings",
-            "description": "Admin. data_dir (library), data_dir_smb (durable smb:// when on a NAS), data_dir_mount (macOS share-root dest), smb_user (from that URL; password is not returned), app_dir / default_data_dir (config and session), env_override (true when MOSAICWAVE_DATA_DIR is set)."
+            "description": "Admin. data_dir (library), data_dir_smb (durable smb:// when on a NAS), data_dir_mount (macOS share-root dest), smb_user (from that URL; password is not returned), app_dir / default_data_dir (config and session), env_override (true when MOSAICWAVE_DATA_DIR is set), server_id, data_epoch and instance_id (see Auth status)."
+          }
+        },
+        {
+          "name": "Make this a new server",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/site/id/reset",
+            "description": "Admin. Gives this database a new server_id and raises data_epoch; returns both. For a database copied by hand (file copy, VM clone) that must not be taken for the original. Apps that knew the old id see a different server and sign in again."
           }
         },
         {
@@ -1999,7 +2008,7 @@
             "method": "POST",
             "header": [],
             "url": "{{baseUrl}}/api/v1/backups/{{backupName}}/restore",
-            "description": "Admin only. Needs maintenance mode on (409 maintenance_required) and no running job (409 job_running; 409 restore_pending while a staged restore waits). Starts a job (kind site_restore, cancellable) that unpacks and checks the archive next to the live data; saves {{jobId}}. Nothing live changes until Apply."
+            "description": "Admin only. Needs maintenance mode on (409 maintenance_required) and no running job (409 job_running; 409 restore_pending while a staged restore waits). Starts a job (kind site_restore, cancellable) that unpacks and checks the archive next to the live data; saves {{jobId}}. Nothing live changes until Apply. Query keep_site_id=true: this replaces the original server, so the restored server keeps the backup's server_id; by default it gets a new one. data_epoch rises either way."
           },
           "event": [
             {
@@ -2028,7 +2037,7 @@
               }
             ],
             "url": "{{baseUrl}}/api/v1/backups/restore",
-            "description": "Admin only. Body {path}: a site backup .zip anywhere on the server (a share, a USB drive); it is restored from there, nothing is copied. Same rules as Stage restore (maintenance_required, job_running, restore_pending). 400 backup_path_required, backup_not_a_file or backup_invalid (not a usable site backup) start no job. Saves {{jobId}}.",
+            "description": "Admin only. Body {path, keep_site_id}: a site backup .zip anywhere on the server (a share, a USB drive); it is restored from there, nothing is copied. keep_site_id true keeps the backup's server_id (this replaces the original); false (default) gives a new one. Same rules as Stage restore (maintenance_required, job_running, restore_pending). 400 backup_path_required, backup_not_a_file or backup_invalid (not a usable site backup) start no job. Saves {{jobId}}.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"path\": \"/share/backups/mosaicwave-site-20261021-093000.zip\"\n}",
@@ -2081,7 +2090,7 @@
             "method": "GET",
             "header": [],
             "url": "{{baseUrl}}/api/v1/backups/restore",
-            "description": "Admin only. pending is the staged restore waiting to be applied (archive, summary, upgrade). result is what the last start-up swap did (status done or error). The replaced data is deleted once the new data is in place, so kept is empty."
+            "description": "Admin only. pending is the staged restore waiting to be applied (archive, summary, upgrade, keep_site_id). result is what the last start-up swap did (status done or error). The replaced data is deleted once the new data is in place, so kept is empty."
           }
         },
         {

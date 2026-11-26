@@ -25,6 +25,11 @@ from mosaicwave.models import User
 
 router = APIRouter()
 
+KEEP_SITE_ID = (
+    "true: this replaces the original server, so keep the backup's server id. "
+    "false (default): a copy that runs next to the original gets a new id. Either way the data epoch is raised"
+)
+
 
 class BackupIn(BaseModel):
     include_thumbs: bool = False
@@ -119,6 +124,7 @@ class RestoreSummary(BaseModel):
 class RestorePendingOut(BaseModel):
     archive: str
     staged_at: str
+    keep_site_id: bool = Field(default=False, description=KEEP_SITE_ID)
     summary: RestoreSummary
     upgrade: bool = Field(description="The archive is from an older version; its databases upgrade at start")
 
@@ -156,6 +162,7 @@ def _restore_state(settings) -> RestoreStateOut:  # type: ignore[no-untyped-def]
         out.pending = RestorePendingOut(
             archive=str(pending.get("archive", "")),
             staged_at=str(pending.get("staged_at", "")),
+            keep_site_id=bool(pending.get("keep_site_id")),
             summary=_summary(pending.get("summary")),
             upgrade=pending.get("site_upgrade_from") is not None
             or pending.get("library_upgrade_from") is not None,
@@ -207,6 +214,7 @@ def apply_restore(
 
 class RestoreFromPathIn(BaseModel):
     path: str = Field(default="", max_length=4096, description="A site backup .zip on the server")
+    keep_site_id: bool = Field(default=False, description=KEEP_SITE_ID)
 
 
 def _require_maintenance(request: Request) -> None:
@@ -236,7 +244,7 @@ def post_restore_from_path(
         raise check_error(exc) from exc
     runner: ImportJobRunner = request.app.state.import_jobs
     try:
-        job = runner.start_restore(user_id=admin.id, archive=path)
+        job = runner.start_restore(user_id=admin.id, archive=path, keep_site_id=body.keep_site_id)
     except ImportBusy as exc:
         raise _busy_error(exc) from exc
     return _job_out(job)
@@ -273,7 +281,12 @@ async def upload_backup(
 
 
 @router.post("/backups/{name}/restore", response_model=ImportOut)
-def post_restore(name: str, request: Request, admin: User = Depends(require_admin)) -> ImportOut:
+def post_restore(
+    name: str,
+    request: Request,
+    keep_site_id: bool = Query(default=False, description=KEEP_SITE_ID),
+    admin: User = Depends(require_admin),
+) -> ImportOut:
     """Stage a restore of this backup. Needs maintenance mode; nothing live changes until Apply."""
     path = _existing(request, name)
     _require_maintenance(request)
@@ -283,7 +296,7 @@ def post_restore(name: str, request: Request, admin: User = Depends(require_admi
         raise check_error(exc) from exc
     runner: ImportJobRunner = request.app.state.import_jobs
     try:
-        job = runner.start_restore(user_id=admin.id, archive=path)
+        job = runner.start_restore(user_id=admin.id, archive=path, keep_site_id=keep_site_id)
     except ImportBusy as exc:
         raise _busy_error(exc) from exc
     return _job_out(job)

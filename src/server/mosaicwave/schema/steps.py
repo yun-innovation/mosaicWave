@@ -7,8 +7,10 @@ number and may already hold part of them. Steps 3+ may assume the exact previous
 from __future__ import annotations
 
 import sqlite3
+import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import datetime, timezone
 
 from mosaicwave.schema.v1 import V1_TABLES
 
@@ -114,6 +116,15 @@ def _sessions_and_site_settings(con: sqlite3.Connection) -> None:
     )
 
 
+def _site_identity(con: sqlite3.Connection) -> None:
+    """Step 8: a site id and a data epoch (doc/mobile.md § Server identity). Keeps any that exist."""
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S.%f")
+    for key, value in (("server_id", str(uuid.uuid4())), ("data_epoch", "1")):
+        con.execute(
+            "INSERT OR IGNORE INTO site_setting (key, value, updated_at) VALUES (?, ?, ?)", (key, value, now)
+        )
+
+
 def _drop_moved_tables(con: sqlite3.Connection) -> None:
     """Step 3 only runs after schema/split.py has copied every library out (see split.py)."""
     for table in ("album_asset", "album", "asset", "source_grant", "source"):
@@ -134,4 +145,5 @@ STEPS: list[Step] = [
     Step(5, "user.time_zone (milestone 8)", _user_time_zone),
     Step(6, "user.use_dst (milestone 8)", _user_use_dst),
     Step(7, "user_session and site_setting tables (milestone 14)", _sessions_and_site_settings),
+    Step(8, "site_setting server_id and data_epoch (server identity)", _site_identity),
 ]

@@ -22,6 +22,7 @@ import socket
 import sqlite3
 import sys
 import threading
+import time
 import zipfile
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -51,6 +52,7 @@ from mosaicwave.archive import (
     safe_member,
 )
 from mosaicwave.config import Settings, _checkpoint_library_db, ensure_data_dir_exists
+from mosaicwave.identity import live_epoch, restamp_staged
 from mosaicwave.schema.library import LIBRARY_CURRENT_VERSION
 
 Progress = Callable[[int, int, str], None]
@@ -76,6 +78,9 @@ class StagedRestore:
     data_stage: Path
     site_upgrade_from: int | None = None
     library_upgrade_from: int | None = None
+    # True: this replaces the original server, so keep the archive's server id. False (the default):
+    # a copy that runs next to the original gets a new id (doc/mobile.md § Server identity).
+    keep_site_id: bool = False
 
 
 @dataclass
@@ -457,6 +462,12 @@ def commit_site(staged: StagedRestore, settings: Settings, *, keep_old: bool = T
     """
     for staged_db in sorted((staged.app_stage / ACCOUNTS).glob(f"*/{DB_ENTRY}")):
         offset_revs(staged_db, live_max_rev(settings.accounts_dir / staged_db.parent.name / DB_ENTRY))
+    # Every restore raises the data epoch, so an app holding a replica of what was here refetches.
+    restamp_staged(
+        staged.app_stage / DB_ENTRY,
+        live_epoch=live_epoch(settings.database_path),
+        keep_id=staged.keep_site_id,
+    )
     result = RestoreResult(
         manifest=staged.manifest,
         site_upgrade_from=staged.site_upgrade_from,
@@ -472,12 +483,16 @@ def commit_site(staged: StagedRestore, settings: Settings, *, keep_old: bool = T
     return result
 
 
-def restore_site(archive: Path, settings: Settings, *, on_progress: Progress | None = None) -> RestoreResult:
+def restore_site(
+    archive: Path, settings: Settings, *, on_progress: Progress | None = None, keep_site_id: bool = False
+) -> RestoreResult:
     """Offline restore: stage and swap in one go."""
     ensure_data_dir_exists(settings.data_dir)
     settings.database_path.parent.mkdir(parents=True, exist_ok=True)
     _require_unlocked(settings.database_path)
-    return commit_site(stage_site(archive, settings, on_progress=on_progress), settings)
+    staged = stage_site(archive, settings, on_progress=on_progress)
+    staged.keep_site_id = keep_site_id
+    return commit_site(staged, settings)
 
 
 # --- Online restore: stage while the API runs, swap at the next start --------------------------
@@ -522,6 +537,7 @@ def write_pending(settings: Settings, staged: StagedRestore, archive_name: str) 
             "summary": _summary(staged.manifest),
             "site_upgrade_from": staged.site_upgrade_from,
             "library_upgrade_from": staged.library_upgrade_from,
+            "keep_site_id": staged.keep_site_id,
         },
     )
 
@@ -619,6 +635,7 @@ def apply_pending(settings: Settings) -> str | None:
             data_stage=data_stage,
             site_upgrade_from=(record or {}).get("site_upgrade_from"),
             library_upgrade_from=(record or {}).get("library_upgrade_from"),
+            keep_site_id=bool((record or {}).get("keep_site_id")),
         )
         result = commit_site(staged, settings, keep_old=False)
         outcome.update(
@@ -636,6 +653,28 @@ def apply_pending(settings: Settings) -> str | None:
     pending_path(settings).unlink(missing_ok=True)
     _remove_stale_stages(settings)
     return status
+
+
+def _rename_when_free(src: Path, dst: Path, *, wait: float = 10.0, pause: float = 0.25) -> None:
+    """``src.rename(dst)``, retried for ``wait`` seconds while Windows says the file is in use.
+
+    After a restart the old process may still hold its database for a moment (or a scanner is reading
+    the file), so the first try can fail with WinError 32 although nothing is wrong.
+    """
+    deadline = time.monotonic() + wait
+    while True:
+        try:
+            src.rename(dst)
+            return
+        except PermissionError as exc:
+            if time.monotonic() >= deadline:
+                raise PermissionError(
+                    exc.errno,
+                    f"{exc.strerror or exc}; another process may still be using {src.name} ({src}). "
+                    "Close any database browser or other tool that has it open, then try again",
+                    exc.filename,
+                ) from exc
+            time.sleep(pause)
 
 
 def _swap(
@@ -659,7 +698,7 @@ def _swap(
             if current.exists():
                 mark = ".before-restore-" if keep_old else DISCARD_MARK
                 kept = current.with_name(f"{current.name}{mark}{stamp}")
-                current.rename(kept)
+                _rename_when_free(current, kept)
                 aside.append((current, kept))
         for sidecar in ("-wal", "-shm", "-journal"):
             Path(str(db_path) + sidecar).unlink(missing_ok=True)
@@ -711,6 +750,14 @@ def main(argv: list[str] | None = None) -> int:
         "--check", action="store_true", help="Only validate the archive (reads every byte); change nothing"
     )
     parser.add_argument("--force", action="store_true", help="Skip the check that the API port is free")
+    parser.add_argument(
+        "--keep-site-id",
+        action="store_true",
+        help=(
+            "This replaces the original server (recovery, new hardware): keep the backup's server id so apps "
+            "keep recognising it. Without it the restored server gets a new id, which is right for a copy"
+        ),
+    )
     args = parser.parse_args(argv)
 
     if not args.archive.is_file():
@@ -739,7 +786,7 @@ def main(argv: list[str] | None = None) -> int:
             if total and (done == total or done % 200 == 0):
                 print(f"\r{done}/{total} files", end="", file=sys.stderr, flush=True)
 
-        result = restore_site(args.archive, settings, on_progress=show)
+        result = restore_site(args.archive, settings, on_progress=show, keep_site_id=args.keep_site_id)
     except (ArchiveError, OSError, sqlite3.Error) as exc:
         print(f"\nrestore failed, nothing was changed: {exc}", file=sys.stderr)
         return 1

@@ -157,6 +157,8 @@ export type RestoreSummary = {
 export type RestorePending = {
   archive: string;
   staged_at: string;
+  /** The admin chose "this replaces the original": the server keeps the backup's id. */
+  keep_site_id: boolean;
   summary: RestoreSummary;
   upgrade: boolean;
 };

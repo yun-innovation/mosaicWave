@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from mosaicwave import API_VERSION, MIN_APP_VERSION, __version__
+from mosaicwave import API_VERSION, MIN_APP_VERSION, __version__, identity
 from mosaicwave.api.errors import ApiError, wrapped
 from mosaicwave.api.v1.maintenance import refuse_non_admin
 from mosaicwave.auth import sessions
@@ -66,6 +66,9 @@ class AuthStatusOut(BaseModel):
     server_version: str = __version__  # this mosaicWave release
     api_version: str = API_VERSION  # the URL prefix the API lives under (/api/v1)
     min_app_version: str = MIN_APP_VERSION  # an app older than this should ask its user to update
+    server_id: str  # the library data's identity: survives address changes, moves and a restore that replaces the original
+    instance_id: str  # the running install; display and diagnostics only, never a key
+    data_epoch: int  # raised by every restore and id reset; a change means drop what was cached for this server
 
 
 class LoginIn(BaseModel):
@@ -193,10 +196,14 @@ def auth_status(
 ) -> AuthStatusOut:
     settings = _settings(request)
     needs_setup = settings.platform == "standalone" and user_count(session) == 0
+    server_id, data_epoch = identity.ensure(session)
     return AuthStatusOut(
         platform=settings.platform,
         needs_setup=needs_setup,
         me=_me_out(request, user) if user else None,
+        server_id=server_id,
+        instance_id=request.app.state.instance_id,
+        data_epoch=data_epoch,
     )
 
 

@@ -712,7 +712,7 @@ class ImportJobRunner:
                 if self._running_id == job_id:
                     self._running_id = None
 
-    def start_restore(self, *, user_id: str, archive: Path) -> dict:
+    def start_restore(self, *, user_id: str, archive: Path, keep_site_id: bool = False) -> dict:
         """Unpack and check a site backup beside the live data (nothing live changes).
 
         When it is done the restore is *staged*; the admin applies it, which restarts the server.
@@ -742,11 +742,11 @@ class ImportJobRunner:
             finally:
                 session.close()
             self._running_id = job_id
-        thread = threading.Thread(target=self._run_restore, args=(job_id, archive), daemon=True)
+        thread = threading.Thread(target=self._run_restore, args=(job_id, archive, keep_site_id), daemon=True)
         thread.start()
         return view
 
-    def _run_restore(self, job_id: str, archive: Path) -> None:
+    def _run_restore(self, job_id: str, archive: Path, keep_site_id: bool = False) -> None:
         assert self._settings is not None
         session = self._factory()
         try:
@@ -763,6 +763,7 @@ class ImportJobRunner:
                 self._check_cancel(job_id)
 
             staged = stage_site(archive, self._settings, on_progress=on_progress)
+            staged.keep_site_id = keep_site_id
             try:
                 write_pending(self._settings, staged, archive.name)
             except BaseException:

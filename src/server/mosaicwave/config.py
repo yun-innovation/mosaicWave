@@ -29,6 +29,7 @@ _SKIP_RELOCATE = {
     "mosaicWave.log",
     "web.port",
     "session.key",
+    "instance.id",
     "mnt",
     "restart.flag",
     "bind-failure.json",

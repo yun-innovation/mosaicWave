@@ -8,6 +8,7 @@ import { formatBytes, formatDateTime } from "./format";
 import { routeHash } from "./hashRoute";
 import i18n from "./i18n";
 import { BackupParts } from "./BackupParts";
+import { RestoreIdChoice } from "./RestoreIdChoice";
 import { RestoreSourceForm } from "./RestoreSourceForm";
 import { SplitSelect } from "./SplitSelect";
 import { BackupItem, isAbortError, MaintenanceStatus, Notice, RestoreState, RestoreSummary } from "./types";
@@ -54,6 +55,7 @@ export function BackupView({ importer, maintenance }: { importer: TakeoutImport;
   const [restore, setRestore] = useState<RestoreState | null>(null);
   const [waiting, setWaiting] = useState<Waiting>(null);
   const [applying, setApplying] = useState(false);
+  const [keepSiteId, setKeepSiteId] = useState(false);
   const { busy, finished, refreshJobs } = importer;
   const disabled = busy || working || waiting !== null;
   const maintenanceOn = maintenance.state === "on";
@@ -151,7 +153,8 @@ export function BackupView({ importer, maintenance }: { importer: TakeoutImport;
     setWorking(true);
     setNotice(null);
     try {
-      const res = await apiFetch(`/api/v1/backups/${encodeURIComponent(name)}/restore`, { method: "POST" });
+      const query = keepSiteId ? "?keep_site_id=true" : "";
+      const res = await apiFetch(`/api/v1/backups/${encodeURIComponent(name)}/restore${query}`, { method: "POST" });
       if (!res.ok) {
         const body: unknown = await res.json().catch(() => null);
         setNotice({ text: errorText(body, res.status), ok: false });
@@ -274,6 +277,9 @@ export function BackupView({ importer, maintenance }: { importer: TakeoutImport;
                     <span className="detail">
                       {confirming.kind === "restore" ? t("backup:restore.confirm") : t("backup:confirmDelete")}
                     </span>
+                    {confirming.kind === "restore" && (
+                      <RestoreIdChoice keep={keepSiteId} onChange={setKeepSiteId} disabled={disabled} />
+                    )}
                     <button
                       type="button"
                       disabled={disabled}
@@ -376,6 +382,9 @@ export function BackupView({ importer, maintenance }: { importer: TakeoutImport;
           </p>
           <p className="detail">{t("backup:restore.pending.warn")}</p>
           {restore.pending.upgrade && <p className="detail">{t("backup:restore.pending.upgrade")}</p>}
+          <p className="detail">
+            {restore.pending.keep_site_id ? t("backup:restore.pending.siteIdKept") : t("backup:restore.pending.siteIdNew")}
+          </p>
           <div className="button-row">
             <button type="button" disabled={disabled || applying || !maintenanceOn} onClick={() => void applyRestore()}>
               {applying ? t("common:working") : t("backup:restore.pending.apply")}
@@ -389,9 +398,11 @@ export function BackupView({ importer, maintenance }: { importer: TakeoutImport;
       {!restore?.pending && !waiting && (
         <>
           <p className="detail">{t("backup:restore.idle")}</p>
+          <RestoreIdChoice keep={keepSiteId} onChange={setKeepSiteId} disabled={disabled} />
           <RestoreSourceForm
             maintenanceOn={maintenanceOn}
             blocked={disabled}
+            keepSiteId={keepSiteId}
             onNotice={setRestoreNotice}
             onStarted={() => {
               refreshJobs();
@@ -408,6 +419,7 @@ export function BackupView({ importer, maintenance }: { importer: TakeoutImport;
       <h3 className="section-title divided">{t("backup:restore.offline.title")}</h3>
       <p className="detail">{t("backup:restore.offline.help")}</p>
       <pre className="backup-command">{`python -m mosaicwave.restore "${archivePath}"`}</pre>
+      <p className="detail">{t("backup:restore.offline.siteId")}</p>
       <p className="detail">{t("backup:restore.offline.check")}</p>
       <p className="detail">{t("backup:restore.offline.keep")}</p>
     </section>

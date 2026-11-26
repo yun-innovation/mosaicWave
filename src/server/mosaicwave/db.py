@@ -11,7 +11,7 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import NullPool
 
-from mosaicwave import schema
+from mosaicwave import identity, schema
 from mosaicwave.config import Settings, ensure_data_dir_exists
 from mosaicwave.models import SITE_TABLES, Base
 from mosaicwave.schema.split import migrate_site_database
@@ -94,6 +94,8 @@ def _configure_engine(engine: Engine, *, network: bool) -> None:
 def _create_site_schema(engine: Engine) -> None:
     tables = [Base.metadata.tables[name] for name in sorted(SITE_TABLES)]
     Base.metadata.create_all(engine, tables=tables)
+    with Session(engine) as session:  # a new database is a new server (doc/mobile.md § Server identity)
+        identity.ensure(session)
 
 
 def make_engine(settings: Settings) -> Engine:

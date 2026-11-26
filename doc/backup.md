@@ -16,7 +16,7 @@ One zip, `mosaicwave-site-YYYYMMDD-HHMMSS.zip` (format 1, kind `site`):
 | `libraries/{user_id}/…` | Every user's originals, byte for byte (stored, not recompressed) |
 | `blobs/…` | Thumbnails, only with `--include-thumbs` (they can be regenerated) |
 
-Never in an archive: `session.key`, `config.json`, `nsmb.conf`, `tmp/`, SQLite `-wal`/`-shm` files, `library.db.pre-v*` copies, symlinks. Files the zip cannot hold safely (for example a name starting with a drive letter) are skipped and listed in `warnings`.
+Never in an archive: `session.key`, `instance.id`, `config.json`, `nsmb.conf`, `tmp/`, SQLite `-wal`/`-shm` files, `library.db.pre-v*` copies, symlinks. Files the zip cannot hold safely (for example a name starting with a drive letter) are skipped and listed in `warnings`.
 
 The manifest holds counts and byte totals, not a per-file list: the zip's own directory is that list. Archives from before the per-library split (site schema below v3) are not supported.
 
@@ -36,7 +36,7 @@ The API keeps the site database and every library database open, so it does not 
 3. **Restore…** on an archive (`POST /api/v1/backups/{name}/restore`), or either choice above, starts a job of kind `site_restore`, shown in the status bar and Activity, and **cancellable**. It checks free space, then unpacks and validates the archive into the same two staging folders the offline restore uses, and checks the databases (all in `stage_site`, shared with the offline command). Nothing live is touched; cancelling or failing removes the staging folders. Progress shows counts only, never file names.
 4. When it is done the restore is **staged**: `restore-pending.json` beside the site database records the archive, the stamp, a summary and whether the databases will upgrade. The page shows what the archive holds and offers **Restart and apply** or **Discard**. While a restore is staged, every new job is refused (`409 restore_pending`) and so is moving the data folder, because the staged copy is a snapshot. Whatever an admin changes in their own library meanwhile is lost when the restore is applied.
 5. **Restart and apply** (`POST /api/v1/backups/restore/apply`) needs a staged restore, maintenance mode on and no running job. It restarts the API the way **Save folder** on the Server page does (`schedule_api_restart`: `restart.flag`, exit after one second; the debug `start.sh` / `start.ps1` respawn it, packaged services keep it alive). Under `uvicorn --reload` or `--workers` the exiting process is only a worker and uvicorn does not replace a dead one (the port would stay open and answer nothing), so the restart also ends the uvicorn parent. Run by hand without a supervisor, start it again yourself. Under pytest nothing restarts and `restarting` is false.
-6. **At the next start**, `create_app` calls `apply_pending` before it opens any database. It swaps the staged data in with the same `_swap` as the offline restore (full rollback on failure; unlike the offline command it does not keep the replaced data: it is moved aside as `*.discard-<time>` and deleted once the new data is in place, in a background thread so a big library does not delay the start, and whatever a stop leaves is removed at the next start), writes `restore-result.json` and deletes `restore-pending.json`. A missing or damaged staging folder is an error result and changes nothing. With no staged restore it only removes leftover `.restore-staging-*` folders. Older archives upgrade through the normal schema steps right after, as for offline restore.
+6. **At the next start**, `create_app` calls `apply_pending` before it opens any database. It swaps the staged data in with the same `_swap` as the offline restore (full rollback on failure; unlike the offline command it does not keep the replaced data: it is moved aside as `*.discard-<time>` and deleted once the new data is in place, in a background thread so a big library does not delay the start, and whatever a stop leaves is removed at the next start), writes `restore-result.json` and deletes `restore-pending.json`. Moving the old data aside is retried for up to 10 seconds when Windows reports the file in use (the old process may not have let go of its database yet); after that the error names the file and nothing is replaced. A missing or damaged staging folder is an error result and changes nothing. With no staged restore it only removes leftover `.restore-staging-*` folders. Older archives upgrade through the normal schema steps right after, as for offline restore.
 7. The page waits for the server (polls `/api/v1/health`, then reloads) and shows the result from `GET /api/v1/backups/restore`: done (with upgrade and thumbnail notes), or the error with nothing replaced. **Dismiss** / `DELETE /api/v1/backups/restore` forgets it. Maintenance stays on; the admin turns it off after checking.
 
 Both state files sit beside the site database, are never archived, and survive the swap. The job row of a restore lives in the old site database and is set aside with it, so the restored site has no record of it; the result file is the record. Sessions are signed cookies keyed by `session.key`, which is not restored, so they stay valid for users that exist in the archive (same ids) and everyone else is signed out. The restored accounts come from the archive: sign in with the administrator the backup was made with.
@@ -50,6 +50,7 @@ Also works with no running server, and is what the online restore uses underneat
 ```
 python -m mosaicwave.restore mosaicwave-site-20261021-093000.zip
 python -m mosaicwave.restore ARCHIVE --check     # validate only, reads every byte, changes nothing
+python -m mosaicwave.restore ARCHIVE --keep-site-id   # this replaces the original server: keep its server id
 ```
 
 `--force` skips the check that the API port is free.
@@ -64,6 +65,17 @@ The restore is an exact replacement of the site's data:
 An archive from an older app version is upgraded by the normal [schema steps](schema.md#schema-versions) the next time the API starts (site file at startup, each library when first opened, with the usual `library.db.pre-v{N}` copy).
 
 The offline command deletes nothing, because it is the last resort when the server will not start: remove the `*.before-restore-*` items yourself once you are satisfied. Thumbnails are not in the archive by default; the server rebuilds each one the first time it is requested, or start the API and use **Generate thumbs** in Settings. Thumbnail URLs carry `thumb_rev` and browsers cache them for an hour, so when the archive has no thumbnails the restore adds the current Unix time to every asset's `thumb_rev` (direct SQL; the library `rev` and `updated_at` do not change, so sync clients see no edit). Browsers then refetch instead of showing stale cached images. With `--include-thumbs` the versions are left alone because the restored files are named after them. Sessions stay valid only if `session.key` is unchanged; users may have to sign in again.
+
+### Server id and data epoch
+
+The site database carries the server's identity ([mobile.md § Server identity](mobile.md#server-identity)): `server_id` and `data_epoch` in `site_setting`. A site archive therefore carries both; `instance.id` (the running install) is never archived. The server cannot tell a recovery from a copy, so the admin chooses when restoring:
+
+| Choice | Online (Backup page) | Offline | Result |
+| --- | --- | --- | --- |
+| This server is a copy that runs next to the original (default) | the default option; `keep_site_id` false | no flag | a new `server_id`; apps treat it as another server |
+| This replaces the original (recovery, new hardware) | **replaces the original**; `keep_site_id=true` | `--keep-site-id` | the archive's `server_id` is kept; apps keep recognising it |
+
+The online choice is stored in `restore-pending.json` and applied at the swap. Either way `data_epoch` becomes one more than the larger of the live server's epoch and the archive's, so an app that cached the earlier data refetches. An archive made before the identity existed (site schema below 8) has no id to keep, so it gets a new one when it is upgraded. A per-user backup or restore never touches the ids.
 
 ## Per-user backup and restore (any signed-in user, Settings)
 

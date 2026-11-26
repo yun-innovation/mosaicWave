@@ -2388,6 +2388,25 @@
         }
       }
     },
+    "/api/v1/site/id/reset": {
+      "post": {
+        "summary": "Reset Site Id",
+        "description": "Make this a new server: a new ``server_id`` and a higher ``data_epoch``.\n\nFor a database copied by hand (file copy, VM clone) that must not be taken for the original. Apps\nthat knew the old id see a different server and sign in again.",
+        "operationId": "reset_site_id_api_v1_site_id_reset_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SiteIdOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/backups": {
       "get": {
         "summary": "Get Backups",
@@ -2611,6 +2630,18 @@
               "type": "string",
               "title": "Name"
             }
+          },
+          {
+            "name": "keep_site_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "true: this replaces the original server, so keep the backup's server id. false (default): a copy that runs next to the original gets a new id. Either way the data epoch is raised",
+              "default": false,
+              "title": "Keep Site Id"
+            },
+            "description": "true: this replaces the original server, so keep the backup's server id. false (default): a copy that runs next to the original gets a new id. Either way the data epoch is raised"
           }
         ],
         "responses": {
@@ -3526,12 +3557,27 @@
             "type": "string",
             "title": "Min App Version",
             "default": "0.1.0"
+          },
+          "server_id": {
+            "type": "string",
+            "title": "Server Id"
+          },
+          "instance_id": {
+            "type": "string",
+            "title": "Instance Id"
+          },
+          "data_epoch": {
+            "type": "integer",
+            "title": "Data Epoch"
           }
         },
         "type": "object",
         "required": [
           "platform",
-          "needs_setup"
+          "needs_setup",
+          "server_id",
+          "instance_id",
+          "data_epoch"
         ],
         "title": "AuthStatusOut"
       },
@@ -4175,6 +4221,18 @@
             "type": "integer",
             "title": "Schema Version"
           },
+          "server_id": {
+            "type": "string",
+            "title": "Server Id"
+          },
+          "data_epoch": {
+            "type": "integer",
+            "title": "Data Epoch"
+          },
+          "instance_id": {
+            "type": "string",
+            "title": "Instance Id"
+          },
           "restarting": {
             "type": "boolean",
             "title": "Restarting",
@@ -4199,7 +4257,10 @@
           "app_dir",
           "backup_dir",
           "env_override",
-          "schema_version"
+          "schema_version",
+          "server_id",
+          "data_epoch",
+          "instance_id"
         ],
         "title": "HostSettingsOut"
       },
@@ -5091,6 +5152,12 @@
             "type": "string",
             "title": "Staged At"
           },
+          "keep_site_id": {
+            "type": "boolean",
+            "title": "Keep Site Id",
+            "description": "true: this replaces the original server, so keep the backup's server id. false (default): a copy that runs next to the original gets a new id. Either way the data epoch is raised",
+            "default": false
+          },
           "summary": {
             "$ref": "#/components/schemas/RestoreSummary"
           },
@@ -5433,6 +5500,24 @@
           "password"
         ],
         "title": "SetupIn"
+      },
+      "SiteIdOut": {
+        "properties": {
+          "server_id": {
+            "type": "string",
+            "title": "Server Id"
+          },
+          "data_epoch": {
+            "type": "integer",
+            "title": "Data Epoch"
+          }
+        },
+        "type": "object",
+        "required": [
+          "server_id",
+          "data_epoch"
+        ],
+        "title": "SiteIdOut"
       },
       "SourceOut": {
         "properties": {
@@ -6286,6 +6371,12 @@
             "title": "Path",
             "description": "A site backup .zip on the server",
             "default": ""
+          },
+          "keep_site_id": {
+            "type": "boolean",
+            "title": "Keep Site Id",
+            "description": "true: this replaces the original server, so keep the backup's server id. false (default): a copy that runs next to the original gets a new id. Either way the data epoch is raised",
+            "default": false
           }
         },
         "type": "object",

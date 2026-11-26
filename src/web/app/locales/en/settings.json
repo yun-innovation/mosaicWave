@@ -88,6 +88,18 @@
     "passwordLabel": "NAS password",
     "passwordPlaceholder": "required on first Save folder"
   },
+  "serverId": {
+    "title": "Server identity",
+    "help": "Apps recognise this server by its id, not by its address, so a new IP or host name does not make them forget it. The id belongs to the library data and moves with it.",
+    "serverId": "Server id: {{id}}",
+    "epoch": "Data epoch: {{epoch}} (raised by every restore and reset; apps that see it change load the library again)",
+    "instance": "This install: {{id}}",
+    "resetHelp": "Use this only when the library data was copied by hand (a file copy or a cloned machine) and both copies will run. A restore from a backup asks for this itself.",
+    "reset": "Make this a new server",
+    "confirm": "Give this server a new id? Apps that know it will treat it as a different server and ask their users to sign in again.",
+    "done": "This is now a new server. Apps will sign in again.",
+    "failed": "Could not make this a new server."
+  },
   "network": {
     "title": "Network",
     "help": "Which addresses the server listens on. Changing it restarts the server.",
