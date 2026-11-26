@@ -1,6 +1,6 @@
 # Status
 
-**Updated:** 2026-11-24  
+**Updated:** 2026-11-26  
 **Keep in sync with:** [`.cursor/rules/mosaicwave-status.mdc`](../.cursor/rules/mosaicwave-status.mdc) (same date, same next step).
 
 Short onboarding snapshot for agents. **Session start:** always read [index.md](index.md) first (For AI Agents + Planning). Names: [naming.md](naming.md).
@@ -13,7 +13,7 @@ Short onboarding snapshot for agents. **Session start:** always read [index.md](
 
 ## Next
 
-Next is **milestone 14** (iOS and Android clients, Flutter, separate private repo `mosaicWave-mobile`; design note [mobile.md](mobile.md) #57, `openapi/openapi.json` #58, app sign-in with stored sessions #59, server discovery #60, upload design #61; `DELETE /assets/{id}` #62; the `/uploads` endpoints #63; the server's bind address and port are set on the admin Server page (Network section, maintenance mode, [qpkg.md § Bind address](qpkg.md#bind-address), #65; Linux and macOS listen on `127.0.0.1` unless `MOSAICWAVE_HOST` or that setting says otherwise, so a public host needs `0.0.0.0` behind TLS); Next.js is upgraded to 16.4.6 (#66); upgrade fixes (#67): pip re-runs when `requirements.txt` changed since the last good install (QPKG, posix, MSI), a same-version MSI reinstall replaces the old one, and the Windows service stops children first. The Flutter skeleton is merged in `mosaicWave-mobile` and was tested on an iPhone and an Android phone against the dev API; next: the server identity (`server_id`, `instance_id`, `data_epoch` in `/auth/status`; proposal on branch `docs/server-id-proposal`, not merged, two open questions in [mobile.md](mobile.md#server-identity-proposal)), then browse in the app). 10 ARM64 QPKG is **frozen** (no ARM hardware) and 11 share links (SaaS) is **deferred**; both are skipped.
+Next is **milestone 14** (iOS and Android clients, Flutter, separate private repo `mosaicWave-mobile`; design note [mobile.md](mobile.md) #57, `openapi/openapi.json` #58, app sign-in with stored sessions #59, server discovery #60, upload design #61; `DELETE /assets/{id}` #62; the `/uploads` endpoints #63; the server's bind address and port are set on the admin Server page (Network section, maintenance mode, [qpkg.md § Bind address](qpkg.md#bind-address), #65; Linux and macOS listen on `127.0.0.1` unless `MOSAICWAVE_HOST` or that setting says otherwise, so a public host needs `0.0.0.0` behind TLS); Next.js is upgraded to 16.4.6 (#66); upgrade fixes (#67): pip re-runs when `requirements.txt` changed since the last good install (QPKG, posix, MSI), a same-version MSI reinstall replaces the old one, and the Windows service stops children first. The Flutter skeleton is merged in `mosaicWave-mobile` and was tested on an iPhone and an Android phone against the dev API; the server identity is merged (#69: `server_id`, `instance_id`, `data_epoch` in `/auth/status`, schema step 8, a restore choice "replaces the original" or "runs next to it" with a new id by default, `POST /site/id/reset`, [mobile.md § Server identity](mobile.md#server-identity)); next: key servers, sessions and caches by `server_id` in the app, then browse in the app; a QPKG upgrade check of schema step 8 on a real NAS is still to do). 10 ARM64 QPKG is **frozen** (no ARM hardware) and 11 share links (SaaS) is **deferred**; both are skipped.
 
 ## Constraints
 

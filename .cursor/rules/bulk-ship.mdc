@@ -31,6 +31,10 @@ Say what changed and why, in plain words, so a reviewer understands it without o
 - Do not mention that other PRs were merged; the PR list already shows that. Do not add a "not changed" list or a test plan the change does not need.
 - Fix a bad title or body with `gh pr edit`. Reword an unmerged commit with `git commit --amend` plus `git push --force-with-lease` on the topic branch only, never on `main`.
 
+## Status edits on `ship`
+
+When the user says `ship` / `PR` / `bulk ship` for a topic branch that changed behaviour, update the status docs **before** pushing and commit them on the same branch, so the PR carries them and no docs-only PR follows the merge: `doc/status.md` and `.cursor/rules/mosaicwave-status.mdc` (Next paragraph, same date), the ticked items in `doc/progress-todo.md`, and a dated row in `doc/progress-archive.md`. This never marks a milestone done; that stays `milestone N done` only.
+
 ## Status edits (`mosaic done`, `milestone N done`)
 
 Wrap-up and milestone-done edits (status, the status rule, progress, archive, roadmap) must not each get their own PR.
