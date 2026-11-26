@@ -22,6 +22,7 @@ import socket
 import sqlite3
 import sys
 import threading
+import time
 import zipfile
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -654,6 +655,25 @@ def apply_pending(settings: Settings) -> str | None:
     return status
 
 
+def _rename_when_free(src: Path, dst: Path, *, wait: float = 10.0, pause: float = 0.25) -> None:
+    """``src.rename(dst)``, retried for ``wait`` seconds while Windows says the file is in use.
+
+    After a restart the old process may still hold its database for a moment (or a scanner is reading
+    the file), so the first try can fail with WinError 32 although nothing is wrong.
+    """
+    deadline = time.monotonic() + wait
+    while True:
+        try:
+            src.rename(dst)
+            return
+        except PermissionError as exc:
+            if time.monotonic() >= deadline:
+                raise PermissionError(
+                    exc.errno, f"{exc.strerror or exc}; another process may still be using {src.name} ({src})", exc.filename
+                ) from exc
+            time.sleep(pause)
+
+
 def _swap(
     app_stage: Path,
     data_stage: Path,
@@ -675,7 +695,7 @@ def _swap(
             if current.exists():
                 mark = ".before-restore-" if keep_old else DISCARD_MARK
                 kept = current.with_name(f"{current.name}{mark}{stamp}")
-                current.rename(kept)
+                _rename_when_free(current, kept)
                 aside.append((current, kept))
         for sidecar in ("-wal", "-shm", "-journal"):
             Path(str(db_path) + sidecar).unlink(missing_ok=True)

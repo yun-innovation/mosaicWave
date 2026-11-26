@@ -8,6 +8,7 @@ import uuid
 import zipfile
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 
 from mosaicwave import identity, schema
@@ -217,6 +218,31 @@ def test_restore_choice_is_offered_by_the_api(tmp_path: Path) -> None:
             break
         time.sleep(0.05)
     assert state["pending"]["keep_site_id"] is True
+
+
+def test_swap_waits_while_a_file_is_still_in_use(tmp_path: Path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    from mosaicwave import restore
+
+    src = tmp_path / "library.db"
+    src.write_text("x")
+    real = Path.rename
+    calls = {"n": 0}
+
+    def busy_twice(self: Path, target: Path):  # type: ignore[no-untyped-def]
+        calls["n"] += 1
+        if calls["n"] <= 2:
+            raise PermissionError(32, "The process cannot access the file")
+        return real(self, target)
+
+    monkeypatch.setattr(Path, "rename", busy_twice)
+    restore._rename_when_free(src, tmp_path / "library.db.aside", wait=5, pause=0.01)
+    assert calls["n"] == 3 and (tmp_path / "library.db.aside").is_file()
+
+    calls["n"] = -10_000  # never frees up: gives up with a message that names the file
+    other = tmp_path / "other.db"
+    other.write_text("y")
+    with pytest.raises(PermissionError, match="another process may still be using other.db"):
+        restore._rename_when_free(other, tmp_path / "other.aside", wait=0.05, pause=0.01)
 
 
 def test_admin_can_make_this_a_new_server(tmp_path: Path) -> None:
