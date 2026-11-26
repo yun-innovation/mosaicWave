@@ -669,7 +669,10 @@ def _rename_when_free(src: Path, dst: Path, *, wait: float = 10.0, pause: float 
         except PermissionError as exc:
             if time.monotonic() >= deadline:
                 raise PermissionError(
-                    exc.errno, f"{exc.strerror or exc}; another process may still be using {src.name} ({src})", exc.filename
+                    exc.errno,
+                    f"{exc.strerror or exc}; another process may still be using {src.name} ({src}). "
+                    "Close any database browser or other tool that has it open, then try again",
+                    exc.filename,
                 ) from exc
             time.sleep(pause)
 
