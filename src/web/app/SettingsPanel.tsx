@@ -9,6 +9,7 @@ import i18n from "./i18n";
 import { LibraryBackupPanel } from "./LibraryBackupPanel";
 import { LocaleSelect } from "./LocaleSelect";
 import { SessionsPanel } from "./SessionsPanel";
+import { PageSizeSelect } from "./PageSizeSelect";
 import { ThemeSelect } from "./ThemeSelect";
 import { TimeZoneSelect } from "./TimeZoneSelect";
 import type { TakeoutImport } from "./useTakeoutImport";
@@ -69,6 +70,13 @@ export function SettingsPanel({ me, importer, onMe }: Props) {
         </label>
         <p className="detail">{t("settings:theme.help")}</p>
         <ThemeSelect id="ui_theme" />
+      </div>
+      <div className="import">
+        <label htmlFor="ui_page_size" className="section-title">
+          {t("settings:pageSize.label")}
+        </label>
+        <p className="detail">{t("settings:pageSize.help")}</p>
+        <PageSizeSelect id="ui_page_size" />
       </div>
       <div className="import">
         <label htmlFor="ui_time_zone" className="section-title">
