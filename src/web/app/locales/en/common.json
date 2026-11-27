@@ -3,6 +3,8 @@
   "loading": "Loading…",
   "working": "Working…",
   "close": "Close",
+  "showPassword": "Show password",
+  "hidePassword": "Hide password",
   "cancel": "Cancel",
   "browse": "Browse…",
   "remove": "Remove",

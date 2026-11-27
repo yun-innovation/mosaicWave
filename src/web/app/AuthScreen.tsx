@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 
 import { BrandLockup } from "./BrandLockup";
 import { apiFetch, Me, readDetail } from "./api";
+import { PasswordInput } from "./PasswordInput";
 
 type Props = {
   mode: "setup" | "login";
@@ -78,9 +79,8 @@ export function AuthScreen({ mode, platform, onAuthed, onBack }: Props) {
           </>
         )}
         <label htmlFor="auth-pass">{t("auth:password")}</label>
-        <input
+        <PasswordInput
           id="auth-pass"
-          type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           autoComplete={mode === "setup" ? "new-password" : "current-password"}
