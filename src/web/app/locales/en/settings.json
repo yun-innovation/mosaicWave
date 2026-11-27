@@ -27,6 +27,11 @@
     "auto": "Automatic (browser)",
     "saveFailed": "Could not save the language: {{detail}}"
   },
+  "pageSize": {
+    "label": "Photos per load",
+    "help": "How many photos the gallery loads at a time. Saved in this browser only, so each device can differ.",
+    "option": "{{count}} photos"
+  },
   "theme": {
     "label": "Theme",
     "help": "Dark or light. Saved in this browser only, so each device can differ.",

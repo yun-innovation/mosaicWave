@@ -7,6 +7,7 @@ import { apiFetch, readDetail } from "./api";
 import { AssetViewer } from "./AssetViewer";
 import { chosenTimeZone, dayKey, formatDay, formatMonth, formatMonthKey, monthEndInstant, dateRangeInstants } from "./format";
 import i18n from "./i18n";
+import { storedPageSize } from "./pageSize";
 import { SelectionBar } from "./SelectionBar";
 import { TimelineScrubber, UNDATED } from "./TimelineScrubber";
 import { Asset, AssetList, ignoreAbort, isAbortError, LibraryAlbum, MonthsList, thumbSrc } from "./types";
@@ -89,7 +90,7 @@ export function TimelineView({ albumId, albums, libraryRev, onAlbumsChanged, onL
     async (signal?: AbortSignal, cursor?: string | null) => {
       if (!cursor) setError(null);
       try {
-        const qs = new URLSearchParams({ limit: "50" });
+        const qs = new URLSearchParams({ limit: String(storedPageSize()) });
         if (cursor) qs.set("cursor", cursor);
         if (albumId) qs.set("album_id", albumId);
         if (before && !cursor) qs.set("before", before);
