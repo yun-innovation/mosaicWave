@@ -16,6 +16,8 @@ On narrow screens (`max-width: 48rem`) the sidebar becomes a slide-over panel ov
 
 The sign-in screen and the first-admin setup screen do not use the shell.
 
+Every visible password field (sign-in, first-admin setup, the NAS share password, a new member's password) is a `PasswordInput` (`app/PasswordInput.tsx`): an eye button at the end of the field shows or hides what was typed. It is hidden again whenever the field is shown anew.
+
 ## Views and URLs
 
 Each view has a hash URL, so links, reload and Back / Forward work without a server fallback (FastAPI serves the static export with `StaticFiles(html=True)`).

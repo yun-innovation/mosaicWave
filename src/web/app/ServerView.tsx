@@ -7,6 +7,7 @@ import { apiFetch, AppUser, HostSettings, Me, readDetail } from "./api";
 import { FolderPicker } from "./FolderPicker";
 import { routeHash } from "./hashRoute";
 import { NetworkSection } from "./NetworkSection";
+import { PasswordInput } from "./PasswordInput";
 import { ServerIdSection } from "./ServerIdSection";
 import i18n from "./i18n";
 import type { ImportJob, MaintenanceStatus } from "./types";
@@ -558,10 +559,9 @@ export function ServerView({ me, platform, maintenance }: Props) {
               </div>
               <label htmlFor="smb_password">{t("settings:nas.passwordLabel")}</label>
               <div className="path-row">
-                <input
+                <PasswordInput
                   id="smb_password"
                   name="smb_password"
-                  type="password"
                   value={smbPasswordDraft}
                   onChange={(e) => setSmbPasswordDraft(e.target.value)}
                   disabled={moveLocked || busy}
@@ -640,10 +640,9 @@ export function ServerView({ me, platform, maintenance }: Props) {
               readOnly={memberFieldsLocked}
               onFocus={() => setMemberFieldsLocked(false)}
             />
-            <input
+            <PasswordInput
               id="add_password"
               name="add_password"
-              type="password"
               placeholder={t("settings:users.password")}
               value={newUser.password}
               onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}

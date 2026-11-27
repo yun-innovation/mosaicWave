@@ -3,6 +3,8 @@
   "loading": "正在加载…",
   "working": "正在处理…",
   "close": "关闭",
+  "showPassword": "显示密码",
+  "hidePassword": "隐藏密码",
   "cancel": "取消",
   "browse": "浏览…",
   "remove": "移除",
